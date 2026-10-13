@@ -1,0 +1,51 @@
+import { tr } from './i18n';
+import React, { useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
+import { api, setToken, setBase, getBase } from './api';
+import { Btn, Input, C, F, H, M, Chip, err, Rise } from './ui';
+import { Logo } from './icons';
+import { FloralArch } from './visuals';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+export default function Login({ onDone, onBrowse }: { onDone: () => void; onBrowse: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [phone, setPhone] = useState(''); const [otp, setOtp] = useState(''); const [step, setStep] = useState(0);
+  const [role, setRole] = useState<'couple' | 'vendor'>('couple'); const [name, setName] = useState(''); const [server, setServer] = useState(getBase()); const [busy, setBusy] = useState(false);
+  const [showServer, setShowServer] = useState(false);
+  const go = async () => {
+    setBusy(true);
+    try {
+      await setBase(server);
+      if (step === 0) { await api('/auth/otp', 'POST', { phone }); setStep(1); return; }
+      if (step === 2 && !name.trim()) throw new Error(tr('Enter your name to continue.'));
+      const r = await api('/auth/verify', 'POST', step === 2 ? { phone, otp, role, name: name.trim() } : { phone, otp });
+      if (r.needsProfile) { setStep(2); return; }
+      await setToken(r.token); onDone();
+    } catch (e) { err(e); } finally { setBusy(false); }
+  };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 24, paddingTop: insets.top + 28, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 640, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" style={{ backgroundColor: C.bg }}>
+      <Rise i={0}>
+        <View style={{ marginBottom: 20 }}><Logo size={64} /></View>
+        <Text style={{ fontFamily: F.displayBold, fontSize: 36, color: C.ink, lineHeight: 42 }}>Shaadi OS</Text>
+        <View style={{ backgroundColor: C.primaryDark, borderRadius: 20, padding: 24, marginVertical: 24, overflow: 'hidden' }}>
+          <View pointerEvents="none" style={{ position: 'absolute', right: -24, top: 8, opacity: 0.4 }}><FloralArch size={150} /></View>
+          <Text style={{ fontFamily: F.display, fontSize: 32, lineHeight: 38, color: C.goldSoft, maxWidth: '85%' }}>{tr('A celebration that feels like you.')}</Text>
+          <Text style={{ fontSize: 15, color: C.goldSoft, marginTop: 14, lineHeight: 23, maxWidth: '88%' }}>{tr('Find your vendors. Bring your people together. Plan every detail in one place.')}</Text>
+        </View>
+        <Btn kind="ghost" icon="search" title={tr('Explore wedding vendors')} onPress={onBrowse} />
+      </Rise>
+      <Rise i={1}>
+        <H>{step === 0 ? tr('Your wedding starts here') : step === 1 ? tr('Verify your number') : tr('Tell us about yourself')}</H>
+        <Input label={tr('Mobile number (+91)')} value={phone} onChangeText={setPhone} keyboardType="number-pad" maxLength={10} placeholder="10-digit mobile" editable={step === 0} />
+        {step >= 1 && <Rise><Input label={tr('OTP (demo: 123456)')} value={otp} onChangeText={setOtp} keyboardType="number-pad" maxLength={6} placeholder="6-digit code" autoFocus /></Rise>}
+        {step === 2 && (<Rise><Input label={tr('Your name')} value={name} onChangeText={setName} placeholder="Your Name" />
+          <H style={{ fontSize: 18 }}>{tr('I am a…')}</H><View style={{ flexDirection: 'row' }}><Chip icon="family" label={tr('Couple / Family')} on={role === 'couple'} onPress={() => setRole('couple')} /><Chip icon="store" label={tr('Vendor')} on={role === 'vendor'} onPress={() => setRole('vendor')} /></View></Rise>)}
+        <Btn title={busy ? tr('Please wait…') : step === 0 ? tr('Send OTP') : tr('Continue')} onPress={go} disabled={busy} />
+        {step > 0 && <Btn kind="ghost" title={tr('Change mobile number')} onPress={() => { setStep(0); setOtp(''); }} disabled={busy} />}
+      </Rise>
+      <M style={{ marginTop: 24 }}>{tr('Demo vendor login: 9000000001 · OTP 123456')}</M>
+      <M style={{ marginTop: 12 }}>{tr('Demo build: payments and OTP are simulated. No real money is transferred.')}</M>
+      <Btn kind="ghost" small title={showServer ? tr('Hide server settings') : tr('Server settings')} onPress={() => setShowServer(!showServer)} />
+      {showServer && <Rise><Input label={tr('Server address')} value={server} onChangeText={setServer} autoCapitalize="none" /></Rise>}
+    </ScrollView>);
+}

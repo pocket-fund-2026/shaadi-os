@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Shaadi OS",
+    "slug": "shaadi-os",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/brand-icon-v2.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/brand-icon-v2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#74263F"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.shaadios.app",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "whatsapp"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.shaadios.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#74263F",
+        "foregroundImage": "./assets/android-icon-foreground-v2.png"
+      }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-font"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "Shaadi OS",
+      "shortName": "Shaadi OS",
+      "backgroundColor": "#FBF6F1",
+      "themeColor": "#7A1F3D",
+      "favicon": "./assets/favicon-v2.png"
+    }
+  }
+}

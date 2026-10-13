@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+.build/
+dist/
+dist-planner/
+dist-ui/
+*.log
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+**/xcuserdata/
+android/.gradle/
+android/build/
+android/app/build/

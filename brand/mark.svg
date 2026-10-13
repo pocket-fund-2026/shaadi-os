@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Mandap arch over the sacred fire (agni) that the pheras circle. Gold on the app's wine. -->
+  <g transform="translate(512 512) scale(1.32) translate(-512 -506)">
+    <path d="M318 772V488C318 386 404 334 456 304C488 285 505 262 512 232C519 262 536 285 568 304C620 334 706 386 706 488V772" fill="none" stroke="#E8C877" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M268 772H756" stroke="#E8C877" stroke-width="54" stroke-linecap="round"/>
+    <path d="M512 440C560 504 580 548 580 596C580 638 549 670 512 670C475 670 444 638 444 596C444 548 464 504 512 440Z" fill="#E8C877"/>
+    <path d="M512 556C529 580 536 598 536 616C536 632 525 643 512 643C499 643 488 632 488 616C488 598 495 580 512 556Z" fill="#7A1F3D"/>
+  </g>
+</svg>
