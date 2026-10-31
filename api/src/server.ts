@@ -114,15 +114,39 @@ app.post('/api/guests', auth, wrap((req: any, res: any) => {
 }));
 // public RSVP page (no login needed, opened from WhatsApp link)
 const esc = (s: string) => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+const dateText = (d?: string) => { const x = new Date(String(d) + 'T00:00:00Z'); return d && !isNaN(+x) ? x.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : ''; };
+const rsvpPage = (title: string, body: string) => `<!doctype html><html lang="en"><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1"><title>${title}</title><link rel=icon href="/favicon.png">
+<style>body{margin:0;background:#FAF7F2;color:#2C2024;font:16px/1.5 system-ui,sans-serif}main{max-width:440px;margin:0 auto;padding:32px 20px}h1{font:600 28px/1.2 Georgia,serif;margin:0 0 4px;color:#74263F}.muted{color:#75656B;font-size:14px}fieldset{border:1px solid #EADCD3;border-radius:12px;background:#FFFEFC;padding:12px 16px;margin:12px 0}legend{font-weight:600;padding:0 4px}label{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin-right:16px}select,input[type=number]{font:inherit;padding:10px;border:1px solid #EADCD3;border-radius:10px;background:#FFFEFC;min-height:44px}button{font:600 15px system-ui,sans-serif;min-height:48px;padding:0 20px;border-radius:10px;border:1.3px solid #74263F;background:#74263F;color:#fff;cursor:pointer;margin:4px 8px 4px 0}button.ghost{background:transparent;color:#74263F}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}a{color:#74263F}</style>
+<main>${body}</main></html>`;
 app.get('/rsvp/:token', wrap((req: any, res: any) => {
-  const g = one('SELECT g.*,w.title,w.date,w.city FROM guests g JOIN weddings w ON w.id=g.wedding_id WHERE token=?', req.params.token); if (!g) return res.status(404).send('Invalid link');
-  res.send(`<!doctype html><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1"><title>RSVP · ${esc(g.title)}</title><meta name=description content="RSVP to ${esc(g.title)}'s wedding on ${esc(g.date)}."><link rel=icon href="/favicon.png"><body style="font-family:sans-serif;max-width:420px;margin:30px auto;padding:16px"><h2>${esc(g.title)}</h2><p>${esc(g.date)} · ${esc(g.city)}</p><p>Namaste ${esc(g.name)}, will you join us?</p><form method=post><input type=text name=website style="display:none" tabindex=-1 autocomplete=off><select name=meal><option>Veg</option><option>Non-veg</option><option>Jain</option></select><p><input type=number name=plus min=0 max=5 value=0> extra guests</p><button name=rsvp value=yes>Yes, I'll be there</button> <button name=rsvp value=no>Can't make it</button></form><p style="color:#666;margin-top:40px">Planning your own wedding? <a href="/" style="color:#7A1F3D;font-weight:600">Start free with Shaadi OS</a>.</p>`);
+  const g = one('SELECT g.*,w.title,w.date,w.city FROM guests g JOIN weddings w ON w.id=g.wedding_id WHERE token=?', req.params.token); if (!g) return res.status(404).send(rsvpPage('Invalid link', '<h1>This invitation link is not valid</h1><p class="muted">Ask the couple to send it again.</p>'));
+  const events = q("SELECT e.id,e.name,e.date,e.venue,ge.rsvp FROM guest_events ge JOIN events e ON e.id=ge.event_id WHERE ge.guest_id=? ORDER BY COALESCE(e.date,'9999-12-31'), e.sort, e.id", g.id);
+  const meal = `<div class="row"><label for="meal">Meal</label><select id="meal" name="meal">${['Veg', 'Non-veg', 'Jain'].map(m => `<option${g.meal === m ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
+    <div class="row"><label for="plus">Others coming with you</label><input id="plus" type="number" name="plus" min="0" max="5" value="${Number(g.plus_ones) || 0}"></div>`;
+  // Guests invited to specific ceremonies answer for each; others give one reply for the wedding.
+  const form = events.length
+    ? `${events.map((e: any) => `<fieldset><legend>${esc(e.name)}</legend><p class="muted" style="margin:0">${[dateText(e.date), e.venue].filter(Boolean).map(esc).join(' · ') || 'Date to be announced'}</p>
+        <label><input type="radio" name="e${e.id}" value="yes"${e.rsvp !== 'no' ? ' checked' : ''}> Coming</label><label><input type="radio" name="e${e.id}" value="no"${e.rsvp === 'no' ? ' checked' : ''}> Can't come</label></fieldset>`).join('')}
+       ${meal}<button name="rsvp" value="events">Send my reply</button>`
+    : `${meal}<button name="rsvp" value="yes">Yes, I'll be there</button><button class="ghost" name="rsvp" value="no">Can't make it</button>`;
+  res.send(rsvpPage(`RSVP · ${esc(g.title)}`, `<h1>${esc(g.title)}</h1><p class="muted">${esc(dateText(g.date))} · ${esc(g.city)}</p>
+    <p>Namaste ${esc(g.name)}, ${events.length ? 'please tell us which ceremonies you can attend.' : 'will you join us?'}</p>
+    <form method="post"><input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">${form}</form>
+    <p class="muted" style="margin-top:40px">Planning your own wedding? <a href="/">Shaadi OS</a></p>`));
 }));
 app.post('/rsvp/:token', express.urlencoded({ extended: false }), spamGuard(), wrap((req: any, res: any) => {
-  const b = z.object({ rsvp: z.enum(['yes', 'no']), meal: z.enum(['Veg', 'Non-veg', 'Jain']).default('Veg'), plus: z.coerce.number().int().min(0).max(5).default(0) }).safeParse(req.body);
-  if (!b.success) return res.status(400).send('<body style="font-family:sans-serif;padding:30px"><h3>That response didn\'t look right. Please go back and try again.</h3>');
-  const r = run('UPDATE guests SET rsvp=?,meal=?,plus_ones=? WHERE token=?', b.data.rsvp, b.data.meal, b.data.plus, req.params.token);
-  res.send(r.changes ? '<body style="font-family:sans-serif;padding:30px"><h3>Thank you! Your response is recorded.</h3>' : 'Invalid link');
+  const b = z.object({ rsvp: z.enum(['yes', 'no', 'events']), meal: z.enum(['Veg', 'Non-veg', 'Jain']).default('Veg'), plus: z.coerce.number().int().min(0).max(5).default(0) }).safeParse(req.body);
+  const g = one('SELECT id FROM guests WHERE token=?', req.params.token);
+  if (!b.success || !g) return res.status(400).send(rsvpPage('Try again', "<h1>That reply didn't go through</h1><p>Please go back and try again.</p>"));
+  let rsvp = b.data.rsvp;
+  if (rsvp === 'events') {
+    const invited = q('SELECT event_id FROM guest_events WHERE guest_id=?', g.id);
+    const answers = invited.map((e: any) => [e.event_id, req.body['e' + e.event_id] === 'no' ? 'no' : 'yes'] as const);
+    for (const [eventId, answer] of answers) run('UPDATE guest_events SET rsvp=? WHERE guest_id=? AND event_id=?', answer, g.id, eventId);
+    rsvp = answers.some(([, a]) => a === 'yes') ? 'yes' : 'no';
+  } else run('UPDATE guest_events SET rsvp=? WHERE guest_id=?', rsvp, g.id);
+  run('UPDATE guests SET rsvp=?,meal=?,plus_ones=? WHERE id=?', rsvp, b.data.meal, b.data.plus, g.id);
+  res.send(rsvpPage('Reply recorded', `<h1>Thank you</h1><p>Your reply is recorded. You can open this link again to change it.</p>`));
 }));
 
 // Enquiries / chat

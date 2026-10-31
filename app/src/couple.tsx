@@ -2,7 +2,7 @@ import { Overview, TaskManager, BudgetManager, WeddingSettings } from './planner
 import { tr } from './i18n';
 import { Events, Family, ShortlistTab, InviteTab } from './more';
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, ScrollView, Text, View, RefreshControl, Linking, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { FlatList, ScrollView, Text, View, RefreshControl, Linking, KeyboardAvoidingView, Platform, Pressable, Share } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, getBase } from './api';
 import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO } from './ui';
@@ -10,6 +10,7 @@ import { Icon, CAT_ICON } from './icons';
 import { Marketplace } from './marketplace';
 import { CategoryCover } from './visuals';
 import { VendorCatalog } from './catalog';
+import { Gifts, Stays } from './hospitality';
 import { useT } from './i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export const useLoad = <T,>(path: string, init: T) => {
@@ -156,7 +157,7 @@ export function Bookings({ vendor }: any) {
 }
 
 const longDate = (d: string) => { const x = new Date(d + 'T00:00:00Z'); return isNaN(+x) ? d : x.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); };
-const PLAN_TABS: [string, string][] = [['overview', 'Overview'], ['checklist', 'Checklist'], ['events', 'Events'], ['budget', 'Budget'], ['guests', 'Guests'], ['shortlist', 'Shortlist'], ['family', 'Family'], ['invite', 'Invite'], ['settings', 'Wedding details']];
+const PLAN_TABS: [string, string][] = [['overview', 'Overview'], ['checklist', 'Checklist'], ['events', 'Events'], ['budget', 'Budget'], ['guests', 'Guests'], ['shortlist', 'Shortlist'], ['family', 'Family'], ['shagun', 'Shagun'], ['stays', 'Guest stays'], ['invite', 'Invite'], ['settings', 'Wedding details']];
 const PLAN_MAIN = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family']] as const;
 export function Plan(props: any) {
   const insets = useSafeAreaInsets();
@@ -171,7 +172,7 @@ function PlanBody({ navigation: nav }: any) {
     <View style={{ maxWidth: 700, width: '100%', alignSelf: 'center' }}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12 }}>{PLAN_MAIN.map(([k, n, icon]) => <Chip key={k} icon={icon} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}<Chip icon="plus" label={tr('More')} on={showMore || !PLAN_MAIN.some(([k]) => k === tab)} onPress={() => setShowMore(!showMore)} /></ScrollView>
       {showMore && <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 4 }}>{PLAN_TABS.filter(([k]) => !PLAN_MAIN.some(([main]) => main === k)).map(([k, n]) => <Chip key={k} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}</View>}
       {!showMore && !PLAN_MAIN.some(([k]) => k === tab) && <M style={{ paddingHorizontal: 16, paddingBottom: 3 }}>{tr(PLAN_TABS.find(([k]) => k === tab)?.[1] || '')}</M>}</View>
-    <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
+    <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
 }
 function Setup({ onDone }: any) {
   const [f, setF] = useState({ title: '', date: '', city: 'Pune', budget: '1500000', guests: '250', community: 'North Indian Hindu' });
@@ -186,18 +187,44 @@ function Setup({ onDone }: any) {
     <Btn title={tr('Create workspace')} onPress={go} /></ScrollView>);
 }
 function Guests() {
-  const [list, load] = useLoad<any[]>('/guests', []); const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [side, setSide] = useState('bride');
-  const add = async () => { if (!name.trim()) return; if (phone && !/^[6-9]\d{9}$/.test(phone)) return err(new Error(tr('Enter a 10-digit mobile number, or leave it empty.'))); await api('/guests', 'POST', { name, phone, side }).catch(err); setName(''); setPhone(''); load(); };
-  const share = (g: any) => Linking.openURL(`https://wa.me/91${g.phone}?text=${encodeURIComponent(`Namaste ${g.name}, you're invited! RSVP: ${getBase()}/rsvp/${g.token}`)}`).catch(err);
+  const [list, load] = useLoad<any[]>('/guests', []); const [events] = useLoad<any[]>('/events', []);
+  const [invites, loadInvites] = useLoad<any[]>('/guest-events', []); const [counts, loadCounts] = useLoad<any[]>('/events/headcount', []);
+  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [side, setSide] = useState('bride'); const [busy, setBusy] = useState(false);
+  const add = async () => {
+    if (!name.trim()) return; if (phone && !/^[6-9]\d{9}$/.test(phone)) return err(new Error(tr('Enter a 10-digit mobile number, or leave it empty.')));
+    try { await api('/guests', 'POST', { name: name.trim(), phone, side }); setName(''); setPhone(''); load(); } catch (e) { err(e); }
+  };
+  const share = (g: any) => Linking.openURL(`https://wa.me/91${g.phone}?text=${encodeURIComponent(`Namaste ${g.name}, you're invited. Please reply here: ${getBase()}/rsvp/${g.token}`)}`).catch(err);
+  // Tapping a ceremony chip invites or uninvites the guest for that ceremony.
+  const invite = async (guestId: number, eventId: number, invited: boolean) => {
+    if (busy) return; setBusy(true);
+    try { await api(`/guests/${guestId}/events/${eventId}`, 'PUT', { invited }); await Promise.all([loadInvites(), loadCounts()]); } catch (e) { err(e); } finally { setBusy(false); }
+  };
+  const replyFor = (guestId: number, eventId: number) => invites.find(x => x.guest_id === guestId && x.event_id === eventId)?.rsvp;
+  // Plain-text headcount the couple can forward to a caterer or venue.
+  const shareHeadcount = () => Share.share({ message: counts.filter(c => c.invited).map(c => `${c.name}${c.date ? ` (${dateIN(c.date)})` : ''}: ${c.coming} ${tr('coming')}, ${c.waiting} ${tr('yet to reply')}${c.jain ? `, ${c.jain} Jain` : ''}${c.nonveg ? `, ${c.nonveg} non-veg` : ''}`).join('\n') }).catch(() => {});
   const yes = list.filter(g => g.rsvp === 'yes').length; const no = list.filter(g => g.rsvp === 'no').length;
   return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card><View style={{ flexDirection: 'row' }}>{[[list.length, tr('Invited'), C.ink], [yes, tr('Coming'), C.ok], [no, tr('Declined'), C.warn], [list.length - yes - no, tr('Waiting'), C.mute]].map(([n, l, c], i) => (
-      <View key={i} style={{ flex: 1, alignItems: 'center' }}><Text style={{ fontFamily: F.display, fontSize: 24, color: c as string }}>{n as number}</Text><M>{l as string}</M></View>))}</View></Card>
+      <View key={i} style={{ flex: 1, alignItems: 'center' }}><Text style={{ fontFamily: F.display, fontSize: 24, color: c as string, fontVariant: ['tabular-nums'] }}>{n as number}</Text><M>{l as string}</M></View>))}</View></Card>
+    {counts.some(c => c.invited) ? <Card>
+      <View style={s.row}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Headcount by ceremony')}</Text><Btn small kind="quiet" icon="share" title={tr('Share')} onPress={shareHeadcount} /></View>
+      {counts.filter(c => c.invited).map((c, i) => <View key={c.id} style={[s.row, { paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }]}>
+        <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{c.name}</Text><M>{c.date ? dateIN(c.date) + ' · ' : ''}{c.invited} {tr('invited')}{c.jain ? ` · ${c.jain} Jain` : ''}{c.nonveg ? ` · ${c.nonveg} ${tr('non-veg')}` : ''}</M></View>
+        <View style={{ alignItems: 'flex-end' }}><Text style={{ color: C.ok, fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{c.coming}</Text><M>{c.waiting} {tr('waiting')}</M></View>
+      </View>)}
+    </Card> : null}
     <Input label={tr('Guest name')} placeholder="Guest Name" value={name} onChangeText={setName} /><Input label={tr('WhatsApp number (optional)')} placeholder="10-digit mobile" value={phone} onChangeText={setPhone} keyboardType="number-pad" maxLength={10} />
     <View style={{ flexDirection: 'row' }}><Chip label={tr('Bride side')} on={side === 'bride'} onPress={() => setSide('bride')} /><Chip label={tr('Groom side')} on={side === 'groom'} onPress={() => setSide('groom')} /></View><Btn icon="plus" title={tr('Add guest')} onPress={add} />
+    {list.length && !events.length ? <M style={{ marginVertical: 8 }}>{tr('Add your ceremonies under More, then Events, to invite guests to each one separately.')}</M> : null}
     {!list.length && <Empty icon="family" title={tr('No guests yet')} text={tr('Add guests with a WhatsApp number and send each one a personal RSVP link.')} />}
     {list.map((g, i) => (<Rise key={g.id} i={i}><Card><View style={s.row}><View style={{ flex: 1 }}><Text style={{ fontWeight: '500', color: C.ink }}>{g.name}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}><Tag tone={g.rsvp === 'yes' ? 'ok' : g.rsvp === 'no' ? 'warn' : 'mute'} label={g.rsvp === 'yes' ? tr('Coming') : g.rsvp === 'no' ? tr('Declined') : tr('Waiting')} />
         <M> {g.side === 'bride' ? tr('Bride side') : tr('Groom side')}{g.meal ? ' · ' + g.meal : ''}{g.plus_ones ? ` · +${g.plus_ones}` : ''}</M></View></View>
-      {g.phone ? <Btn small kind="quiet" icon="send" title="WhatsApp" onPress={() => share(g)} /> : null}</View></Card></Rise>))}</ScrollView>);
+      {g.phone ? <Btn small kind="quiet" icon="send" title="WhatsApp" onPress={() => share(g)} /> : null}</View>
+      {events.length ? <View style={{ marginTop: 12 }}><M style={{ marginBottom: 4 }}>{tr('Invited to')}</M><ScrollView horizontal showsHorizontalScrollIndicator={false}>{events.map(e => {
+        const reply = replyFor(g.id, e.id);
+        return <Chip key={e.id} label={e.name} on={!!reply} icon={reply === 'yes' ? 'check' : reply === 'no' ? 'close' : undefined} onPress={() => invite(g.id, e.id, !reply)} />;
+      })}</ScrollView></View> : null}
+    </Card></Rise>))}</ScrollView>);
 }

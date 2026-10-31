@@ -271,6 +271,54 @@ test('starter tasks on a short engagement are spread from today instead of overd
   assert.ok(dates.every(d => d <= '2027-02-14'));
   assert.equal(starterDates('2028-06-01', now)[0][1], '2027-06-02', 'a long engagement keeps the ideal dates');
 });
+test('guests reply per ceremony and headcounts follow', async () => {
+  const haldi = (await request('/api/events', couple, 'POST', { name: 'Test Haldi', date: '2027-04-10' })).data;
+  const sangeet = (await request('/api/events', couple, 'POST', { name: 'Test Sangeet', date: '2027-04-11' })).data;
+  const events = (await request('/api/events', couple)).data;
+  const h = haldi?.id ?? events.find((e: any) => e.name === 'Test Haldi').id; const s = sangeet?.id ?? events.find((e: any) => e.name === 'Test Sangeet').id;
+  await request('/api/guests', couple, 'POST', { name: 'Ceremony Guest', side: 'groom' });
+  const guest = (await request('/api/guests', couple)).data.find((g: any) => g.name === 'Ceremony Guest');
+  for (const id of [h, s]) assert.equal((await request(`/api/guests/${guest.id}/events/${id}`, couple, 'PUT', { invited: true })).status, 200);
+  assert.equal((await request(`/api/guests/${guest.id}/events/${h}`, outsider, 'PUT', { invited: true })).status, 404, 'another wedding cannot invite this guest');
+  const page = await transport('/rsvp/' + guest.token, '', 'GET', undefined, true);
+  assert.ok(String(page.data).includes('Test Haldi') && String(page.data).includes('Test Sangeet'));
+  await transport('/rsvp/' + guest.token, '', 'POST', `rsvp=events&e${h}=yes&e${s}=no&meal=Jain&plus=1`, true);
+  const counts = (await request('/api/events/headcount', couple)).data;
+  const hc = counts.find((e: any) => e.id === h), sc = counts.find((e: any) => e.id === s);
+  assert.deepEqual([hc.invited, hc.coming, hc.jain, hc.waiting], [1, 2, 1, 0]);
+  assert.deepEqual([sc.invited, sc.coming, sc.declined], [1, 0, 1]);
+  assert.equal((await request('/api/guests', couple)).data.find((g: any) => g.id === guest.id).rsvp, 'yes');
+});
+test('shagun register hides amounts from viewers; stays reject impossible dates', async () => {
+  const owner = await login('9812300151');
+  await request('/api/wedding', owner, 'POST', { title: 'G & H', date: '2027-05-01', city: 'Pune', budget_paise: 100000000 });
+  const viewerPhone = '9812300152'; await request('/api/members', owner, 'POST', { name: 'Viewer', phone: viewerPhone, role: 'viewer' });
+  const viewer = await login(viewerPhone);
+  assert.equal((await request('/api/gifts', owner, 'POST', { giver: 'Mama ji', kind: 'cash', amount_paise: 1100000 })).status, 200);
+  assert.equal((await request('/api/gifts', owner, 'POST', { giver: 'No amount', kind: 'cash' })).status, 400);
+  assert.equal((await request('/api/gifts', viewer)).status, 403, 'viewers cannot see gift amounts');
+  const gift = (await request('/api/gifts', owner)).data[0];
+  assert.equal((await request(`/api/gifts/${gift.id}`, owner, 'PATCH', { thanked: true })).status, 200);
+  assert.equal((await request(`/api/gifts/${gift.id}`, outsider, 'PATCH', { thanked: true })).status, 404, 'another wedding cannot touch it');
+  assert.equal((await request('/api/stays', owner, 'POST', { guest_name: 'Delhi cousins', people: 4, check_in: '2027-04-30', check_out: '2027-04-29' })).status, 400);
+  assert.equal((await request('/api/stays', owner, 'POST', { guest_name: 'Delhi cousins', people: 4, hotel: 'Hotel Shreyas', check_in: '2027-04-30', check_out: '2027-05-02', arrival: 'Pune station 10:30', pickup: true })).status, 200);
+  assert.equal((await request('/api/stays', viewer)).data.length, 1, 'family viewers see the stays plan');
+  assert.equal((await request('/api/stays', viewer, 'POST', { guest_name: 'X' })).status, 403);
+});
+test('deleting account data removes the wedding and everything in it', async () => {
+  const owner = await login('9812300161');
+  await request('/api/wedding', owner, 'POST', { title: 'Del & Ete', date: '2027-06-01', city: 'Pune', budget_paise: 100000000 });
+  await request('/api/guests', owner, 'POST', { name: 'Private Guest', phone: '9876500000' });
+  await request('/api/gifts', owner, 'POST', { giver: 'Private Giver', kind: 'gift', description: 'Silver set' });
+  await request('/api/stays', owner, 'POST', { guest_name: 'Private Stay' });
+  const wid = (await request('/api/me', owner)).data.wedding.id;
+  const exported = (await request('/api/my-data', owner)).data;
+  assert.equal(exported.guests.length, 1); assert.equal(exported.gifts.length, 1); assert.equal(exported.stays.length, 1);
+  assert.equal((await request('/api/my-data', owner, 'DELETE')).status, 200);
+  for (const table of ['weddings', 'tasks', 'guests', 'gifts', 'stays', 'budget_items']) {
+    assert.equal(one(`SELECT COUNT(*) n FROM ${table} WHERE ${table === 'weddings' ? 'id' : 'wedding_id'}=?`, wid).n, 0, table + ' rows remain');
+  }
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

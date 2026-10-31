@@ -3,6 +3,9 @@ import { db, q, one, run } from './db.ts';
 import { dateSchema } from './planner.ts';
 db.exec(`
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, wedding_id INT, name TEXT, date TEXT, venue TEXT, dress TEXT, sort INT DEFAULT 0);
+CREATE TABLE IF NOT EXISTS guest_events(guest_id INT, event_id INT, rsvp TEXT DEFAULT 'pending', PRIMARY KEY(guest_id, event_id));
+CREATE TABLE IF NOT EXISTS gifts(id INTEGER PRIMARY KEY, wedding_id INT, giver TEXT, event_id INT, kind TEXT, amount_paise INT, description TEXT, thanked INT DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS stays(id INTEGER PRIMARY KEY, wedding_id INT, guest_name TEXT, people INT DEFAULT 1, hotel TEXT, room TEXT, check_in TEXT, check_out TEXT, arrival TEXT, pickup INT DEFAULT 0);
 CREATE TABLE IF NOT EXISTS members(id INTEGER PRIMARY KEY, wedding_id INT, phone TEXT, name TEXT, role TEXT, UNIQUE(wedding_id,phone));
 CREATE TABLE IF NOT EXISTS shortlist(id INTEGER PRIMARY KEY, wedding_id INT, vendor_id INT, UNIQUE(wedding_id,vendor_id));
 CREATE TABLE IF NOT EXISTS votes(id INTEGER PRIMARY KEY, shortlist_id INT, user_id INT, vote INT, comment TEXT, UNIQUE(shortlist_id,user_id));
@@ -45,7 +48,52 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
   app.get('/api/events', auth, wrap((req: any, res: any) => res.json(q("SELECT * FROM events WHERE wedding_id=? ORDER BY COALESCE(date,'9999-12-31'),sort,id", W(req).id))));
   app.post('/api/events', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); const b = z.object({ name: z.string().trim().min(2).max(100), date: dateSchema.optional(), venue: z.string().trim().max(120).optional() }).parse(req.body); if (one('SELECT id FROM events WHERE wedding_id=? AND lower(name)=lower(?)', w.id, b.name)) throw fail(409, 'This celebration is already in your plan'); const sort = one('SELECT COALESCE(MAX(sort),-1)+1 next FROM events WHERE wedding_id=?', w.id).next; const id = Number(run('INSERT INTO events(wedding_id,name,date,venue,sort) VALUES(?,?,?,?,?)', w.id, b.name, b.date || null, b.venue || '', sort).lastInsertRowid); res.status(201).json(one('SELECT * FROM events WHERE id=?', id)); }));
   app.put('/api/events/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); const b = z.object({ name: z.string().trim().min(2).max(100).optional(), date: z.union([dateSchema, z.literal('')]).optional(), venue: z.string().trim().max(120).optional(), dress: z.string().trim().max(80).optional() }).parse(req.body); const event = one('SELECT * FROM events WHERE id=? AND wedding_id=?', req.params.id, w.id); if (!event) throw fail(404, 'Celebration not found'); if (b.name && b.name !== event.name && one('SELECT id FROM events WHERE wedding_id=? AND lower(name)=lower(?) AND id!=?', w.id, b.name, event.id)) throw fail(409, 'This celebration is already in your plan'); run('UPDATE events SET name=?,date=?,venue=?,dress=? WHERE id=? AND wedding_id=?', b.name ?? event.name, b.date === undefined ? event.date : b.date || null, b.venue ?? event.venue, b.dress ?? event.dress, event.id, w.id); res.json({ ok: true }); }));
-  app.delete('/api/events/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); if (!run('DELETE FROM events WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Celebration not found'); res.json({ ok: true }); }));
+  app.delete('/api/events/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); run('DELETE FROM guest_events WHERE event_id IN (SELECT id FROM events WHERE id=? AND wedding_id=?)', req.params.id, w.id); if (!run('DELETE FROM events WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Celebration not found'); res.json({ ok: true }); }));
+  // Shagun and gift register. Amounts are budget information, so plain viewers don't see it.
+  const seesMoney = (req: any, w: any) => ['owner', 'editor', 'budget_viewer'].includes(role(req, w));
+  const giftBody = z.object({ giver: z.string().trim().min(1).max(120), event_id: z.number().int().nullable().optional(), kind: z.enum(['cash', 'gift']), amount_paise: z.number().int().positive().max(100_000_000_000).nullable().optional(), description: z.string().trim().max(300).optional() });
+  app.get('/api/gifts', auth, wrap((req: any, res: any) => { const w = W(req); if (!seesMoney(req, w)) throw fail(403, 'Only people who can see the budget can see gifts');
+    res.json(q('SELECT g.*, e.name event_name FROM gifts g LEFT JOIN events e ON e.id=g.event_id WHERE g.wedding_id=? ORDER BY g.id DESC', w.id)); }));
+  app.post('/api/gifts', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); const b = giftBody.parse(req.body);
+    if (b.event_id && !one('SELECT 1 x FROM events WHERE id=? AND wedding_id=?', b.event_id, w.id)) throw fail(404, 'Ceremony not found');
+    if (b.kind === 'cash' && !b.amount_paise) throw fail(400, 'Enter the amount');
+    res.json({ id: Number(run('INSERT INTO gifts(wedding_id,giver,event_id,kind,amount_paise,description) VALUES(?,?,?,?,?,?)', w.id, b.giver, b.event_id || null, b.kind, b.kind === 'cash' ? b.amount_paise : null, b.description || '').lastInsertRowid) }); }));
+  app.patch('/api/gifts/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); const { thanked } = z.object({ thanked: z.boolean() }).parse(req.body);
+    if (!run('UPDATE gifts SET thanked=? WHERE id=? AND wedding_id=?', thanked ? 1 : 0, req.params.id, w.id).changes) throw fail(404, 'Gift not found'); res.json({ ok: true }); }));
+  app.delete('/api/gifts/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only');
+    if (!run('DELETE FROM gifts WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Gift not found'); res.json({ ok: true }); }));
+
+  // Outstation guests: where they stay, when they arrive and whether someone must pick them up.
+  const stayBody = z.object({ guest_name: z.string().trim().min(1).max(120), people: z.number().int().min(1).max(50).default(1), hotel: z.string().trim().max(120).optional(), room: z.string().trim().max(40).optional(),
+    check_in: dateSchema.nullable().optional(), check_out: dateSchema.nullable().optional(), arrival: z.string().trim().max(160).optional(), pickup: z.boolean().default(false) })
+    .refine(b => !b.check_in || !b.check_out || b.check_out >= b.check_in, 'Check-out must be on or after check-in');
+  const stayArgs = (b: any) => [b.guest_name, b.people, b.hotel || '', b.room || '', b.check_in || null, b.check_out || null, b.arrival || '', b.pickup ? 1 : 0];
+  app.get('/api/stays', auth, wrap((req: any, res: any) => { const w = W(req); res.json(q("SELECT * FROM stays WHERE wedding_id=? ORDER BY COALESCE(check_in,'9999-12-31'), id", w.id)); }));
+  app.post('/api/stays', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only');
+    res.json({ id: Number(run('INSERT INTO stays(guest_name,people,hotel,room,check_in,check_out,arrival,pickup,wedding_id) VALUES(?,?,?,?,?,?,?,?,?)', ...stayArgs(stayBody.parse(req.body)), w.id).lastInsertRowid) }); }));
+  app.put('/api/stays/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only');
+    if (!run('UPDATE stays SET guest_name=?,people=?,hotel=?,room=?,check_in=?,check_out=?,arrival=?,pickup=? WHERE id=? AND wedding_id=?', ...stayArgs(stayBody.parse(req.body)), req.params.id, w.id).changes) throw fail(404, 'Stay not found'); res.json({ ok: true }); }));
+  app.delete('/api/stays/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only');
+    if (!run('DELETE FROM stays WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Stay not found'); res.json({ ok: true }); }));
+
+  // Guests per ceremony: who is invited to which event, each with their own reply, and headcounts for caterers.
+  app.get('/api/guest-events', auth, wrap((req: any, res: any) => { const w = W(req);
+    res.json(q('SELECT ge.guest_id, ge.event_id, ge.rsvp FROM guest_events ge JOIN guests g ON g.id=ge.guest_id WHERE g.wedding_id=?', w.id)); }));
+  app.put('/api/guests/:id/events/:eventId', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only');
+    const { invited } = z.object({ invited: z.boolean() }).parse(req.body);
+    if (!one('SELECT 1 x FROM guests WHERE id=? AND wedding_id=?', req.params.id, w.id) || !one('SELECT 1 x FROM events WHERE id=? AND wedding_id=?', req.params.eventId, w.id)) throw fail(404, 'Guest or ceremony not found');
+    if (invited) run('INSERT OR IGNORE INTO guest_events(guest_id, event_id) VALUES(?,?)', req.params.id, req.params.eventId);
+    else run('DELETE FROM guest_events WHERE guest_id=? AND event_id=?', req.params.id, req.params.eventId);
+    res.json({ ok: true }); }));
+  app.get('/api/events/headcount', auth, wrap((req: any, res: any) => { const w = W(req);
+    res.json(q(`SELECT e.id, e.name, e.date, COUNT(ge.guest_id) invited,
+      COALESCE(SUM(CASE WHEN ge.rsvp='yes' THEN 1 + g.plus_ones ELSE 0 END),0) coming,
+      COALESCE(SUM(CASE WHEN ge.rsvp='no' THEN 1 ELSE 0 END),0) declined,
+      COALESCE(SUM(CASE WHEN ge.rsvp='pending' THEN 1 ELSE 0 END),0) waiting,
+      COALESCE(SUM(CASE WHEN ge.rsvp='yes' AND g.meal='Jain' THEN 1 ELSE 0 END),0) jain,
+      COALESCE(SUM(CASE WHEN ge.rsvp='yes' AND g.meal='Non-veg' THEN 1 ELSE 0 END),0) nonveg
+      FROM events e LEFT JOIN guest_events ge ON ge.event_id=e.id LEFT JOIN guests g ON g.id=ge.guest_id
+      WHERE e.wedding_id=? GROUP BY e.id ORDER BY COALESCE(e.date,'9999-12-31'), e.sort, e.id`, w.id)); }));
   // family collaboration
   app.get('/api/members', auth, wrap((req: any, res: any) => res.json({ role: role(req, W(req)), members: q('SELECT * FROM members WHERE wedding_id=?', W(req).id) })));
   app.post('/api/members', auth, wrap((req: any, res: any) => { const w = W(req); if (w.owner_id !== req.user.id) throw fail(403, 'Only the owner can invite'); const b = z.object({ phone: z.string().regex(/^[6-9]\d{9}$/), name: z.string().min(1), role: z.enum(['editor', 'viewer', 'budget_viewer']) }).parse(req.body); run('INSERT OR REPLACE INTO members(wedding_id,phone,name,role) VALUES(?,?,?,?)', w.id, b.phone, b.name, b.role); res.json({ ok: true }); }));
@@ -82,8 +130,46 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
   app.get('/api/admin/audit', auth, admin, wrap((_q: any, r: any) => r.json(q('SELECT * FROM audit ORDER BY id DESC LIMIT 100'))));
   // DPDP: consent log, data export, deletion
   app.post('/api/consent', auth, wrap((req: any, res: any) => { const b = z.object({ purpose: z.enum(['marketing', 'contacts', 'face_grouping']), granted: z.boolean() }).parse(req.body); run('INSERT INTO consents(user_id,purpose,granted) VALUES(?,?,?)', req.user.id, b.purpose, b.granted ? 1 : 0); res.json({ ok: true }); }));
-  app.get('/api/my-data', auth, wrap((req: any, res: any) => res.json({ user: one('SELECT * FROM users WHERE id=?', req.user.id), wedding: myWedding(req.user.id) || null, consents: q('SELECT * FROM consents WHERE user_id=?', req.user.id) })));
-  app.delete('/api/my-data', auth, wrap((req: any, res: any) => { run("UPDATE users SET name='Deleted user',phone='del-'||id WHERE id=?", req.user.id); audit(req.user.id, 'data_deletion', {}); res.json({ ok: true }); }));
+  // DPDP export: everything this account created, including the wedding it owns.
+  app.get('/api/my-data', auth, wrap((req: any, res: any) => {
+    const w = myWedding(req.user.id); const id = w?.id ?? -1;
+    res.json({ user: one('SELECT * FROM users WHERE id=?', req.user.id), consents: q('SELECT * FROM consents WHERE user_id=?', req.user.id), wedding: w || null,
+      tasks: q('SELECT * FROM tasks WHERE wedding_id=?', id), budget: q('SELECT * FROM budget_items WHERE wedding_id=?', id), events: q('SELECT * FROM events WHERE wedding_id=?', id),
+      guests: q('SELECT * FROM guests WHERE wedding_id=?', id), guest_events: q('SELECT ge.* FROM guest_events ge JOIN guests g ON g.id=ge.guest_id WHERE g.wedding_id=?', id),
+      family: q('SELECT * FROM members WHERE wedding_id=?', id), shortlist: q('SELECT * FROM shortlist WHERE wedding_id=?', id), invite: one('SELECT * FROM invites WHERE wedding_id=?', id) || null,
+      gifts: q('SELECT * FROM gifts WHERE wedding_id=?', id), stays: q('SELECT * FROM stays WHERE wedding_id=?', id),
+      enquiries: q('SELECT * FROM enquiries WHERE couple_id=?', req.user.id), messages: q('SELECT * FROM messages WHERE sender_id=?', req.user.id),
+      bookings: q('SELECT * FROM bookings WHERE couple_id=?', req.user.id), reviews: q('SELECT * FROM reviews WHERE user_id=?', req.user.id) });
+  }));
+  // DPDP deletion: removes the profile and the wedding it owns. Bookings with money still held or due are kept,
+  // with their chat, until they settle; the account row stays anonymised so those records remain consistent.
+  app.delete('/api/my-data', auth, wrap((req: any, res: any) => {
+    const uid = req.user.id; const phone = one('SELECT phone FROM users WHERE id=?', uid)?.phone; const w = myWedding(uid);
+    db.exec('BEGIN');
+    try {
+      if (w) {
+        const open = q("SELECT DISTINCT b.enquiry_id FROM bookings b JOIN milestones m ON m.booking_id=b.id WHERE b.wedding_id=? AND b.status!='cancelled' AND m.status IN ('pending','held')", w.id).map((r: any) => r.enquiry_id);
+        const keep = open.length ? `AND id NOT IN (${open.map(() => '?').join(',')})` : '';
+        for (const table of ['messages', 'quotes']) run(`DELETE FROM ${table} WHERE enquiry_id IN (SELECT id FROM enquiries WHERE wedding_id=? ${keep})`, w.id, ...open);
+        run(`DELETE FROM enquiries WHERE wedding_id=? ${keep}`, w.id, ...open);
+        run('DELETE FROM guest_events WHERE guest_id IN (SELECT id FROM guests WHERE wedding_id=?)', w.id);
+        run('DELETE FROM votes WHERE shortlist_id IN (SELECT id FROM shortlist WHERE wedding_id=?)', w.id);
+        for (const table of ['tasks', 'budget_items', 'guests', 'events', 'members', 'shortlist', 'invites', 'gifts', 'stays']) run(`DELETE FROM ${table} WHERE wedding_id=?`, w.id);
+        if (open.length) run("UPDATE weddings SET title='Deleted wedding', city='', community='' WHERE id=?", w.id); else run('DELETE FROM weddings WHERE id=?', w.id);
+      }
+      const v = one('SELECT id FROM vendors WHERE user_id=?', uid);
+      if (v) {
+        for (const table of ['crm_notes', 'blocked_dates', 'vendor_photos', 'vendor_packages']) run(`DELETE FROM ${table} WHERE vendor_id=?`, v.id);
+        if (one('SELECT 1 x FROM bookings WHERE vendor_id=?', v.id)) run("UPDATE vendors SET name='Deleted vendor', description='', locality='' WHERE id=?", v.id); else run('DELETE FROM vendors WHERE id=?', v.id);
+      }
+      if (phone) run('DELETE FROM members WHERE phone=?', phone);
+      run('DELETE FROM votes WHERE user_id=?', uid);
+      run("UPDATE users SET name='Deleted user', phone='del-'||id WHERE id=?", uid);
+      audit(uid, 'data_deletion', { wedding: w?.id ?? null });
+      db.exec('COMMIT');
+    } catch (e) { db.exec('ROLLBACK'); throw e; }
+    res.json({ ok: true });
+  }));
   // e-invite micro-site (public)
   app.put('/api/invite', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); const b = z.object({ theme: z.enum(['maroon', 'emerald', 'royal', 'rose']).default('maroon'), message: z.string().max(300).optional() }).parse(req.body); const ex = one('SELECT slug FROM invites WHERE wedding_id=?', w.id); const slug = ex?.slug || randomBytes(4).toString('hex'); run('INSERT OR REPLACE INTO invites(wedding_id,theme,message,slug) VALUES(?,?,?,?)', w.id, b.theme, b.message || '', slug); res.json({ slug, path: `/w/${slug}` }); }));
   app.get('/api/invite', auth, wrap((req: any, res: any) => res.json(one('SELECT * FROM invites WHERE wedding_id=?', W(req).id) || null)));
