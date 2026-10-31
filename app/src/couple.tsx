@@ -78,6 +78,14 @@ export function EnquiryForm({ route, navigation }: any) {
   const [date, setDate] = useState(''); const [guests, setGuests] = useState(''); const [budget, setBudget] = useState(String(Math.round((v.start_paise || 0) / 100) || ''));
   const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [events, setEvents] = useState<any[]>([]); const [picked, setPicked] = useState<string[]>([]); const [prefilled, setPrefilled] = useState(false);
+  // Other shortlisted vendors for the same service who can receive enquiries and haven't been asked yet.
+  const [others, setOthers] = useState<any[]>([]); const [alsoTo, setAlsoTo] = useState<number[]>([]);
+  useEffect(() => {
+    Promise.all([api<any[]>('/shortlist'), api<any[]>('/deals')]).then(([sl, deals]) => {
+      const asked = new Set(deals.map(d => d.vendor_id));
+      setOthers(sl.filter(x => x.category === v.category && x.vendor_id !== v.id && !x.unclaimed && !asked.has(x.vendor_id)));
+    }).catch(() => {});
+  }, [v.id, v.category]);
   useEffect(() => {
     api<any>('/me').then(async me => {
       const w = me.wedding; if (!w) return;
@@ -97,8 +105,16 @@ export function EnquiryForm({ route, navigation }: any) {
       const av = await api(`/vendors/${v.id}/availability?date=${date}`);
       if (!av.available && !(await confirm(tr('Date not available'), tr('This vendor is busy on that date. Send anyway?'), tr('Send')))) return;
       const fullNote = [picked.length ? `${tr('Ceremonies')}: ${picked.join(', ')}` : '', note.trim()].filter(Boolean).join('\n');
-      const r = await api('/enquiries', 'POST', { vendor_id: v.id, event_date: date, guests: +guests, budget_paise: Math.round(+budget * 100), note: fullNote });
-      navigation.replace('Chat', { id: r.id, title: v.name });
+      const body = { event_date: date, guests: +guests, budget_paise: Math.round(+budget * 100), note: fullNote };
+      const r = await api('/enquiries', 'POST', { vendor_id: v.id, ...body });
+      const sent: string[] = []; const busyOnDate: string[] = [];
+      for (const o of others.filter(x => alsoTo.includes(x.vendor_id))) {
+        const free = await api(`/vendors/${o.vendor_id}/availability?date=${date}`).then((a: any) => a.available).catch(() => true);
+        if (!free) { busyOnDate.push(o.name); continue; }
+        await api('/enquiries', 'POST', { vendor_id: o.vendor_id, ...body }).then(() => sent.push(o.name)).catch(() => busyOnDate.push(o.name));
+      }
+      if (busyOnDate.length) notify(tr('Not sent to everyone'), `${tr('Busy on that date or not reachable')}: ${busyOnDate.join(', ')}`);
+      navigation.replace('Chat', { id: r.id, title: v.name, alsoSent: sent });
     } catch (e: any) { setError(e?.message || String(e)); } finally { setBusy(false); }
   };
   return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40, width: '100%', maxWidth: 640, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
@@ -110,10 +126,14 @@ export function EnquiryForm({ route, navigation }: any) {
       <View style={{ flex: 1 }}><Input label={tr('Your budget (₹)')} value={budget} onChangeText={t => setBudget(t.replace(/\D/g, ''))} keyboardType="number-pad" />{+budget > 0 ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+budget * 100)}</M> : null}</View></View>
     {events.length ? <><Text style={s.label}>{tr('Which ceremonies?')}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 }}>{events.map(e => { const on = picked.includes(e.name); return <Chip key={e.id} icon={on ? 'check' : undefined} label={e.name} on={on} onPress={() => setPicked(on ? picked.filter(x => x !== e.name) : [...picked, e.name])} />; })}</View></> : null}
+    {others.length ? <><Text style={s.label}>{tr('Also send to')}</Text>
+      <M style={{ marginBottom: 8 }}>{tr('Other vendors you shortlisted for this service. Each gets the same enquiry as a separate conversation.')}</M>
+      {others.map(o => { const on = alsoTo.includes(o.vendor_id); return <Pressable key={o.vendor_id} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => setAlsoTo(on ? alsoTo.filter(x => x !== o.vendor_id) : [...alsoTo, o.vendor_id])} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48 }}>
+        <Check on={on} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{o.name}</Text><M>{o.city}{o.start_paise ? ` · ${tr('from')} ${inr(o.start_paise)}` : ''}</M></View></Pressable>; })}</> : null}
     <Input label={tr('Anything else?')} value={note} onChangeText={setNote} multiline placeholder={tr('Timings, style you like, questions for the vendor')} style={{ minHeight: 88, textAlignVertical: 'top' }} maxLength={400} />
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}><Icon name="lock" size={16} color={C.mute} /><M style={{ marginLeft: 8, flex: 1 }}>{tr('Your phone number stays hidden until you book.')}</M></View>
     {error ? <Text accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, marginBottom: 8 }}>{error}</Text> : null}
-    <Btn icon="send" title={busy ? tr('Sending…') : tr('Send enquiry')} disabled={busy} onPress={send} /></ScrollView>);
+    <Btn icon="send" title={busy ? tr('Sending…') : alsoTo.length ? `${tr('Send to')} ${alsoTo.length + 1} ${tr('vendors')}` : tr('Send enquiry')} disabled={busy} onPress={send} /></ScrollView>);
 }
 
 

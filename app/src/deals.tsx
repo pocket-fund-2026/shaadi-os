@@ -10,6 +10,7 @@ import { CAT_ICON, Icon } from './icons';
 import { categoryLabel } from './marketplace';
 
 type Deal = any;
+const today = () => new Date().toISOString().slice(0, 10);
 const STAGES = ['Enquiry', 'Quote', 'Booked', 'Paid', 'Done'];
 const stageIndex = (stage: string) => ({ new: 0, quoted: 1, booked: 2, paying: 3, completed: 4, disputed: 3 } as Record<string, number>)[stage] ?? 0;
 const STAGE_TAG: Record<string, { label: string; tone: 'ok' | 'gold' | 'warn' | 'mute' }> = {
@@ -26,12 +27,12 @@ export function nextStep(d: Deal, vendor: boolean): { text: string; urgent: bool
   if (vendor) {
     if (d.stage === 'new') return { text: tr('Send a quote'), urgent: true };
     if (d.stage === 'quoted') return { text: tr('Waiting for the couple to accept'), urgent: false };
-    if (open) return { text: open.status === 'pending' ? `${tr('Waiting for payment')}: ${open.label}` : `${tr('Paid into escrow, waiting for release')}: ${open.label}`, urgent: false };
+    if (open) return { text: open.status === 'pending' ? `${tr('Waiting for payment')}: ${open.label}${open.due_on ? ` · ${tr('due')} ${dateIN(open.due_on)}` : ''}` : `${tr('Paid into escrow, waiting for release')}: ${open.label}`, urgent: false };
     return null;
   }
   if (d.stage === 'new') return { text: tr('Waiting for the vendor’s quote'), urgent: false };
   if (d.stage === 'quoted') return { text: `${tr('Review the quote')} · ${inr(d.quote.total_paise)}`, urgent: true };
-  if (open) return { text: open.status === 'pending' ? `${tr('Pay')} ${open.label} · ${inr(open.amount_paise)}` : `${tr('Release')} ${open.label} ${tr('after the work is done')}`, urgent: true };
+  if (open) return { text: open.status === 'pending' ? `${tr('Pay')} ${open.label} · ${inr(open.amount_paise)}${open.due_on ? ` · ${open.due_on < today() ? tr('overdue since') : tr('due')} ${dateIN(open.due_on)}` : ''}` : `${tr('Release')} ${open.label} ${tr('after the work is done')}`, urgent: true };
   if (d.stage === 'completed' && d.booking && !d.booking.reviewed) return { text: tr('Leave a review'), urgent: true };
   return null;
 };
@@ -44,14 +45,20 @@ export function DealsList({ navigation, vendor }: { navigation: any; vendor?: bo
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const list = deals || [];
   const counts = { action: list.filter(d => needsAction(d, !!vendor)).length, booked: list.filter(d => ['booked', 'paying', 'completed'].includes(d.stage)).length };
+  // Services with two or more live quotes can be compared side by side.
+  const perService: Record<string, number> = {};
+  for (const d of list) if (d.quote && !vendor && d.stage !== 'completed') perService[d.category] = (perService[d.category] || 0) + 1;
+  const comparable = Object.entries(perService).filter(([, n]) => n >= 2);
   const shown = list.filter(d => filter === 'all' || (filter === 'action' ? needsAction(d, !!vendor) : ['booked', 'paying', 'completed'].includes(d.stage)));
   return <FlatList style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32, width: '100%', maxWidth: 700, alignSelf: 'center' }} data={shown} keyExtractor={d => String(d.id)}
     refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}
-    ListHeaderComponent={list.length ? <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+    ListHeaderComponent={list.length ? <View>{comparable.map(([cat, n]) => <Card key={cat} onPress={() => navigation.navigate('CompareQuotes', { category: cat })} style={{ backgroundColor: C.tint, borderColor: C.primary, padding: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Icon name={CAT_ICON[cat] || 'store'} size={22} color={C.primary} /><Text style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: '500' }}>{tr('Compare')} {n} {tr('quotes for')} {categoryLabel(cat)}</Text><Icon name="chevron" size={16} color={C.primary} /></View>
+    </Card>)}<View style={{ flexDirection: 'row', marginBottom: 8 }}>
       <Chip label={tr('All')} on={filter === 'all'} onPress={() => setFilter('all')} />
       <Chip label={`${tr('Needs action')}${counts.action ? ` · ${counts.action}` : ''}`} on={filter === 'action'} onPress={() => setFilter('action')} />
       <Chip label={`${tr('Booked')}${counts.booked ? ` · ${counts.booked}` : ''}`} on={filter === 'booked'} onPress={() => setFilter('booked')} />
-    </View> : null}
+    </View></View> : null}
     ListEmptyComponent={deals === null ? <Loading what={tr(vendor ? 'clients' : 'your vendors')} /> : list.length ? <M style={{ textAlign: 'center', marginTop: 24 }}>{tr('Nothing here right now.')}</M> : vendor
       ? <Empty icon="inbox" title={tr('No enquiries yet')} text={tr('Couples who enquire appear here, and stay here through quote, booking and payment. A complete storefront gets found more often.')} action={tr('Edit storefront')} onAction={() => navigation.navigate('Store')} />
       : <Empty icon="chat" title={tr('No vendors yet')} text={tr('Send an enquiry from any vendor’s page. Each vendor then lives here, from first message to final payment.')} action={tr('Find vendors')} onAction={() => navigation.navigate('Discover')} />}
@@ -90,6 +97,9 @@ const SPLIT = [['Token advance', 20], ['One week before event', 50], ['After eve
 // Several line items, with the instalment split shown before sending.
 function QuoteBuilder({ enquiryId, onSent, onCancel }: { enquiryId: number; onSent: () => void; onCancel: () => void }) {
   const [items, setItems] = useState([{ label: '', amount: '' }]); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [packages, setPackages] = useState<any[]>([]);
+  useEffect(() => { api<any>('/vendor/catalog').then(c => setPackages(c.packages || [])).catch(() => {}); }, []);
+  const usePackage = (p: any) => { const row = { label: p.title, amount: String(p.price_paise / 100) }; const blank = items.findIndex(i => !i.label.trim() && !i.amount.trim()); setItems(blank >= 0 ? items.map((it, j) => j === blank ? row : it) : [...items, row]); setError(''); };
   const amount = (a: string) => Math.round(Number(a.replace(/,/g, '')) * 100);
   const valid = items.filter(i => i.label.trim() && amount(i.amount) > 0);
   const total = valid.reduce((sum, i) => sum + amount(i.amount), 0);
@@ -101,6 +111,8 @@ function QuoteBuilder({ enquiryId, onSent, onCancel }: { enquiryId: number; onSe
   };
   return <Card style={{ borderColor: C.primary }}>
     <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginBottom: 12 }}>{tr('Your quote')}</Text>
+    {packages.length ? <><M style={{ marginBottom: 8 }}>{tr('Start from one of your packages')}</M>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}>{packages.map(p => <Chip key={p.id} icon="plus" label={`${p.title} · ${inr(p.price_paise)}`} onPress={() => usePackage(p)} />)}</View></> : null}
     {items.map((it, k) => <View key={k} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
       <View style={{ flex: 2 }}><Input label={k === 0 ? tr('Item') : undefined} value={it.label} onChangeText={v => set(k, 'label', v)} placeholder={tr('e.g. Wedding day coverage')} accessibilityLabel={`${tr('Item')} ${k + 1}`} /></View>
       <View style={{ flex: 1 }}><Input label={k === 0 ? tr('Amount (₹)') : undefined} value={it.amount} onChangeText={v => set(k, 'amount', v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" accessibilityLabel={`${tr('Amount')} ${k + 1}`} /></View>
@@ -116,7 +128,7 @@ function QuoteBuilder({ enquiryId, onSent, onCancel }: { enquiryId: number; onSe
 
 // The whole relationship with one vendor (or one couple): next step, quote, booking and payments, then the conversation.
 export function DealScreen({ route, navigation }: any) {
-  const { id, vendor } = route.params;
+  const { id, vendor, alsoSent } = route.params;
   const [deal, setDeal] = useState<Deal | null>(null); const [detail, setDetail] = useState<any>(null);
   const [msg, setMsg] = useState(''); const [quoting, setQuoting] = useState(false); const [rating, setRating] = useState(0); const [working, setWorking] = useState(false);
   const load = useCallback(async () => {
@@ -149,6 +161,7 @@ export function DealScreen({ route, navigation }: any) {
         <StageTracker stage={deal.stage} />
       </Card>
 
+      {alsoSent?.length ? <Card style={{ padding: 16 }}><M>{tr('The same enquiry also went to')} {alsoSent.join(', ')}. {tr('Their replies appear in My vendors.')}</M></Card> : null}
       {step ? <Card style={{ backgroundColor: step.urgent ? C.tint : C.card, borderColor: step.urgent ? C.primary : C.line }}>
         <M>{tr('Next step')}</M>
         <Text style={{ color: C.ink, fontSize: 17, fontWeight: '500', marginTop: 2 }}>{step.text}</Text>
@@ -173,7 +186,7 @@ export function DealScreen({ route, navigation }: any) {
         <View style={s.row}><Text style={{ color: C.ink, fontWeight: '500' }}>{tr('Payments')}</Text><M>{inr(paid)} {tr('of')} {inr(deal.booking.total_paise)}</M></View>
         <View style={{ marginVertical: 8 }}><Bar pct={deal.booking.total_paise ? paid / deal.booking.total_paise * 100 : 0} color={C.ok} /></View>
         {ms.map(m => <View key={m.id} style={[s.row, { paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line }]}>
-          <View style={{ flex: 1 }}><Text style={{ color: C.ink }}>{tr(m.label)}</Text><M>{inr(m.amount_paise)}</M></View>
+          <View style={{ flex: 1 }}><Text style={{ color: C.ink }}>{tr(m.label)}</Text><M style={{ color: m.status === 'pending' && m.due_on && m.due_on < today() ? C.warn : C.mute }}>{inr(m.amount_paise)}{m.due_on && m.status === 'pending' ? ` · ${m.due_on < today() ? tr('overdue since') : tr('due')} ${dateIN(m.due_on)}` : ''}</M></View>
           <Tag tone={m.status === 'released' ? 'ok' : m.status === 'held' ? 'gold' : 'mute'} label={tr(m.status === 'released' ? 'Released' : m.status === 'held' ? 'Held in escrow' : 'Due')} />
         </View>)}
         <M style={{ marginTop: 8 }}>{vendor ? `${tr('Platform fee')} ${deal.booking.commission_bps / 100}% · ${tr('paid by you when money is released')}` : tr('Each payment is held until you release it, so you only release money for work that is done.')}</M>
@@ -204,4 +217,34 @@ export function DealScreen({ route, navigation }: any) {
         <Icon name="send" size={20} color={msg.trim() ? '#fff' : C.mute} /></Pressable>
     </View>
   </KeyboardAvoidingView>;
+}
+
+// Side by side: every live quote for one service, cheapest first, each with its items, rating and instalments.
+export function CompareQuotes({ route, navigation }: any) {
+  const { category } = route.params;
+  const [deals, setDeals] = useState<Deal[] | null>(null);
+  useFocusEffect(useCallback(() => { api<Deal[]>('/deals').then(setDeals).catch(err); }, []));
+  if (!deals) return <Loading what={tr('quotes')} />;
+  const rows = deals.filter(d => d.category === category && d.quote && d.stage !== 'completed').sort((a, b) => a.quote.total_paise - b.quote.total_paise);
+  const cheapest = rows[0]?.quote.total_paise;
+  return <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+    <Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink }}>{categoryLabel(category)}</Text>
+    <M style={{ marginBottom: 16 }}>{rows.length} {tr('quotes, lowest first. Swipe to see them all.')}</M>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+      {rows.map(d => <View key={d.id} style={{ width: 272, padding: 16, borderRadius: 16, borderWidth: d.quote.total_paise === cheapest ? 2 : 1, borderColor: d.quote.total_paise === cheapest ? C.ok : C.line, backgroundColor: C.card }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, minHeight: 24 }}>{d.quote.total_paise === cheapest && rows.length > 1 ? <Tag tone="ok" label={tr('Lowest price')} /> : null}{d.booking ? <Tag tone="ok" icon="check" label={tr('Booked')} /> : null}</View>
+        <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 8 }} numberOfLines={2}>{d.other_name}</Text>
+        <M>{d.rating ? `★ ${d.rating} (${d.reviews})` : tr('No reviews yet')}</M>
+        <Text style={{ fontFamily: F.display, fontSize: 28, color: C.primary, marginTop: 12, fontVariant: ['tabular-nums'] }}>{inr(d.quote.total_paise)}</Text>
+        {d.budget_paise ? <M style={{ color: d.quote.total_paise > d.budget_paise ? C.warn : C.ok }}>{d.quote.total_paise > d.budget_paise ? `${inr(d.quote.total_paise - d.budget_paise)} ${tr('over your budget')}` : `${tr('Within your budget of')} ${inr(d.budget_paise)}`}</M> : null}
+        <View style={{ borderTopWidth: 1, borderTopColor: C.line, marginTop: 12, paddingTop: 8 }}>
+          <M style={{ fontSize: 12, marginBottom: 4 }}>{tr('Included')}</M>
+          {d.quote.items.map((i: any, k: number) => <View key={k} style={[s.row, { gap: 8, paddingVertical: 2 }]}><Text style={{ flex: 1, color: C.ink, fontSize: 13 }}>{i.label}</Text><M>{inr(i.amount_paise)}</M></View>)}
+        </View>
+        <M style={{ marginTop: 12 }}>{tr('Token today')}: {inr(Math.round(d.quote.total_paise * 0.2))}</M>
+        <View style={{ marginTop: 12 }}><Btn small kind={d.quote.total_paise === cheapest ? 'primary' : 'quiet'} title={tr('Open')} onPress={() => navigation.navigate('Chat', { id: d.id, title: d.other_name })} /></View>
+      </View>)}
+    </ScrollView>
+    <M style={{ marginTop: 16 }}>{tr('Prices are each vendor’s own quote. Check what’s included before you choose, the cheapest isn’t always the best value.')}</M>
+  </ScrollView>;
 }

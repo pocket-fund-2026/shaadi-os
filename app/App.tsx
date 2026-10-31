@@ -12,7 +12,7 @@ import { LangCtx, useT, LANGS, setCur, tr } from './src/i18n';
 import Login from './src/auth';
 import { PublicExplore } from './src/marketplace';
 import { Discover, VendorScreen, EnquiryForm, Plan } from './src/couple';
-import { DealScreen, DealsList } from './src/deals';
+import { CompareQuotes, DealScreen, DealsList } from './src/deals';
 import { Payouts } from './src/vendor';
 import { Business } from './src/more';
 import { ProfileScreen } from './src/profile';
@@ -84,5 +84,5 @@ export default function App() {
   return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang} initialState={navState.current} onStateChange={state => { navState.current = state; }}>
     <Stack.Navigator screenOptions={{ ...hdr, animation: 'slide_from_right' }}><Stack.Screen name="Home" component={Tabs} options={{ title: 'Shaadi OS', headerShown: false }} />
       <Stack.Screen name="Vendor" component={VendorScreen} options={{ title: '' }} /><Stack.Screen name="EnquiryForm" component={EnquiryForm} options={{ title: tr('Enquiry'), animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="Chat" component={DealScreen} options={({ route }: any) => ({ title: route.params?.title || 'Chat' })} /></Stack.Navigator></NavigationContainer></ErrorBoundary></SafeAreaProvider></LangCtx.Provider>);
+      <Stack.Screen name="CompareQuotes" component={CompareQuotes} options={{ title: tr('Compare quotes') }} /><Stack.Screen name="Chat" component={DealScreen} options={({ route }: any) => ({ title: route.params?.title || 'Chat' })} /></Stack.Navigator></NavigationContainer></ErrorBoundary></SafeAreaProvider></LangCtx.Provider>);
 }

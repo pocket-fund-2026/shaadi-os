@@ -16,6 +16,13 @@ const DOCUMENTS = ['Registration application form', 'Age proof for both (birth c
   'ID proof of witnesses', 'Registration fee receipt'];
 export const ORGANISER_TABLES = ['shopping', 'day_contacts', 'documents', 'seating_tables'];
 
+// When each instalment falls due: the first (token) 3 days after booking, the last 3 days after the event,
+// and any in between 7 days before the event.
+export function instalmentDue(index: number, count: number, bookedAt: string, eventDate: string) {
+  const day = (iso: string, add: number) => { const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); return isNaN(+d) ? null : new Date(+d + add * 864e5).toISOString().slice(0, 10); };
+  return index === 0 ? day(bookedAt, 3) : index === count - 1 ? day(eventDate, 3) : day(eventDate, -7);
+}
+
 const money = z.number().int().nonnegative().max(100_000_000_000);
 const phone = z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a 10-digit mobile number').or(z.literal(''));
 
@@ -35,6 +42,12 @@ export function mountOrganiser(app: any, auth: any, wrap: any, ctx: { W: (req: a
     if (seesMoney(req, w)) {
       const due = one('SELECT COUNT(*) n, COALESCE(SUM(amount_paise),0) total FROM expenses WHERE wedding_id=? AND paid=0', w.id);
       if (due.n) items.push({ kind: 'payment', tone: 'gold', title: 'Payments still due', detail: 'payments', count: due.n, amount_paise: due.total, open: 'budget' });
+    }
+    // Instalments due within a week, or already late, for vendors booked through the app.
+    for (const b of q("SELECT b.id, b.created_at, e.event_date, v.name vendor FROM bookings b JOIN enquiries e ON e.id=b.enquiry_id JOIN vendors v ON v.id=b.vendor_id WHERE b.wedding_id=? AND b.status!='cancelled'", w.id)) {
+      const ms = q('SELECT id, label, amount_paise, status FROM milestones WHERE booking_id=? ORDER BY id', b.id);
+      ms.forEach((m: any, i: number) => { const due = instalmentDue(i, ms.length, b.created_at, b.event_date);
+        if (m.status === 'pending' && due && due <= inDays(7)) items.push({ kind: 'instalment', tone: due < today ? 'warn' : 'gold', title: `Pay ${m.label} to ${b.vendor}`, amount_paise: m.amount_paise, date: due, overdue: due < today, open: 'vendors' }); });
     }
     const arriving = q('SELECT guest_name, check_in FROM stays WHERE wedding_id=? AND pickup=1 AND check_in BETWEEN ? AND ? ORDER BY check_in', w.id, today, inDays(7));
     if (arriving.length) items.push({ kind: 'pickup', tone: 'gold', title: 'Pickups this week', detail: 'pickups', count: arriving.length, date: arriving[0].check_in, open: 'stays' });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { api } from './api';
 import { tr } from './i18n';
 import { Btn, C, Card, Check, Chip, Empty, F, Input, M, Rise, Tag, confirm, dateIN, err, inr, s } from './ui';
@@ -14,13 +15,14 @@ const remove = async (path: string, label: string, reload: () => void) => { if (
 export function RemindersCard({ open }: { open: (tab: string) => void }) {
   const [d] = useLoad<any>('/reminders', null);
   if (!d?.items?.length) return null;
-  const text = (i: any) => i.kind === 'task' ? `${i.title} · ${tr(i.detail === 'overdue' ? 'overdue since' : 'due')} ${dateIN(i.date)}`
+  const nav = useNavigation<any>();
+  const text = (i: any) => i.kind === 'instalment' ? `${i.title} · ${inr(i.amount_paise)} · ${tr(i.overdue ? 'overdue since' : 'due')} ${dateIN(i.date)}` : i.kind === 'task' ? `${i.title} · ${tr(i.detail === 'overdue' ? 'overdue since' : 'due')} ${dateIN(i.date)}`
     : i.kind === 'payment' ? `${i.count} ${tr(i.count === 1 ? 'payment still due' : 'payments still due')} · ${inr(i.amount_paise)}`
     : i.kind === 'pickup' ? `${i.count} ${tr(i.count === 1 ? 'pickup this week' : 'pickups this week')} · ${tr('from')} ${dateIN(i.date)}`
     : `${i.count} ${tr(i.count === 1 ? 'guest yet to reply' : 'guests yet to reply')}`;
   return <Card>
     <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginBottom: 4 }}>{tr('Reminders')}</Text>
-    {d.items.map((i: any, k: number) => <Pressable key={k} accessibilityRole="button" onPress={() => open(i.open)} style={[s.row, { paddingVertical: 10, borderTopWidth: k ? 1 : 0, borderTopColor: C.line, gap: 8 }]}>
+    {d.items.map((i: any, k: number) => <Pressable key={k} accessibilityRole="button" onPress={() => i.open === 'vendors' ? nav.navigate('Vendors') : open(i.open)} style={[s.row, { paddingVertical: 10, borderTopWidth: k ? 1 : 0, borderTopColor: C.line, gap: 8 }]}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: i.tone === 'warn' ? C.warn : C.gold }} />
       <Text style={{ flex: 1, color: i.tone === 'warn' ? C.warn : C.ink, fontSize: 15 }}>{text(i)}</Text>
       <Icon name="chevron" size={16} color={C.faint} />

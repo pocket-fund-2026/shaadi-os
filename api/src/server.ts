@@ -1,4 +1,5 @@
 import { mountPlanner, dateSchema } from './planner.ts';
+import { instalmentDue } from './organiser.ts';
 import { readRuntimeConfig } from './config.ts';
 import { mountCatalog, vendorCatalog } from './catalog.ts';
 import express from 'express'; import cors from 'cors'; import jwt from 'jsonwebtoken'; import { z } from 'zod'; import { randomBytes } from 'node:crypto';
@@ -213,22 +214,23 @@ app.post('/api/quotes/:id/accept', auth, wrap((req: any, res: any) => {
     run("UPDATE enquiries SET status='booked' WHERE id=?", e.id); db.exec('COMMIT'); res.json({ booking_id: bid });
   } catch (x) { db.exec('ROLLBACK'); throw x; }
 }));
-const bookingView = (b: any) => ({ ...b, vendor_name: one('SELECT name FROM vendors WHERE id=?', b.vendor_id).name, couple_name: one('SELECT name FROM users WHERE id=?', b.couple_id).name, milestones: q('SELECT * FROM milestones WHERE booking_id=? ORDER BY id', b.id), reviewed: !!one('SELECT 1 x FROM reviews WHERE booking_id=?', b.id) });
+const bookingView = (b: any) => ({ ...b, vendor_name: one('SELECT name FROM vendors WHERE id=?', b.vendor_id).name, couple_name: one('SELECT name FROM users WHERE id=?', b.couple_id).name, milestones: (() => { const ms = q('SELECT * FROM milestones WHERE booking_id=? ORDER BY id', b.id); const ev = one('SELECT event_date FROM enquiries WHERE id=?', b.enquiry_id)?.event_date; return ms.map((m: any, i: number) => ({ ...m, due_on: instalmentDue(i, ms.length, b.created_at, ev) })); })(), reviewed: !!one('SELECT 1 x FROM reviews WHERE booking_id=?', b.id) });
 // One record per couple-vendor relationship: enquiry, latest quote, booking with instalments, dispute and last message,
 // so both sides see the whole journey in one list instead of separate enquiry and booking screens.
 app.get('/api/deals', auth, wrap((req: any, res: any) => {
   const v = myVendor(req.user.id); const asVendor = req.user.role === 'vendor' && !!v;
   const rows = asVendor
     ? q('SELECT e.*, u.name other_name, NULL category FROM enquiries e JOIN users u ON u.id=e.couple_id WHERE e.vendor_id=? ORDER BY e.id DESC', v.id)
-    : q('SELECT e.*, vd.name other_name, vd.category FROM enquiries e JOIN vendors vd ON vd.id=e.vendor_id WHERE e.couple_id=? ORDER BY e.id DESC', req.user.id);
+    : q('SELECT e.*, vd.name other_name, vd.category, (SELECT ROUND(AVG(rating),1) FROM reviews r WHERE r.vendor_id=vd.id) rating, (SELECT COUNT(*) FROM reviews r WHERE r.vendor_id=vd.id) reviews FROM enquiries e JOIN vendors vd ON vd.id=e.vendor_id WHERE e.couple_id=? ORDER BY e.id DESC', req.user.id);
   res.json(rows.map((e: any) => {
-    const quote = one("SELECT id,version,total_paise,status FROM quotes WHERE enquiry_id=? AND status IN ('sent','accepted') ORDER BY version DESC LIMIT 1", e.id);
+    const q0 = one("SELECT id,version,total_paise,status,items FROM quotes WHERE enquiry_id=? AND status IN ('sent','accepted') ORDER BY version DESC LIMIT 1", e.id);
+    const quote = q0 ? { ...q0, items: JSON.parse(q0.items) } : null;
     const b = one("SELECT * FROM bookings WHERE enquiry_id=? AND status!='cancelled'", e.id); const booking = b ? bookingView(b) : null;
     const disputed = !!(b && one("SELECT 1 x FROM disputes WHERE booking_id=? AND status='open'", b.id));
     const last = one('SELECT body, sender_id, created_at FROM messages WHERE enquiry_id=? ORDER BY id DESC LIMIT 1', e.id);
     const ms = booking?.milestones || [];
     const stage = disputed ? 'disputed' : booking ? (ms.length && ms.every((m: any) => m.status === 'released') ? 'completed' : ms.some((m: any) => m.status !== 'pending') ? 'paying' : 'booked') : quote ? 'quoted' : 'new';
-    return { id: e.id, other_name: e.other_name, category: e.category, event_date: e.event_date, guests: e.guests, budget_paise: e.budget_paise, created_at: e.created_at,
+    return { id: e.id, vendor_id: e.vendor_id, other_name: e.other_name, category: e.category, rating: e.rating ?? null, reviews: e.reviews ?? 0, event_date: e.event_date, guests: e.guests, budget_paise: e.budget_paise, created_at: e.created_at,
       stage, quote, booking, disputed, last_message: last ? { body: last.body, mine: last.sender_id === req.user.id, created_at: last.created_at } : null };
   }));
 }));

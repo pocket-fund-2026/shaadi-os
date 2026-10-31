@@ -417,6 +417,23 @@ test('deals follow one vendor relationship from enquiry to completed, for both s
   assert.equal(await stage(c), 'completed'); assert.equal(await stage(v), 'completed');
   assert.ok(!(await request('/api/deals', outsider)).data.some((d: any) => d.id === e.id), 'other people never see it');
 });
+test('instalments have due dates, show as reminders, and quotes carry their items', async () => {
+  const { instalmentDue } = await import('./organiser.ts');
+  assert.deepEqual([0, 1, 2].map(i => instalmentDue(i, 3, '2026-11-01 10:00:00', '2027-01-20')), ['2026-11-04', '2027-01-13', '2027-01-23']);
+  const c = await login('9812300221'); const v = await login('9000000005');
+  const soon = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
+  await request('/api/wedding', c, 'POST', { title: 'I & J', date: soon, city: 'Pune', budget_paise: 100000000 });
+  const vendorId = (await request('/api/me', v)).data.vendor.id;
+  const e = (await request('/api/enquiries', c, 'POST', { vendor_id: vendorId, event_date: soon, guests: 100, budget_paise: 5000000 })).data;
+  await request(`/api/enquiries/${e.id}/quotes`, v, 'POST', { items: [{ label: 'Stage decor', amount_paise: 4000000 }, { label: 'Entrance', amount_paise: 1000000 }] });
+  const deal = (await request('/api/deals', c)).data.find((d: any) => d.id === e.id);
+  assert.deepEqual(deal.quote.items.map((i: any) => i.label), ['Stage decor', 'Entrance']);
+  await request(`/api/quotes/${deal.quote.id}/accept`, c, 'POST');
+  const booked = (await request('/api/deals', c)).data.find((d: any) => d.id === e.id);
+  assert.ok(booked.booking.milestones.every((m: any) => /^\d{4}-\d{2}-\d{2}$/.test(m.due_on)), 'every instalment has a due date');
+  const reminders = (await request('/api/reminders', c)).data.items.filter((i: any) => i.kind === 'instalment');
+  assert.ok(reminders.some((r: any) => r.title.startsWith('Pay Token advance')), 'token due within a week is a reminder');
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });
