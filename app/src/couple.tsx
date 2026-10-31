@@ -5,7 +5,7 @@ import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { FlatList, ScrollView, Text, View, RefreshControl, Linking, KeyboardAvoidingView, Platform, Pressable, Share } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, getBase } from './api';
-import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO, GuestCtx } from './ui';
+import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO, GuestCtx, ContactButtons } from './ui';
 import { Icon, CAT_ICON, IconName } from './icons';
 import { Marketplace } from './marketplace';
 import { CategoryCover, FloralArch } from './visuals';
@@ -52,7 +52,14 @@ export function VendorScreen({ route, navigation }: any) {
           {v.rating ? <View style={{ flexDirection: 'row', alignItems: 'center' }}><Stars n={Math.round(v.rating)} /><M> {v.rating} · {v.reviews} {tr('reviews')}</M></View> : v.unclaimed ? null : <M>{tr('No reviews yet')}</M>}</View>
         {v.description ? <Text style={{ marginTop: 16, color: C.ink, fontSize: 15, lineHeight: 23 }}>{v.description}</Text> : null}
         {v.unclaimed
-          ? <View style={{ flexDirection: 'row', backgroundColor: C.chipBg, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="alert" size={18} color={C.mute} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('This business has not joined Shaadi OS yet. Its details come from its own public pages and may be out of date.')}</M></View>
+          ? <View style={{ marginTop: 16 }}>
+            {v.contact_phone || v.contact_whatsapp || v.contact_email ? <Card style={{ marginBottom: 12 }}>
+              <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Contact')}</Text>
+              <ContactButtons phone={v.contact_phone} whatsapp={v.contact_whatsapp} email={v.contact_email} />
+              <M style={{ marginTop: 8 }}>{tr('From their website')}{v.contact_source ? ` · ${String(v.contact_source).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}` : ''}</M>
+            </Card> : null}
+            <View style={{ flexDirection: 'row', backgroundColor: C.chipBg, borderRadius: 12, padding: 12 }}><Icon name="alert" size={18} color={C.mute} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('This business has not joined Shaadi OS yet, so you contact them directly. Details come from their own website and may be out of date.')}</M></View>
+          </View>
           : <View style={{ flexDirection: 'row', backgroundColor: C.okSoft, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="shield" size={18} color={C.ok} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('Booking Protection: you pay in milestones and each one is held until you release it.')}</M></View>}
       </Rise>
       {v.unclaimed ? null : <>

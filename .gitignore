@@ -22,3 +22,6 @@ app/ios/build/
 app/android/build/
 app/android/.gradle/
 api/uploads/
+
+# Business lists with contact details stay local (public repo).
+vendor-*.csv

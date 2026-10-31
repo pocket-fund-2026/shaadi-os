@@ -23,7 +23,8 @@ export const run = (s: string, ...a: any[]) => db.prepare(s).run(...a);
 // The seeded demo vendors are invented businesses, so they are flagged as samples and never shown as verified.
 // Seed vendor accounts use phones 9000000001 to 9000000099.
 // Real businesses listed from public information before they join: no owner account, no price, no enquiries.
-for (const [column, type] of [['unclaimed', 'INT DEFAULT 0'], ['website', 'TEXT'], ['source_url', 'TEXT']]) {
+// contact_* hold the business contact a listing publishes on its own website (unclaimed listings only).
+for (const [column, type] of [['unclaimed', 'INT DEFAULT 0'], ['website', 'TEXT'], ['source_url', 'TEXT'], ['contact_phone', 'TEXT'], ['contact_whatsapp', 'TEXT'], ['contact_email', 'TEXT'], ['contact_source', 'TEXT']]) {
   if (!q('PRAGMA table_info(vendors)').some((c: any) => c.name === column)) db.exec(`ALTER TABLE vendors ADD COLUMN ${column} ${type}`);
 }
 if (!q('PRAGMA table_info(vendors)').some((c: any) => c.name === 'sample')) {

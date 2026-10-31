@@ -5,7 +5,7 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable, RefreshControl, Sc
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from './api';
 import { tr } from './i18n';
-import { Bar, Btn, C, Card, Chip, Empty, F, Input, Loading, M, Rise, Tag, confirm, dateIN, err, inr, notify, s } from './ui';
+import { Bar, Btn, C, Card, Chip, ContactButtons, Empty, F, Input, Loading, M, Rise, Tag, confirm, dateIN, err, inr, notify, s } from './ui';
 import { CAT_ICON, Icon } from './icons';
 import { categoryLabel } from './marketplace';
 
@@ -158,6 +158,7 @@ export function DealScreen({ route, navigation }: any) {
           <M style={{ fontSize: 12 }}>{vendor ? tr('Their enquiry') : tr('Your enquiry')}</M>
           <Text style={{ color: C.ink, fontSize: 15, lineHeight: 22, marginTop: 2 }}>{detail.enquiry.note}</Text>
         </View> : null}
+        {deal.contact_phone ? <View style={{ marginTop: 12 }}><M>{tr(vendor ? 'Booked, so you can now reach them directly' : 'Booked, so you can now reach the vendor directly')}</M><ContactButtons phone={deal.contact_phone} whatsapp={deal.contact_phone} /></View> : null}
         <StageTracker stage={deal.stage} />
       </Card>
 

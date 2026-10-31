@@ -434,6 +434,28 @@ test('instalments have due dates, show as reminders, and quotes carry their item
   const reminders = (await request('/api/reminders', c)).data.items.filter((i: any) => i.kind === 'instalment');
   assert.ok(reminders.some((r: any) => r.title.startsWith('Pay Token advance')), 'token due within a week is a reminder');
 });
+test('public contacts attach only to unclaimed listings; member numbers appear only after booking', async () => {
+  const { importListings, importContacts } = await import('./import-listings.ts');
+  const { writeFileSync, mkdtempSync } = await import('node:fs'); const { join } = await import('node:path'); const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'contacts-'));
+  writeFileSync(join(dir, 'v.csv'), 'business_name,category,city,locality,website_or_instagram,source_url,notes\nContact Lawns,venue,Nagpur,,https://example.com/cl,https://example.com/src,lawn\n');
+  importListings(join(dir, 'v.csv'));
+  writeFileSync(join(dir, 'c.csv'), 'business_name,city,phone,whatsapp,email,contact_source_url\nContact Lawns,Nagpur,+91 98765 43210,98765-43210,Hello@Example.com,https://example.com/contact\nPixel Baraat Studios,Mumbai,9999999999,,x@y.com,https://example.com\nBad Data,Nagpur,12345,abc,not-an-email,\n');
+  assert.deepEqual(importContacts(join(dir, 'c.csv')), { updated: 1, unmatched: 1 }, 'a Shaadi OS member never gets imported contact details');
+  const listed = (await request('/api/vendors?city=Nagpur&category=venue')).data.find((v: any) => v.name === 'Contact Lawns');
+  const detail = (await request('/api/vendors/' + listed.id)).data;
+  assert.deepEqual([detail.contact_phone, detail.contact_whatsapp, detail.contact_email], ['9876543210', '9876543210', 'hello@example.com']);
+  const c = await login('9812300231'); const v = await login('9000000006');
+  await request('/api/wedding', c, 'POST', { title: 'K & L', date: '2027-10-10', city: 'Pune', budget_paise: 100000000 });
+  const vendorId = (await request('/api/me', v)).data.vendor.id;
+  const e = (await request('/api/enquiries', c, 'POST', { vendor_id: vendorId, event_date: '2027-10-10', guests: 100, budget_paise: 100000 })).data;
+  await request(`/api/enquiries/${e.id}/quotes`, v, 'POST', { items: [{ label: 'Service', amount_paise: 100000 }] });
+  const before = (await request('/api/deals', c)).data.find((d: any) => d.id === e.id);
+  assert.equal(before.contact_phone, null, 'no number before booking');
+  await request(`/api/quotes/${before.quote.id}/accept`, c, 'POST');
+  assert.equal((await request('/api/deals', c)).data.find((d: any) => d.id === e.id).contact_phone, '9000000006');
+  assert.equal((await request('/api/deals', v)).data.find((d: any) => d.id === e.id).contact_phone, '9812300231', 'the vendor gets the couple’s number after booking');
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

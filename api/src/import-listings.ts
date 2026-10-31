@@ -1,6 +1,6 @@
 // Imports real businesses from the researched CSV as unclaimed listings: public name, service, area and website,
 // with no owner account, no price and no verified badge. Rerunning updates existing rows instead of duplicating them.
-// Usage: node src/import-listings.ts ../vendor-prospects.csv
+// Usage: node src/import-listings.ts ../vendor-prospects.csv [../vendor-contacts.csv]
 import { readFileSync } from 'node:fs';
 import { one, run } from './db.ts';
 
@@ -46,9 +46,27 @@ export function importListings(path: string) {
   return { added, updated, skipped };
 }
 
+// Public contact details from each business's own website, matched to its unclaimed listing by name and city.
+// Anything that doesn't look like an Indian phone number or an email address is dropped rather than stored.
+const indianPhone = (v: string) => { const d = (v || '').replace(/\D/g, '').replace(/^(91|0091)(?=[6-9]\d{9}$)/, ''); return /^[6-9]\d{9}$/.test(d) || /^0\d{9,10}$/.test(d) ? d : null; };
+const email = (v: string) => { const e = (v || '').trim().toLowerCase(); return /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(e) ? e : null; };
+export function importContacts(path: string) {
+  const [header, ...rows] = parseCsv(readFileSync(path, 'utf8'));
+  const at = (name: string) => header.indexOf(name);
+  let updated = 0, unmatched = 0;
+  for (const r of rows) {
+    const phone = indianPhone(r[at('phone')]); const wa = indianPhone(r[at('whatsapp')]); const mail = email(r[at('email')]); const source = httpUrl(r[at('contact_source_url')] || '');
+    if (!phone && !wa && !mail) continue;
+    const res = run('UPDATE vendors SET contact_phone=?, contact_whatsapp=?, contact_email=?, contact_source=? WHERE unclaimed=1 AND name=? AND city=?', phone, wa && /^[6-9]/.test(wa) ? wa : null, mail, source, r[at('business_name')]?.trim(), r[at('city')]?.trim());
+    if (res.changes) updated++; else unmatched++;
+  }
+  return { updated, unmatched };
+}
+
 if (process.argv[1]?.endsWith('import-listings.ts')) {
   const path = process.argv[2];
   if (!path) { console.error('Usage: node src/import-listings.ts <vendor-prospects.csv>'); process.exit(1); }
   const r = importListings(path);
   console.log(`Added ${r.added}, updated ${r.updated}, skipped ${r.skipped.length}${r.skipped.length ? ': ' + r.skipped.join(', ') : ''}`);
+  if (process.argv[3]) { const c = importContacts(process.argv[3]); console.log(`Contacts: ${c.updated} listings updated, ${c.unmatched} rows not matched`); }
 }

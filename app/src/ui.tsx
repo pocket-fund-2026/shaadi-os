@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, TextInput, Pressable, View, StyleSheet, TextInputProps, Alert, Platform, Animated, Easing, AccessibilityInfo, ActivityIndicator, Modal } from 'react-native';
+import { Text, TextInput, Pressable, View, StyleSheet, TextInputProps, Alert, Platform, Animated, Easing, AccessibilityInfo, ActivityIndicator, Modal, Linking } from 'react-native';
 import { tr } from './i18n';
 import { Icon, IconName } from './icons';
 
@@ -144,6 +144,21 @@ export function DateField({ label, value, onChange, placeholder, min, optional }
       </Pressable>
     </Modal>
   </View>;
+}
+
+// Call, WhatsApp and email buttons for a phone number and/or address; Indian mobiles get +91.
+export function ContactButtons({ phone, whatsapp, email }: { phone?: string | null; whatsapp?: string | null; email?: string | null }) {
+  const tel = phone ? (phone.length === 10 ? '+91' + phone : phone) : null;
+  const items: [IconName, string, string][] = [];
+  if (tel) items.push(['phone', `${tr('Call')} ${phone!.length === 10 ? `${phone!.slice(0, 5)} ${phone!.slice(5)}` : phone}`, 'tel:' + tel]);
+  if (whatsapp) items.push(['send', 'WhatsApp', 'https://wa.me/91' + whatsapp]);
+  if (email) items.push(['chat', email, 'mailto:' + email]);
+  if (!items.length) return null;
+  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>{items.map(([icon, label, url]) =>
+    <Pressable key={url} accessibilityRole="link" accessibilityLabel={label} onPress={() => Linking.openURL(url).catch(() => {})}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.tint, opacity: pressed ? 0.75 : 1, maxWidth: '100%' })}>
+      <Icon name={icon} size={16} color={C.primary} /><Text style={{ color: C.primary, fontSize: 15, fontWeight: '500', flexShrink: 1 }} numberOfLines={1}>{label}</Text>
+    </Pressable>)}</View>;
 }
 
 export const Card = ({ children, onPress, style }: { children: React.ReactNode; onPress?: () => void; style?: any }) => {

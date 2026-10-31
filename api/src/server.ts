@@ -228,10 +228,12 @@ app.get('/api/deals', auth, wrap((req: any, res: any) => {
     const b = one("SELECT * FROM bookings WHERE enquiry_id=? AND status!='cancelled'", e.id); const booking = b ? bookingView(b) : null;
     const disputed = !!(b && one("SELECT 1 x FROM disputes WHERE booking_id=? AND status='open'", b.id));
     const last = one('SELECT body, sender_id, created_at FROM messages WHERE enquiry_id=? ORDER BY id DESC LIMIT 1', e.id);
+    // Phone numbers are shared only after booking, so deals stay in the app until then.
+    const contact = booking ? one(asVendor ? 'SELECT phone FROM users WHERE id=?' : 'SELECT u.phone FROM vendors vd JOIN users u ON u.id=vd.user_id WHERE vd.id=?', asVendor ? e.couple_id : e.vendor_id)?.phone : null;
     const ms = booking?.milestones || [];
     const stage = disputed ? 'disputed' : booking ? (ms.length && ms.every((m: any) => m.status === 'released') ? 'completed' : ms.some((m: any) => m.status !== 'pending') ? 'paying' : 'booked') : quote ? 'quoted' : 'new';
     return { id: e.id, vendor_id: e.vendor_id, other_name: e.other_name, category: e.category, rating: e.rating ?? null, reviews: e.reviews ?? 0, event_date: e.event_date, guests: e.guests, budget_paise: e.budget_paise, created_at: e.created_at,
-      stage, quote, booking, disputed, last_message: last ? { body: last.body, mine: last.sender_id === req.user.id, created_at: last.created_at } : null };
+      stage, quote, booking, disputed, contact_phone: /^[6-9]\d{9}$/.test(contact || '') ? contact : null, last_message: last ? { body: last.body, mine: last.sender_id === req.user.id, created_at: last.created_at } : null };
   }));
 }));
 app.get('/api/bookings', auth, wrap((req: any, res: any) => {
