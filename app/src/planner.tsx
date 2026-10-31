@@ -4,7 +4,7 @@ import { api } from './api';
 import { tr } from './i18n';
 import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err, inr, s, dateIN, DateField, todayISO } from './ui';
 import { FloralArch } from './visuals';
-import { Icon } from './icons';
+import { Icon, IconName } from './icons';
 import { categoryLabel } from './marketplace';
 
 function usePlanner<T>(path: string) {
@@ -32,10 +32,19 @@ const rupees = (value: string) => {
   return amount;
 };
 
-export function Overview({ open }: { open: (tab: string) => void }) {
+const STAGE: Record<string, { label: string; tone: 'ok' | 'gold' | 'mute'; icon: IconName }> = {
+  booked: { label: 'Booked', tone: 'ok', icon: 'check' }, enquired: { label: 'Enquired', tone: 'gold', icon: 'chat' },
+  shortlisted: { label: 'Shortlisted', tone: 'mute', icon: 'heart' }, not_started: { label: 'Not started', tone: 'mute', icon: 'plus' },
+};
+const monthLabel = (ym: string) => new Date(ym + '-01T00:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+// The whole wedding on one screen: where each vendor service stands, then a month-by-month timeline to the day.
+export function Overview({ open, nav }: { open: (tab: string) => void; nav: any }) {
   const { data: d, busy, error, load } = usePlanner<any>('/planner/overview');
-  return <ScrollView contentContainerStyle={content} refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
-    <Failure error={error} retry={load} />
+  const { data: r, load: loadRoadmap, error: roadmapError } = usePlanner<any>('/planner/roadmap');
+  const refresh = () => { load(); loadRoadmap(); };
+  return <ScrollView contentContainerStyle={content} refreshControl={<RefreshControl refreshing={busy} onRefresh={refresh} tintColor={C.primary} />}>
+    <Failure error={error || roadmapError} retry={refresh} />
     {!d ? <M>{tr('Loading your overview…')}</M> : <>
       <Card style={{ backgroundColor: C.primaryDark, borderColor: C.primaryDark, overflow: 'hidden', padding: 24 }}>
         <View pointerEvents="none" style={{ position: 'absolute', right: -36, top: -20, opacity: 0.25 }}><FloralArch size={180} /></View>
@@ -43,26 +52,55 @@ export function Overview({ open }: { open: (tab: string) => void }) {
         <Text style={{ fontFamily: F.display, fontSize: 34, color: '#fff', marginVertical: 8 }}>{d.days_left > 0 ? `${d.days_left} ${tr('days to go')}` : d.days_left === 0 ? tr('Today is the day') : tr('Just married')}</Text>
         <M style={{ color: '#F4DDE5' }}>{dateLabel(d.wedding.date)} · {d.wedding.city} · {d.wedding.guests_est} {tr('guests')}</M>
         <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: '#A66B7E', paddingTop: 16 }}>
-          <View style={s.row}><M style={{ color: '#F4DDE5' }}>{tr('Your planning progress')}</M><Text style={{ color: '#fff', fontWeight: '500' }}>{d.tasks.total ? Math.round(d.tasks.done / d.tasks.total * 100) : 0}%</Text></View>
+          <View style={s.row}><M style={{ color: '#F4DDE5' }}>{tr('Your planning progress')}</M><Text style={{ color: '#fff', fontWeight: '500', fontVariant: ['tabular-nums'] }}>{d.tasks.total ? Math.round(d.tasks.done / d.tasks.total * 100) : 0}%</Text></View>
           <View style={{ marginTop: 12 }}><Bar pct={d.tasks.total ? d.tasks.done / d.tasks.total * 100 : 0} color={C.goldSoft} /></View>
         </View>
       </Card>
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Card style={{ flex: 1 }} onPress={() => open('checklist')}><H>{d.tasks.done}/{d.tasks.total}</H><M>{tr('Tasks complete')}</M>{d.tasks.overdue > 0 && <Tag tone="warn" label={`${d.tasks.overdue} ${tr('Overdue')}`} />}</Card>
-        <Card style={{ flex: 1 }} onPress={() => open('guests')}><H>{d.guests.attending}</H><M>{tr('Confirmed guests')}</M><M>{d.guests.waiting} {tr('Waiting')}</M></Card>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {[[`${d.tasks.done}/${d.tasks.total}`, tr('Tasks'), 'checklist', d.tasks.overdue ? `${d.tasks.overdue} ${tr('Overdue')}` : ''], [String(d.guests.attending), tr('Guests coming'), 'guests', ''], [inr(d.budget.remaining_paise), tr('Left to book'), 'budget', d.budget.remaining_paise < 0 ? tr('Over budget') : '']].map(([value, label, tab, warn]) =>
+          <Card key={tab} onPress={() => open(tab)} style={{ flex: 1, padding: 12, marginBottom: 16 }}>
+            <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, fontVariant: ['tabular-nums'] }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+            <M style={{ marginTop: 2 }}>{label}</M>{warn ? <M style={{ color: C.warn, marginTop: 2 }}>{warn}</M> : null}
+          </Card>)}
       </View>
-      <Card onPress={() => open('budget')}>
-        <View style={s.row}><H>{tr('Budget')}</H><Tag tone={d.budget.remaining_paise < 0 ? 'warn' : 'ok'} label={d.budget.remaining_paise < 0 ? tr('Over budget') : tr('On track')} /></View>
-        <Text style={{ fontFamily: F.display, fontSize: 28, color: C.primary }}>{inr(d.budget.remaining_paise)}</Text><M>{tr('Remaining to book')}</M>
-        <View style={{ marginVertical: 12 }}><Bar pct={Math.min(100, d.budget.booked_paise / d.budget.total_paise * 100)} /></View>
-        <View style={s.row}><M>{tr('Booked')} {inr(d.budget.booked_paise)}</M><M>{tr('Paid')} {inr(d.budget.paid_paise)}</M></View>
-      </Card>
-      <View style={[s.row, { marginTop: 12 }]}><H>{tr('Next steps')}</H><Tag tone={d.tasks.overdue ? 'warn' : 'ok'} label={d.tasks.overdue ? `${d.tasks.overdue} ${tr('Overdue')}` : tr('On track')} /></View>
-      {d.tasks.upcoming.length ? d.tasks.upcoming.slice(0, 3).map((task: any, index: number) => <Rise key={task.id} i={index}><Card onPress={() => open('checklist')} style={{ paddingVertical: 16 }}><View style={{ flexDirection: 'row', alignItems: 'center' }}><View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}><Icon name="checklist" size={18} color={C.primary} /></View><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontWeight: '500', fontSize: 15 }}>{task.title}</Text><M>{dateLabel(task.due)}</M></View><Icon name="chevron" size={16} color={C.faint} /></View></Card></Rise>) : <M>{tr('All tasks complete. Enjoy your celebration.')}</M>}
-      <Btn kind="quiet" title={tr('Open planning checklist')} icon="checklist" onPress={() => open('checklist')} />
-      <H>{tr('Upcoming ceremonies')}</H>
-      {d.events.length ? d.events.map((event: any) => <Card key={event.id} onPress={() => open('events')}><Text style={{ fontWeight: '500', color: C.ink }}>{event.name}</Text><M>{dateIN(event.date)}{event.venue ? ` · ${event.venue}` : ''}</M></Card>) : <Btn kind="quiet" title={tr('Plan your ceremonies')} onPress={() => open('events')} />}
-      <Btn kind="ghost" title={`${tr('Shortlist')} · ${d.shortlisted}`} onPress={() => open('shortlist')} />
+
+      <View style={[s.row, { marginTop: 8 }]}><H style={{ marginVertical: 8 }}>{tr('Vendors')}</H>{r ? <M style={{ fontVariant: ['tabular-nums'] }}>{r.booked_count} {tr('of')} {r.vendors.length} {tr('booked')}</M> : null}</View>
+      {r ? <Card style={{ paddingVertical: 4 }}>{r.vendors.map((v: any, i: number) => {
+        const st = STAGE[v.stage];
+        const action = v.stage === 'not_started' ? { title: tr('Find'), go: () => nav.navigate('Discover', { category: v.category, at: Date.now() }) }
+          : v.stage === 'shortlisted' ? { title: tr('Compare'), go: () => open('shortlist') }
+          : v.stage === 'enquired' && v.enquiry_id ? { title: tr('Open chat'), go: () => nav.navigate('Chat', { id: v.enquiry_id, title: v.enquiry_vendor }) } : null;
+        const detail = v.stage === 'booked' ? `${v.booked_vendor}${v.allocated_paise ? ` · ${inr(v.booked_paise)} ${tr('of')} ${inr(v.allocated_paise)}` : ''}`
+          : v.stage === 'enquired' ? `${v.enquiries} ${tr(v.enquiries === 1 ? 'enquiry' : 'enquiries')}${v.quotes ? ` · ${v.quotes} ${tr(v.quotes === 1 ? 'quote to review' : 'quotes to review')}` : ''}`
+          : v.stage === 'shortlisted' ? `${v.shortlisted} ${tr('shortlisted')}` : v.allocated_paise ? `${tr('Budget')} ${inr(v.allocated_paise)}` : '';
+        return <View key={v.category} style={[s.row, { paddingVertical: 12, gap: 12, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }]}>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{categoryLabel(v.category)}</Text><Tag tone={st.tone} icon={st.icon} label={tr(st.label)} /></View>
+            {detail ? <M style={{ marginTop: 4 }} numberOfLines={2}>{detail}</M> : null}
+          </View>
+          {action ? <Btn small kind="quiet" title={action.title} onPress={action.go} /> : null}
+        </View>; })}</Card> : <M>{tr('Loading your vendors…')}</M>}
+
+      <H style={{ marginTop: 16 }}>{tr('Timeline')}</H>
+      {r ? r.months.map((m: any, i: number) => <View key={m.month} style={{ flexDirection: 'row' }}>
+        <View style={{ width: 24, alignItems: 'center' }}>
+          <View style={{ width: 12, height: 12, borderRadius: 6, marginTop: 6, backgroundColor: i === 0 ? C.primary : m.wedding ? C.gold : C.card, borderWidth: 2, borderColor: i === 0 ? C.primary : m.wedding ? C.gold : C.line }} />
+          {i < r.months.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: C.line, marginTop: 4 }} /> : null}
+        </View>
+        <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 24 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text accessibilityRole="header" style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{monthLabel(m.month)}</Text>{i === 0 ? <Tag tone="gold" label={tr('This month')} /> : null}</View>
+          {[...m.events.map((e: any) => ({ kind: 'event', date: e.date, e })), ...m.tasks.map((t: any) => ({ kind: 'task', date: t.overdue ? '' : t.due, t })), ...(m.wedding ? [{ kind: 'wedding', date: m.wedding + '~' }] : [])]
+            .sort((x: any, y: any) => x.date.localeCompare(y.date)).map((item: any) => item.kind === 'wedding'
+              ? <View key="wedding" style={{ flexDirection: 'row', gap: 8, marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: C.goldSoft }}><Icon name="ring" size={18} color={C.gold} /><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', flex: 1 }}>{tr('Wedding day')} · {dateIN(m.wedding)}</Text></View>
+              : item.kind === 'event'
+              ? <Pressable key={'e' + item.e.id} accessibilityRole="button" onPress={() => open('events')} style={{ flexDirection: 'row', gap: 8, marginTop: 8, minHeight: 32, alignItems: 'flex-start' }}>
+                <Icon name="marigold" size={18} color={C.gold} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{item.e.name}</Text><M>{dateIN(item.e.date)}{item.e.venue ? ` · ${item.e.venue}` : ''}</M></View></Pressable>
+              : <Pressable key={'t' + item.t.id} accessibilityRole="button" onPress={() => open('checklist')} style={{ flexDirection: 'row', gap: 8, marginTop: 8, minHeight: 32, alignItems: 'flex-start' }}>
+                <Icon name="checklist" size={18} color={item.t.overdue ? C.warn : C.mute} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{item.t.title}</Text><M style={{ color: item.t.overdue ? C.warn : C.mute }}>{item.t.overdue ? `${tr('Overdue')} · ${dateIN(item.t.due)}` : dateIN(item.t.due)}</M></View></Pressable>)}
+          {!m.events.length && !m.tasks.length && !m.wedding ? <M style={{ marginTop: 4 }}>{tr('Nothing planned yet')}</M> : null}
+        </View>
+      </View>) : null}
+      {r?.unscheduled.length ? <Btn kind="quiet" icon="calendar" title={`${r.unscheduled.length} ${tr('tasks without a date')}`} onPress={() => open('checklist')} /> : null}
     </>}
   </ScrollView>;
 }
@@ -88,7 +126,7 @@ export function TaskManager() {
   const suggestions = available.filter(item => phase === 'All' || item.phase === phase);
   // The three most urgent ideas surface in the plan card itself: catch-up items first, then by suggested date.
   const nextUp = [...available].sort((a, b) => Number(!!b.is_catch_up) - Number(!!a.is_catch_up) || String(a.due || '9999').localeCompare(String(b.due || '9999'))).slice(0, 3);
-  return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
+  return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
     <Failure error={error} retry={load} />
     <Card>
       <M>{tr('Our plan')}</M>
@@ -135,7 +173,7 @@ export function BudgetManager() {
   const booked = b?.rows.reduce((sum: number, r: any) => sum + r.booked_paise, 0) || 0;
   const paid = b?.rows.reduce((sum: number, r: any) => sum + r.paid_paise, 0) || 0;
   const allocated = b?.rows.reduce((sum: number, r: any) => sum + r.allocated_paise, 0) || 0;
-  return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
+  return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
     <Failure error={error} retry={load} />
     {!b ? <M>{tr('Loading your budget…')}</M> : <>
       <Card><M>{tr('Total budget')}</M><H style={{ fontSize: 28 }}>{inr(b.total_paise)}</H>
@@ -160,7 +198,7 @@ export function BudgetManager() {
 export function WeddingSettings({ wedding, onSaved }: { wedding: any; onSaved: () => void }) {
   const [title, setTitle] = useState(wedding.title); const [date, setDate] = useState(wedding.date); const [city, setCity] = useState(wedding.city); const [guests, setGuests] = useState(String(wedding.guests_est)); const [busy, setBusy] = useState(false);
   const save = async () => { setBusy(true); try { await api('/wedding', 'PATCH', { title, date, city, guests_est: Number(guests) }); onSaved(); } catch (e) { err(e); } finally { setBusy(false); } };
-  return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled"><H>{tr('Wedding details')}</H>
+  return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets><H>{tr('Wedding details')}</H>
     <Input label={tr('Couple names')} value={title} onChangeText={setTitle} maxLength={120} /><DateField label={tr('Wedding date')} value={date} onChange={setDate} min={todayISO()} /><M style={{ marginBottom: 12 }}>{tr('Changing this date updates planning suggestions. Tasks already on your checklist keep their dates so you can adjust them yourself.')}</M><Input label={tr('City')} value={city} onChangeText={setCity} maxLength={80} />
     <Input label={tr('Estimated guests')} value={guests} onChangeText={setGuests} keyboardType="number-pad" />
     <Btn title={tr('Save details')} disabled={busy || !title.trim() || !city.trim()} onPress={save} />

@@ -60,7 +60,7 @@ export type IconName = keyof typeof I;
 export function Icon({ name, size = 22, color = '#241019', strokeWidth = 1.5 }: { name: IconName; size?: number; color?: string; strokeWidth?: number }) {
   const els: El[] = I[name] || I.alert;
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {els.map((e, i) => {
         const o = (e[0] === 'p' ? e[2] : e[0] === 'c' ? e[4] : e[6]) as Opt | undefined;
         const paint = o?.fill ? { fill: color, stroke: 'none' } : { stroke: color, strokeWidth, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };

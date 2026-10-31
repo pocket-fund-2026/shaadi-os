@@ -14,7 +14,7 @@ import { PublicExplore } from './src/marketplace';
 import { Discover, VendorScreen, EnquiryForm, Enquiries, Chat, Bookings, Plan } from './src/couple';
 import { Payouts } from './src/vendor';
 import { Business, Privacy, Admin } from './src/more';
-import { Btn, Chip, C, F, M, H, Card, TabIcon } from './src/ui';
+import { Btn, Chip, C, F, M, H, Card, TabIcon, ErrorBoundary } from './src/ui';
 import { Icon, IconName } from './src/icons';
 const Tab = createBottomTabNavigator(); const Stack = createNativeStackNavigator();
 const hdr = { headerStyle: { backgroundColor: C.bg }, headerTintColor: C.primary, headerShadowVisible: false, headerTitleStyle: { fontFamily: F.display, color: C.ink, fontSize: 20 } };
@@ -59,10 +59,10 @@ export default function App() {
   useEffect(() => { boot(); }, []);
   const logout = async () => { await setToken(''); setState('out'); };
   if (state === 'boot' || !fonts) return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: C.bg }}><ActivityIndicator size="large" color={C.primary} /></View>;
-  if (state === 'out') return <SafeAreaProvider><StatusBar style="dark" />{exploring ? <PublicExplore onSignIn={() => setExploring(false)} onBack={() => setExploring(false)} /> : <Login onDone={boot} onBrowse={() => setExploring(true)} lang={lang} setLang={setLang} />}</SafeAreaProvider>;
+  if (state === 'out') return <SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary>{exploring ? <PublicExplore onSignIn={() => setExploring(false)} onBack={() => setExploring(false)} /> : <Login onDone={boot} onBrowse={() => setExploring(true)} lang={lang} setLang={setLang} />}</ErrorBoundary></SafeAreaProvider>;
   const vendor = me.user.role === 'vendor'; const Tabs = vendor ? VendorTabs(me, logout) : CoupleTabs(me, logout);
-  return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><NavigationContainer key={lang}>
+  return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang}>
     <Stack.Navigator screenOptions={{ ...hdr, animation: 'slide_from_right' }}><Stack.Screen name="Home" component={Tabs} options={{ title: 'Shaadi OS', headerShown: false }} />
       <Stack.Screen name="Vendor" component={VendorScreen} options={{ title: '' }} /><Stack.Screen name="EnquiryForm" component={EnquiryForm} options={{ title: tr('Enquiry'), animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="Chat" component={Chat} options={({ route }: any) => ({ title: route.params?.title || 'Chat' })} /></Stack.Navigator></NavigationContainer></SafeAreaProvider></LangCtx.Provider>);
+      <Stack.Screen name="Chat" component={Chat} options={({ route }: any) => ({ title: route.params?.title || 'Chat' })} /></Stack.Navigator></NavigationContainer></ErrorBoundary></SafeAreaProvider></LangCtx.Provider>);
 }

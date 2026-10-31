@@ -51,7 +51,7 @@ export default function Login({ onDone, onBrowse, lang, setLang }: { onDone: () 
   const changeNumber = () => { setStep(0); setOtp(''); setName(''); setError(''); setWait(0); };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 24, paddingTop: insets.top + 28, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 640, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" style={{ backgroundColor: C.bg }}>
+    <ScrollView contentContainerStyle={{ padding: 24, paddingTop: insets.top + 28, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 640, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets style={{ backgroundColor: C.bg }}>
       <Rise i={0}>
         <View style={{ marginBottom: 20 }}><Logo size={64} /></View>
         {/* Language comes first: many couples and families prefer to sign up in their own language. */}

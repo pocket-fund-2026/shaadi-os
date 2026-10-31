@@ -25,9 +25,9 @@ const CatMark = ({ c, size = 46 }: { c: string; size?: number }) => (
   <View style={{ width: size, height: size, borderRadius: size / 2.6, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Icon name={CAT_ICON[c] || 'store'} size={size * 0.5} color={C.primary} /></View>);
 
 // Discover and Plan open with their own heading, so the tab hides the nav bar and these take the top safe area.
-export function Discover({ navigation }: any) {
+export function Discover({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
-  return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: C.bg }}><Marketplace openVendor={id => navigation.navigate('Vendor', { id })} /></View>;
+  return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: C.bg }}><Marketplace openVendor={id => navigation.navigate('Vendor', { id })} preset={route?.params} /></View>;
 }
 
 export function VendorScreen({ route, navigation }: any) {
@@ -71,7 +71,7 @@ export function EnquiryForm({ route, navigation }: any) {
     setBusy(true);
     try { const av = await api(`/vendors/${v.id}/availability?date=${date}`); if (!av.available && !(await confirm(tr('Date not available'), tr('This vendor is busy on that date. Send anyway?'), tr('Send')))) return; const r = await api('/enquiries', 'POST', { vendor_id: v.id, event_date: date, guests: +guests, budget_paise: +budget * 100, note }); navigation.replace('Chat', { id: r.id, title: v.name }); } catch (e) { err(e); } finally { setBusy(false); }
   };
-  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}><CatMark c={v.category} size={40} /><H style={{ marginLeft: 12, flex: 1 }}>{v.name}</H></View>
     <DateField label={tr('Event date')} value={date} onChange={setDate} min={todayISO()} />
     <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Guests')} value={guests} onChangeText={setGuests} keyboardType="number-pad" /></View>
@@ -145,7 +145,7 @@ export function Bookings({ vendor }: any) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}><Chip icon="flag" label={tr('Raise dispute')} onPress={() => dispute(b.id)} />
         {vendor && <Chip icon="receipt" label={tr('GST invoice')} onPress={() => api(`/bookings/${b.id}/invoice`).then((i: any) => notify(i.invoice_no, `${tr('Commission')} ${inr(i.commission_paise)} + GST ${inr(i.gst_paise)} = ${inr(i.total_paise)}\n${i.note}`)).catch(err)} />}</View>
       {!vendor && !b.reviewed && b.milestones.some((m: any) => m.status !== 'pending') && (<View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.line }}><Text style={{ fontWeight: '500', color: C.ink }}>{tr('Rate this vendor')}</Text>
-        <View style={{ flexDirection: 'row', marginVertical: 8 }}>{[1, 2, 3, 4, 5].map(n => <Pressable key={n} accessibilityLabel={`${n} stars`} hitSlop={6} onPress={() => setRate({ ...rate, [b.id]: n })} style={{ padding: 4 }}><Icon name="star" size={28} color={n <= (rate[b.id] || 0) ? C.gold : C.line} /></Pressable>)}</View>
+        <View style={{ flexDirection: 'row', marginVertical: 8 }}>{[1, 2, 3, 4, 5].map(n => <Pressable key={n} accessibilityRole="button" accessibilityLabel={`${n} stars`} accessibilityState={{ selected: n <= (rate[b.id] || 0) }} hitSlop={6} onPress={() => setRate({ ...rate, [b.id]: n })} style={{ padding: 4 }}><Icon name="star" size={28} color={n <= (rate[b.id] || 0) ? C.gold : C.line} /></Pressable>)}</View>
         <Btn small kind="ghost" title={tr('Submit review')} disabled={!rate[b.id]} onPress={() => review(b.id)} /></View>)}</Card></Rise>); }} />);
 }
 
@@ -165,12 +165,12 @@ function PlanBody({ navigation: nav }: any) {
     <View style={{ maxWidth: 700, width: '100%', alignSelf: 'center' }}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12 }}>{PLAN_MAIN.map(([k, n, icon]) => <Chip key={k} icon={icon} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}<Chip icon="plus" label={tr('More')} on={showMore || !PLAN_MAIN.some(([k]) => k === tab)} onPress={() => setShowMore(!showMore)} /></ScrollView>
       {showMore && <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 4 }}>{PLAN_TABS.filter(([k]) => !PLAN_MAIN.some(([main]) => main === k)).map(([k, n]) => <Chip key={k} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}</View>}
       {!showMore && !PLAN_MAIN.some(([k]) => k === tab) && <M style={{ paddingHorizontal: 16, paddingBottom: 3 }}>{tr(PLAN_TABS.find(([k]) => k === tab)?.[1] || '')}</M>}</View>
-    <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
+    <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
 }
 function Setup({ onDone }: any) {
   const [f, setF] = useState({ title: '', date: '', city: 'Pune', budget: '1500000', guests: '250', community: 'North Indian Hindu' });
   const go = async () => { try { await api('/wedding', 'POST', { title: f.title, date: f.date, city: f.city, community: f.community, budget_paise: +f.budget * 100, guests_est: +f.guests }); onDone(); } catch (e) { err(e); } };
-  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled"><H>{tr('Set up your wedding')}</H>
+  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets><H>{tr('Set up your wedding')}</H>
     <M style={{ marginBottom: 12 }}>{tr('We build your checklist, budget split and ceremonies from these details. You can change them later.')}</M>
     <Input label={tr('Couple names')} value={f.title} onChangeText={v => setF({ ...f, title: v })} placeholder="Partner & Partner" /><DateField label={tr('Wedding date')} value={f.date} onChange={v => setF({ ...f, date: v })} min={todayISO()} />
     <Input label={tr('City')} value={f.city} onChangeText={v => setF({ ...f, city: v })} />
@@ -184,7 +184,7 @@ function Guests() {
   const add = async () => { if (!name.trim()) return; if (phone && !/^[6-9]\d{9}$/.test(phone)) return err(new Error(tr('Enter a 10-digit mobile number, or leave it empty.'))); await api('/guests', 'POST', { name, phone, side }).catch(err); setName(''); setPhone(''); load(); };
   const share = (g: any) => Linking.openURL(`https://wa.me/91${g.phone}?text=${encodeURIComponent(`Namaste ${g.name}, you're invited! RSVP: ${getBase()}/rsvp/${g.token}`)}`).catch(err);
   const yes = list.filter(g => g.rsvp === 'yes').length; const no = list.filter(g => g.rsvp === 'no').length;
-  return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+  return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card><View style={{ flexDirection: 'row' }}>{[[list.length, tr('Invited'), C.ink], [yes, tr('Coming'), C.ok], [no, tr('Declined'), C.warn], [list.length - yes - no, tr('Waiting'), C.mute]].map(([n, l, c], i) => (
       <View key={i} style={{ flex: 1, alignItems: 'center' }}><Text style={{ fontFamily: F.display, fontSize: 24, color: c as string }}>{n as number}</Text><M>{l as string}</M></View>))}</View></Card>
     <Input label={tr('Guest name')} placeholder="Guest Name" value={name} onChangeText={setName} /><Input label={tr('WhatsApp number (optional)')} placeholder="10-digit mobile" value={phone} onChangeText={setPhone} keyboardType="number-pad" maxLength={10} />

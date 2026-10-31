@@ -240,6 +240,15 @@ test('payment and release enforce ownership, idempotency and dispute holds', asy
   assert.equal((await request(`/api/milestones/${booking.milestones[1].id}/pay`, couple, 'POST')).status, 409);
   assert.equal(one('SELECT status FROM milestones WHERE id=?', m.id).status, 'held');
 });
+test('roadmap tracks each vendor service and a month-by-month timeline', async () => {
+  const r = await request('/api/planner/roadmap', couple);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.data.vendors.map((v: any) => v.category), ['venue', 'caterer', 'photographer', 'decor', 'makeup', 'mehndi', 'dj', 'pandit']);
+  assert.ok(r.data.vendors.some((v: any) => v.stage === 'booked' && v.booked_vendor), 'a booked service names its vendor');
+  assert.equal(r.data.booked_count, r.data.vendors.filter((v: any) => v.stage === 'booked').length);
+  assert.equal(r.data.months[0].month, new Date().toISOString().slice(0, 7));
+  assert.ok(r.data.months.every((m: any) => m.tasks.every((t: any) => !t.overdue || m.month === r.data.months[0].month)), 'overdue tasks surface in the current month');
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

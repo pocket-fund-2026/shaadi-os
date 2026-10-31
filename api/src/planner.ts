@@ -8,6 +8,8 @@ export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-D
 }, 'Enter a real calendar date');
 const money = z.number().int().nonnegative().max(100_000_000_000);
 const fail = (status: number, message: string) => Object.assign(new Error(message), { status });
+// Vendor services tracked on the roadmap, in the order couples usually book them.
+const ROADMAP_CATEGORIES = ['venue', 'caterer', 'photographer', 'decor', 'makeup', 'mehndi', 'dj', 'pandit'];
 
 export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any, wrap: any) {
   const wedding = (req: any) => {
@@ -26,6 +28,39 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
     if (item.already_added) throw fail(409, 'Already in your checklist');
     run('INSERT INTO tasks(wedding_id,title,due) VALUES(?,?,?)', w.id, item.title, item.due);
     res.status(201).json({ ok: true, title: item.title, due: item.due });
+  }));
+  // One view of the whole wedding: where each vendor service stands, and a month-by-month timeline to the day.
+  app.get('/api/planner/roadmap', auth, wrap((req: any, res: any) => {
+    const w = wedding(req);
+    const today = new Date().toISOString().slice(0, 10);
+    const alloc: Record<string, number> = Object.fromEntries(q('SELECT category,allocated_paise FROM budget_items WHERE wedding_id=?', w.id).map((r: any) => [r.category, r.allocated_paise]));
+    const booked = q(`SELECT v.category,v.name,b.total_paise FROM bookings b JOIN vendors v ON v.id=b.vendor_id WHERE b.wedding_id=? AND b.status!='cancelled' ORDER BY b.id`, w.id);
+    const enquired = q(`SELECT v.category,v.name,e.id,(SELECT COUNT(*) FROM quotes x WHERE x.enquiry_id=e.id AND x.status='sent') quotes FROM enquiries e JOIN vendors v ON v.id=e.vendor_id WHERE e.wedding_id=? AND e.status!='booked' ORDER BY e.id DESC`, w.id);
+    const shortlisted = q('SELECT v.category,COUNT(*) n FROM shortlist s JOIN vendors v ON v.id=s.vendor_id WHERE s.wedding_id=? GROUP BY v.category', w.id);
+    const vendors = ROADMAP_CATEGORIES.map(category => {
+      const b = booked.filter((x: any) => x.category === category); const e = enquired.filter((x: any) => x.category === category);
+      const sl = shortlisted.find((x: any) => x.category === category)?.n || 0;
+      return { category, stage: b.length ? 'booked' : e.length ? 'enquired' : sl ? 'shortlisted' : 'not_started',
+        allocated_paise: alloc[category] ?? null, booked_paise: b.reduce((sum: number, x: any) => sum + x.total_paise, 0), booked_vendor: b[0]?.name ?? null,
+        enquiries: e.length, quotes: e.reduce((sum: number, x: any) => sum + x.quotes, 0), enquiry_id: e[0]?.id ?? null, enquiry_vendor: e[0]?.name ?? null, shortlisted: sl };
+    });
+    const tasks = q("SELECT id,title,due FROM tasks WHERE wedding_id=? AND done=0 ORDER BY COALESCE(due,'9999-12-31'),id", w.id);
+    const events = q("SELECT id,name,date,venue FROM events WHERE wedding_id=? AND date IS NOT NULL AND date!='' AND date>=? ORDER BY date,sort", w.id, today);
+    // Months run from now to the later of the wedding month and the last task's month, capped at three years.
+    const now = today.slice(0, 7);
+    const last = [w.date?.slice(0, 7), ...tasks.map((t: any) => t.due?.slice(0, 7)), ...events.map((e: any) => e.date.slice(0, 7))].filter(Boolean).sort().pop() || now;
+    const months: any[] = [];
+    for (let y = +now.slice(0, 4), m = +now.slice(5, 7); months.length < 36; m === 12 ? (y++, m = 1) : m++) {
+      const key = `${y}-${String(m).padStart(2, '0')}`; if (key > (last > now ? last : now)) break;
+      months.push({ month: key, wedding: w.date?.slice(0, 7) === key ? w.date : null, tasks: [], events: [] });
+    }
+    for (const t of tasks) {
+      if (!t.due) continue;
+      const bucket = months.find(m => m.month === (t.due < today ? now : t.due.slice(0, 7)));
+      bucket?.tasks.push({ ...t, overdue: t.due < today });
+    }
+    for (const e of events) months.find(m => m.month === e.date.slice(0, 7))?.events.push(e);
+    res.json({ wedding: w, vendors, booked_count: vendors.filter(v => v.stage === 'booked').length, months, unscheduled: tasks.filter((t: any) => !t.due) });
   }));
   app.get('/api/planner/overview', auth, wrap((req: any, res: any) => {
     const w = wedding(req);

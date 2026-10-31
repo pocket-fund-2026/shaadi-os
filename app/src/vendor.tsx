@@ -29,7 +29,7 @@ export function VendorProfile({ onSaved }: any) {
   const set = (k: string, v: string) => { setSaved(false); setF({ ...f, [k]: v }); };
   const save = async () => { try { await api('/vendor', 'PUT', { name: f.name, category: f.category, city: f.city, locality: f.locality, start_paise: Math.round(+f.price * 100), description: f.description }); setSaved(true); onSaved?.(); } catch (e) { err(e); } };
   const fee = ['venue', 'caterer'].includes(f.category) ? 3 : 6;
-  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <M style={{ marginBottom: 12 }}>{tr('Listing is free. You pay')} {fee}% {tr('only when a couple books and pays through the app.')}</M>
     <Input label={tr('Business name')} value={f.name} onChangeText={v => set('name', v)} placeholder="Business Name" />
     <Text style={s.label}>{tr('Category')}</Text>

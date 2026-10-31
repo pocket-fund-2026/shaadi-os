@@ -4,8 +4,8 @@ import { tr } from './i18n';
 import { Icon, IconName } from './icons';
 
 export const C = {
-  primary: '#74263F', primaryDark: '#4D192C', gold: '#896522', goldSoft: '#F3E8D1',
-  bg: '#FAF7F2', card: '#FFFEFC', ink: '#2C2024', mute: '#75656B', faint: '#87767D',
+  primary: '#74263F', primaryDark: '#4D192C', gold: '#846120', goldSoft: '#F3E8D1',
+  bg: '#FAF7F2', card: '#FFFEFC', ink: '#2C2024', mute: '#75656B', faint: '#7C6C72',
   ok: '#1E7A50', okSoft: '#E3F2EA', warn: '#A8402A', warnSoft: '#FAE9E3', line: '#EADCD3', chipBg: '#F3E9E0', tint: '#F6ECEF',
 };
 // Fraunces is used for display text only: wedding stationery is set in warm serifs, so headings borrow that register.
@@ -121,8 +121,8 @@ export function DateField({ label, value, onChange, placeholder, min, optional }
       <Icon name="calendar" size={19} color={C.mute} />
     </Pressable>
     <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
-      <Pressable accessibilityLabel={tr('Close')} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(44,32,36,0.4)', justifyContent: 'center', padding: 24 }}>
-        <Pressable onPress={() => {}} style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, width: '100%', maxWidth: 380, alignSelf: 'center' }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={tr('Close')} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(44,32,36,0.4)', justifyContent: 'center', padding: 24 }}>
+        <Pressable accessible={false} onPress={() => {}} style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, width: '100%', maxWidth: 380, alignSelf: 'center' }}>
           <View style={[s.row, { marginBottom: 8 }]}><Arrow dir={-1} disabled={!canGoBack} /><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{title}</Text><Arrow dir={1} /></View>
           <View style={{ flexDirection: 'row' }}>{WEEKDAYS.map((w, i) => <Text key={i} style={{ width: `${100 / 7}%`, textAlign: 'center', fontSize: 12, color: C.mute, paddingVertical: 4 }}>{w}</Text>)}</View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{cells.map((d, i) => {
@@ -207,6 +207,19 @@ export const confirm = (title: string, message: string, ok: string, destructive 
 });
 export const notify = (title: string, message: string) => Platform.OS === 'web' ? (globalThis as any).alert(`${title}\n\n${message}`) : Alert.alert(title, message);
 export const err = (e: any) => Platform.OS === 'web' ? (globalThis as any).alert(e.message || String(e)) : Alert.alert('Something went wrong', e.message || String(e));
+
+// Catches a render crash in one part of the app and offers a retry instead of a blank screen.
+export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: unknown) { console.error('Screen crashed', error); }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', padding: 24 }}>
+      <Empty icon="alert" title={tr('Something went wrong on this screen')} text={tr('Your data is safe. Try again, and if it keeps happening, restart the app.')} action={tr('Try again')} onAction={() => this.setState({ failed: false })} />
+    </View>;
+  }
+}
 
 export const s = StyleSheet.create({
   btn: { flexDirection: 'row', backgroundColor: C.primary, minHeight: 52, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
