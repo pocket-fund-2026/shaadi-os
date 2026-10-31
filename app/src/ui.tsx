@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, TextInput, Pressable, View, StyleSheet, TextInputProps, Alert, Platform, Animated, Easing, AccessibilityInfo, ActivityIndicator } from 'react-native';
+import { Text, TextInput, Pressable, View, StyleSheet, TextInputProps, Alert, Platform, Animated, Easing, AccessibilityInfo, ActivityIndicator, Modal } from 'react-native';
+import { tr } from './i18n';
 import { Icon, IconName } from './icons';
 
 export const C = {
@@ -88,6 +89,58 @@ export const Input = ({ icon, ...p }: TextInputProps & { label?: string; icon?: 
       {icon ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><Icon name={icon} size={19} color={focus ? C.primary : C.mute} /></View> : null}
     </View></View>);
 };
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const isoOf = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(d)}`;
+export const todayISO = () => { const t = new Date(); return isoOf(t.getFullYear(), t.getMonth(), t.getDate()); };
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+// Calendar picker built in JS so it behaves the same on iOS, Android and web and needs no native module.
+// Values stay ISO (YYYY-MM-DD) for the API; the field shows them as 14 Feb 2027.
+export function DateField({ label, value, onChange, placeholder, min, optional }: { label?: string; value: string; onChange: (iso: string) => void; placeholder?: string; min?: string; optional?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(value || '');
+  const [view, setView] = useState({ y: 2000, m: 0 });
+  const today = todayISO();
+  const show = () => { const start = valid ? value : min && min > today ? min : today; setView({ y: +start.slice(0, 4), m: +start.slice(5, 7) - 1 }); setOpen(true); };
+  const shift = (d: number) => setView(v => { const m = v.m + d; return { y: v.y + Math.floor(m / 12), m: ((m % 12) + 12) % 12 }; });
+  const first = new Date(Date.UTC(view.y, view.m, 1)).getUTCDay();
+  const count = new Date(Date.UTC(view.y, view.m + 1, 0)).getUTCDate();
+  const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length: count }, (_, i) => i + 1)];
+  const title = new Date(Date.UTC(view.y, view.m, 1)).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const canGoBack = !min || isoOf(view.y, view.m, 1) > min.slice(0, 8) + '01';
+  const pick = (iso: string) => { onChange(iso); setOpen(false); };
+  const Arrow = ({ dir, disabled }: { dir: -1 | 1; disabled?: boolean }) => <Pressable accessibilityRole="button" accessibilityLabel={dir < 0 ? tr('Previous month') : tr('Next month')} disabled={disabled} onPress={() => shift(dir)} hitSlop={8}
+    style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? C.tint : 'transparent', opacity: disabled ? 0.3 : 1, transform: dir < 0 ? [{ scaleX: -1 }] : undefined })}>
+    <Icon name="chevron" size={20} color={C.ink} /></Pressable>;
+  return <View style={{ marginBottom: 12 }}>
+    {label ? <Text style={s.label}>{label}</Text> : null}
+    <Pressable accessibilityRole="button" accessibilityLabel={`${label || tr('Date')}: ${valid ? dateIN(value) : tr('not set')}`} onPress={show}
+      style={({ pressed }) => [s.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderColor: open ? C.primary : C.line, opacity: pressed ? 0.85 : 1 }]}>
+      <Text style={{ fontSize: 15, color: valid ? C.ink : C.faint }}>{valid ? dateIN(value) : placeholder || tr('Choose a date')}</Text>
+      <Icon name="calendar" size={19} color={C.mute} />
+    </Pressable>
+    <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Pressable accessibilityLabel={tr('Close')} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(44,32,36,0.4)', justifyContent: 'center', padding: 24 }}>
+        <Pressable onPress={() => {}} style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, width: '100%', maxWidth: 380, alignSelf: 'center' }}>
+          <View style={[s.row, { marginBottom: 8 }]}><Arrow dir={-1} disabled={!canGoBack} /><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{title}</Text><Arrow dir={1} /></View>
+          <View style={{ flexDirection: 'row' }}>{WEEKDAYS.map((w, i) => <Text key={i} style={{ width: `${100 / 7}%`, textAlign: 'center', fontSize: 12, color: C.mute, paddingVertical: 4 }}>{w}</Text>)}</View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{cells.map((d, i) => {
+            if (!d) return <View key={i} style={{ width: `${100 / 7}%`, aspectRatio: 1 }} />;
+            const iso = isoOf(view.y, view.m, d); const on = valid && iso === value; const off = !!min && iso < min; const isToday = iso === today;
+            return <Pressable key={i} accessibilityRole="button" accessibilityLabel={dateIN(iso)} accessibilityState={{ selected: on, disabled: off }} disabled={off} onPress={() => pick(iso)} style={{ width: `${100 / 7}%`, aspectRatio: 1, padding: 2 }}>
+              {({ pressed }) => <View style={{ flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.primary : pressed ? C.tint : 'transparent', borderWidth: isToday && !on ? 1 : 0, borderColor: C.primary }}>
+                <Text style={{ fontSize: 15, color: on ? '#fff' : off ? C.line : C.ink, fontVariant: ['tabular-nums'] }}>{d}</Text></View>}
+            </Pressable>; })}</View>
+          <View style={[s.row, { marginTop: 8, justifyContent: 'flex-end', gap: 8 }]}>
+            {optional && valid ? <Btn small kind="ghost" title={tr('Clear date')} onPress={() => pick('')} /> : null}
+            <Btn small kind="quiet" title={tr('Cancel')} onPress={() => setOpen(false)} />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  </View>;
+}
 
 export const Card = ({ children, onPress, style }: { children: React.ReactNode; onPress?: () => void; style?: any }) => {
   const p = usePress(0.985);

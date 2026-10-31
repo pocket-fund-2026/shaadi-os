@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, View, RefreshControl } from 'react-native';
+import { Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
 import { api } from './api';
 import { tr } from './i18n';
-import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err, inr, s, dateIN } from './ui';
+import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err, inr, s, dateIN, DateField, todayISO } from './ui';
 import { FloralArch } from './visuals';
 import { Icon } from './icons';
 import { categoryLabel } from './marketplace';
@@ -86,6 +86,8 @@ export function TaskManager() {
   const available = (guide || []).filter(item => !item.already_added);
   const phases = ['All', ...new Set(available.map(item => item.phase))];
   const suggestions = available.filter(item => phase === 'All' || item.phase === phase);
+  // The three most urgent ideas surface in the plan card itself: catch-up items first, then by suggested date.
+  const nextUp = [...available].sort((a, b) => Number(!!b.is_catch_up) - Number(!!a.is_catch_up) || String(a.due || '9999').localeCompare(String(b.due || '9999'))).slice(0, 3);
   return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
     <Failure error={error} retry={load} />
     <Card>
@@ -93,6 +95,16 @@ export function TaskManager() {
       <Text style={{ fontFamily: F.display, color: C.ink, fontSize: 24, marginTop: 4 }}>{tr('One step at a time')}</Text>
       <M style={{ marginTop: 4 }}>{tr('A shared checklist for your celebration, on your schedule.')}</M>
       <View style={{ marginTop: 16 }}><View style={s.row}><M style={{ color: C.ink }}>{done} {tr('of')} {tasks.length} {tr('done')}</M><M style={{ color: C.ink, fontVariant: ['tabular-nums'] }}>{tasks.length ? Math.round(done / tasks.length * 100) : 0}%</M></View><View style={{ marginTop: 8 }}><Bar pct={tasks.length ? done / tasks.length * 100 : 0} /></View></View>
+      {mode === 'mine' && nextUp.length > 0 && <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: C.line }}>
+        <Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', marginBottom: 4 }}>{tr('Suggested next steps')}</Text>
+        {nextUp.map(item => <View key={item.key} style={[s.row, { paddingVertical: 8, gap: 12 }]}>
+          <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{tr(item.title)}</Text><M style={{ marginTop: 2, color: item.is_catch_up ? C.warn : C.mute }}>{item.is_catch_up ? tr('Start now') : `${tr('Suggested by')} ${dateLabel(item.due)}`}</M></View>
+          <Btn small kind="quiet" icon="plus" title={tr('Add')} disabled={saving} onPress={() => addIdea(item.key)} />
+        </View>)}
+        {available.length > nextUp.length && <Pressable accessibilityRole="button" onPress={() => setMode('ideas')} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, minHeight: 32 }}>
+          <Text style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{tr('See all planning ideas')} ({available.length})</Text><Icon name="chevron" size={16} color={C.primary} />
+        </Pressable>}
+      </View>}
     </Card>
     <View style={{ flexDirection: 'row', marginBottom: 8 }}><Chip label={tr('My tasks')} on={mode === 'mine'} onPress={() => setMode('mine')} /><Chip label={tr('Planning ideas')} on={mode === 'ideas'} onPress={() => setMode('ideas')} /></View>
     {mode === 'mine' ? <>
@@ -102,9 +114,9 @@ export function TaskManager() {
       {visible.map((t, index) => <Rise key={t.id} i={index}><Card style={{ paddingVertical: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}><View style={{ flex: 1, paddingRight: 8 }}><Text style={{ color: t.done ? C.mute : C.ink, fontSize: 15, fontWeight: '500', textDecorationLine: t.done ? 'line-through' : 'none' }}>{t.title}</Text><M style={{ marginTop: 4 }}>{dateLabel(t.due)}</M></View><Tag tone={t.done ? 'ok' : t.due && t.due < today ? 'warn' : 'mute'} label={t.done ? tr('Done') : t.due && t.due < today ? tr('Overdue') : t.due === today ? tr('Today') : tr('To do')} /></View>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><View style={{ flex: 1 }}><Btn small kind="quiet" icon={t.done ? 'checklist' : 'check'} title={t.done ? tr('Reopen') : tr('Mark done')} disabled={saving} onPress={() => action(`/tasks/${t.id}`, 'PATCH', { done: !t.done })} /></View><View style={{ flex: 1 }}><Btn small kind="ghost" title={tr('Edit')} disabled={saving} onPress={() => { setEditing(editing === t.id ? null : t.id); setEditTitle(t.title); setEditDue(t.due || ''); }} /></View></View>
-        {editing === t.id && <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 16 }}><Input label={tr('Task name')} value={editTitle} onChangeText={setEditTitle} maxLength={200} /><Input label={tr('Due date (optional)')} value={editDue} onChangeText={setEditDue} placeholder="YYYY-MM-DD" maxLength={10} /><Btn small title={tr('Save task')} disabled={saving || !editTitle.trim()} onPress={saveEdit} /><Btn small kind="quiet" title={tr('Delete task')} disabled={saving} onPress={() => remove(t.id)} /></View>}
+        {editing === t.id && <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 16 }}><Input label={tr('Task name')} value={editTitle} onChangeText={setEditTitle} maxLength={200} /><DateField label={tr('Due date (optional)')} value={editDue || ''} onChange={setEditDue} optional /><Btn small title={tr('Save task')} disabled={saving || !editTitle.trim()} onPress={saveEdit} /><Btn small kind="quiet" title={tr('Delete task')} disabled={saving} onPress={() => remove(t.id)} /></View>}
       </Card></Rise>)}
-      <Card style={{ marginTop: 8 }}><H style={{ fontSize: 20, marginTop: 0 }}>{tr('Add your own')}</H><Input label={tr('Task name')} value={title} onChangeText={setTitle} placeholder={tr('What needs to be done?')} maxLength={200} /><Input label={tr('Due date (optional)')} value={due} onChangeText={setDue} placeholder="YYYY-MM-DD" maxLength={10} /><Btn title={tr('Add task')} disabled={saving || !title.trim()} onPress={add} /></Card>
+      <Card style={{ marginTop: 8 }}><H style={{ fontSize: 20, marginTop: 0 }}>{tr('Add your own')}</H><Input label={tr('Task name')} value={title} onChangeText={setTitle} placeholder={tr('What needs to be done?')} maxLength={200} /><DateField label={tr('Due date (optional)')} value={due} onChange={setDue} optional /><Btn title={tr('Add task')} disabled={saving || !title.trim()} onPress={add} /></Card>
     </> : <>
       <H style={{ marginBottom: 2 }}>{tr('Planning ideas')}</H><M style={{ marginBottom: 16 }}>{tr('Suggested timing follows your wedding date. Choose only what suits you.')}</M>
       <Failure error={guideError} retry={loadGuide} />
@@ -149,7 +161,7 @@ export function WeddingSettings({ wedding, onSaved }: { wedding: any; onSaved: (
   const [title, setTitle] = useState(wedding.title); const [date, setDate] = useState(wedding.date); const [city, setCity] = useState(wedding.city); const [guests, setGuests] = useState(String(wedding.guests_est)); const [busy, setBusy] = useState(false);
   const save = async () => { setBusy(true); try { await api('/wedding', 'PATCH', { title, date, city, guests_est: Number(guests) }); onSaved(); } catch (e) { err(e); } finally { setBusy(false); } };
   return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled"><H>{tr('Wedding details')}</H>
-    <Input label={tr('Couple names')} value={title} onChangeText={setTitle} maxLength={120} /><Input label={tr('Wedding date (YYYY-MM-DD)')} value={date} onChangeText={setDate} maxLength={10} placeholder="YYYY-MM-DD" /><M style={{ marginBottom: 12 }}>{tr('Changing this date updates planning suggestions. Tasks already on your checklist keep their dates so you can adjust them yourself.')}</M><Input label={tr('City')} value={city} onChangeText={setCity} maxLength={80} />
+    <Input label={tr('Couple names')} value={title} onChangeText={setTitle} maxLength={120} /><DateField label={tr('Wedding date')} value={date} onChange={setDate} min={todayISO()} /><M style={{ marginBottom: 12 }}>{tr('Changing this date updates planning suggestions. Tasks already on your checklist keep their dates so you can adjust them yourself.')}</M><Input label={tr('City')} value={city} onChangeText={setCity} maxLength={80} />
     <Input label={tr('Estimated guests')} value={guests} onChangeText={setGuests} keyboardType="number-pad" />
     <Btn title={tr('Save details')} disabled={busy || !title.trim() || !city.trim()} onPress={save} />
   </ScrollView>;

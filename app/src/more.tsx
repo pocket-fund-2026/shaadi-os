@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View, Linking, Share, Pressable } from 'react-native';
 import { api, getBase } from './api';
-import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, confirm, dateIN } from './ui';
+import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, confirm, dateIN, DateField, todayISO } from './ui';
 import { Icon } from './icons';
 import { tr } from './i18n';
 import { useLoad } from './couple';
@@ -26,11 +26,11 @@ export function Events() {
         <M style={{ marginTop: 2 }}>{e.date ? dateIN(e.date) : tr('Date not set')}{e.venue ? ' · ' + e.venue : ''}{e.dress ? ' · ' + e.dress : ''}</M></Card>
         {edit?.id === e.id && <Rise><Card style={{ borderColor: C.primary }}>
           <Input label={tr('Celebration name')} value={edit.name || ''} onChangeText={v => setEdit({ ...edit, name: v })} maxLength={100} />
-          <Input label={tr('Date (YYYY-MM-DD)')} value={edit.date || ''} onChangeText={v => setEdit({ ...edit, date: v })} placeholder="YYYY-MM-DD" />
+          <DateField label={tr('Date')} value={edit.date || ''} onChange={v => setEdit({ ...edit, date: v })} optional />
           <Input label={tr('Venue')} value={edit.venue || ''} onChangeText={v => setEdit({ ...edit, venue: v })} placeholder={tr('Venue name')} />
           <Input label={tr('Dress code')} value={edit.dress || ''} onChangeText={v => setEdit({ ...edit, dress: v })} placeholder={tr('Colours or attire')} />
           <Btn small title={tr('Save')} disabled={saving || !edit.name?.trim()} onPress={save} /><Btn small kind="ghost" title={tr('Remove celebration')} disabled={saving} onPress={() => remove(e.id)} /></Card></Rise>}</View></View></Rise>))}
-    <Card style={{ marginTop: 8 }}><H style={{ fontSize: 20, marginTop: 0 }}>{tr('Add your own celebration')}</H><Input label={tr('Celebration name')} value={name} onChangeText={setName} placeholder={tr('e.g. family dinner')} maxLength={100} /><Input label={tr('Date (optional)')} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" maxLength={10} /><Btn icon="plus" title={tr('Add celebration')} disabled={saving || !name.trim()} onPress={add} /></Card>
+    <Card style={{ marginTop: 8 }}><H style={{ fontSize: 20, marginTop: 0 }}>{tr('Add your own celebration')}</H><Input label={tr('Celebration name')} value={name} onChangeText={setName} placeholder={tr('e.g. family dinner')} maxLength={100} /><DateField label={tr('Date (optional)')} value={date} onChange={setDate} optional /><Btn icon="plus" title={tr('Add celebration')} disabled={saving || !name.trim()} onPress={add} /></Card>
   </ScrollView>);
 }
 
@@ -93,11 +93,11 @@ export function Business() {
 
 function VCalendar() {
   const [d, load] = useLoad<any>('/vendor/calendar', { blocked: [], booked: [] }); const [date, setDate] = useState('');
-  const block = async () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err(new Error(tr('Enter the date as YYYY-MM-DD.'))); await api('/vendor/block', 'POST', { date, note: 'Blocked' }).catch(err); setDate(''); load(); };
+  const block = async () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err(new Error(tr('Choose a date to block.'))); await api('/vendor/block', 'POST', { date, note: 'Blocked' }).catch(err); setDate(''); load(); };
   const unblock = async (x: string) => { if (!(await confirm(tr('Unblock this date?'), x, tr('Unblock')))) return; await api('/vendor/block/' + x, 'DELETE').catch(err); load(); };
   return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
     <M style={{ marginBottom: 12 }}>{tr('Couples see you as unavailable on blocked and booked dates when they enquire.')}</M>
-    <Input label={tr('Block a date')} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" /><Btn icon="lock" title={tr('Block date')} onPress={block} />
+    <DateField label={tr('Block a date')} value={date} onChange={setDate} min={todayISO()} /><Btn icon="lock" title={tr('Block date')} onPress={block} />
     <H style={{ fontSize: 17 }}>{tr('Booked')}</H>
     {d.booked.length ? d.booked.map((b: any, i: number) => <Rise key={i} i={i}><Card><View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{dateIN(b.date)}</Text><M>{b.client}</M></View></Card></Rise>) : <M>{tr('No booked dates yet.')}</M>}
     <H style={{ fontSize: 17, marginTop: 16 }}>{tr('Blocked')}</H>

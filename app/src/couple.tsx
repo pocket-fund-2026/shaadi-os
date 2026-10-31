@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, ScrollView, Text, View, RefreshControl, Linking, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, getBase } from './api';
-import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN } from './ui';
+import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO } from './ui';
 import { Icon, CAT_ICON } from './icons';
 import { Marketplace } from './marketplace';
 import { CategoryCover } from './visuals';
@@ -67,13 +67,13 @@ export function VendorScreen({ route, navigation }: any) {
 export function EnquiryForm({ route, navigation }: any) {
   const v = route.params.vendor; const [date, setDate] = useState(''); const [guests, setGuests] = useState('200'); const [budget, setBudget] = useState(String(Math.round(v.start_paise / 100))); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
   const send = async () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err(new Error(tr('Enter the event date as YYYY-MM-DD.')));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err(new Error(tr('Choose the event date.')));
     setBusy(true);
     try { const av = await api(`/vendors/${v.id}/availability?date=${date}`); if (!av.available && !(await confirm(tr('Date not available'), tr('This vendor is busy on that date. Send anyway?'), tr('Send')))) return; const r = await api('/enquiries', 'POST', { vendor_id: v.id, event_date: date, guests: +guests, budget_paise: +budget * 100, note }); navigation.replace('Chat', { id: r.id, title: v.name }); } catch (e) { err(e); } finally { setBusy(false); }
   };
   return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}><CatMark c={v.category} size={40} /><H style={{ marginLeft: 12, flex: 1 }}>{v.name}</H></View>
-    <Input label={tr('Event date (YYYY-MM-DD)')} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
+    <DateField label={tr('Event date')} value={date} onChange={setDate} min={todayISO()} />
     <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Guests')} value={guests} onChangeText={setGuests} keyboardType="number-pad" /></View>
       <View style={{ flex: 1 }}><Input label={tr('Budget (₹)')} value={budget} onChangeText={setBudget} keyboardType="number-pad" /></View></View>
     <Input label={tr('Note')} value={note} onChangeText={setNote} multiline placeholder={tr('Ceremonies, timings, anything the vendor should know')} style={{ minHeight: 88, textAlignVertical: 'top' }} />
@@ -172,7 +172,7 @@ function Setup({ onDone }: any) {
   const go = async () => { try { await api('/wedding', 'POST', { title: f.title, date: f.date, city: f.city, community: f.community, budget_paise: +f.budget * 100, guests_est: +f.guests }); onDone(); } catch (e) { err(e); } };
   return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled"><H>{tr('Set up your wedding')}</H>
     <M style={{ marginBottom: 12 }}>{tr('We build your checklist, budget split and ceremonies from these details. You can change them later.')}</M>
-    <Input label={tr('Couple names')} value={f.title} onChangeText={v => setF({ ...f, title: v })} placeholder="Partner & Partner" /><Input label={tr('Date (YYYY-MM-DD)')} value={f.date} onChangeText={v => setF({ ...f, date: v })} placeholder="YYYY-MM-DD" />
+    <Input label={tr('Couple names')} value={f.title} onChangeText={v => setF({ ...f, title: v })} placeholder="Partner & Partner" /><DateField label={tr('Wedding date')} value={f.date} onChange={v => setF({ ...f, date: v })} min={todayISO()} />
     <Input label={tr('City')} value={f.city} onChangeText={v => setF({ ...f, city: v })} />
     <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Total budget (₹)')} value={f.budget} onChangeText={v => setF({ ...f, budget: v.replace(/\D/g, '') })} keyboardType="number-pad" />{+f.budget > 0 ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+f.budget * 100)}</M> : null}</View>
       <View style={{ flex: 1 }}><Input label={tr('Estimated guests')} value={f.guests} onChangeText={v => setF({ ...f, guests: v })} keyboardType="number-pad" /></View></View>
