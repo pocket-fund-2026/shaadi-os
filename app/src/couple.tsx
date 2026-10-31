@@ -8,7 +8,7 @@ import { api, getBase } from './api';
 import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO } from './ui';
 import { Icon, CAT_ICON } from './icons';
 import { Marketplace } from './marketplace';
-import { CategoryCover } from './visuals';
+import { CategoryCover, FloralArch } from './visuals';
 import { VendorCatalog } from './catalog';
 import { Gifts, RunSheet, Stays } from './hospitality';
 import { DayContacts, Documents, Seating, Shopping } from './organiser';
@@ -167,7 +167,7 @@ export function Plan(props: any) {
 function PlanBody({ navigation: nav }: any) {
   const [me, reload] = useLoad<any>('/me', null); const [tab, setTab] = useState('overview'); const [showMore, setShowMore] = useState(false);
   if (!me) return <Loading what={tr('your wedding')} />;
-  if (!me.wedding) return <Setup onDone={reload} />;
+  if (!me.wedding) return <Setup onDone={reload} name={me.user?.name} />;
   return (<View style={{ flex: 1, backgroundColor: C.bg }}>
     <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, maxWidth: 700, width: '100%', alignSelf: 'center' }}><M style={{ color: C.gold, fontWeight: '500' }}>{tr('The wedding plan')}</M><Text style={{ fontFamily: F.display, fontSize: 28, color: C.ink, marginTop: 2 }}>{me.wedding.title}</Text><M>{longDate(me.wedding.date)} · {me.wedding.city}</M></View>
     <View style={{ maxWidth: 700, width: '100%', alignSelf: 'center' }}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12 }}>{PLAN_MAIN.map(([k, n, icon]) => <Chip key={k} icon={icon} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}<Chip icon="plus" label={tr('More')} on={showMore || !PLAN_MAIN.some(([k]) => k === tab)} onPress={() => setShowMore(!showMore)} /></ScrollView>
@@ -175,17 +175,72 @@ function PlanBody({ navigation: nav }: any) {
       {!showMore && !PLAN_MAIN.some(([k]) => k === tab) && <M style={{ paddingHorizontal: 16, paddingBottom: 3 }}>{tr(PLAN_TABS.find(([k]) => k === tab)?.[1] || '')}</M>}</View>
     <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'run' ? <RunSheet /> : tab === 'shopping' ? <Shopping /> : tab === 'contacts' ? <DayContacts /> : tab === 'documents' ? <Documents /> : tab === 'seating' ? <Seating /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
 }
-function Setup({ onDone }: any) {
-  const [f, setF] = useState({ title: '', date: '', city: 'Pune', budget: '1500000', guests: '250', community: 'North Indian Hindu' });
-  const go = async () => { try { await api('/wedding', 'POST', { title: f.title, date: f.date, city: f.city, community: f.community, budget_paise: +f.budget * 100, guests_est: +f.guests }); onDone(); } catch (e) { err(e); } };
-  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets><H>{tr('Set up your wedding')}</H>
-    <M style={{ marginBottom: 12 }}>{tr('We build your checklist, budget split and ceremonies from these details. You can change them later.')}</M>
-    <Input label={tr('Couple names')} value={f.title} onChangeText={v => setF({ ...f, title: v })} placeholder="Partner & Partner" /><DateField label={tr('Wedding date')} value={f.date} onChange={v => setF({ ...f, date: v })} min={todayISO()} />
-    <Input label={tr('City')} value={f.city} onChangeText={v => setF({ ...f, city: v })} />
-    <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Total budget (₹)')} value={f.budget} onChangeText={v => setF({ ...f, budget: v.replace(/\D/g, '') })} keyboardType="number-pad" />{+f.budget > 0 ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+f.budget * 100)}</M> : null}</View>
-      <View style={{ flex: 1 }}><Input label={tr('Estimated guests')} value={f.guests} onChangeText={v => setF({ ...f, guests: v })} keyboardType="number-pad" /></View></View>
-    <Text style={s.label}>{tr('Community (sets your ceremonies)')}</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', marginVertical: 8 }}>{['North Indian Hindu', 'South Indian', 'Bengali', 'Gujarati', 'Marathi', 'Punjabi/Sikh', 'Muslim', 'Christian', 'Jain', 'Inter-faith'].map(c => <Chip key={c} label={c} on={f.community === c} onPress={() => setF({ ...f, community: c })} />)}</View>
-    <Btn title={tr('Create workspace')} onPress={go} /></ScrollView>);
+const COMMUNITIES = ['North Indian Hindu', 'South Indian', 'Bengali', 'Gujarati', 'Marathi', 'Punjabi/Sikh', 'Muslim', 'Christian', 'Jain', 'Inter-faith'];
+const SETUP_CITIES = ['Mumbai', 'Pune', 'Nashik', 'Nagpur'];
+const BUDGETS = [500000, 1000000, 1500000, 2500000, 5000000];
+const GUEST_COUNTS = [100, 250, 500, 1000];
+// One question group per card, so the form reads as a few short steps rather than one long list.
+const SetupSection = ({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) => (
+  <Card>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: hint ? 4 : 12 }}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: C.primary, fontSize: 13, fontWeight: '600' }}>{n}</Text></View>
+      <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{title}</Text>
+    </View>
+    {hint ? <M style={{ marginBottom: 12 }}>{hint}</M> : null}
+    {children}
+  </Card>);
+
+// First screen after a couple signs up: names, date and place, budget and guests, traditions.
+function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
+  const first = (name || '').trim().split(/\s+/)[0] || '';
+  const [f, setF] = useState({ me: first, partner: '', date: '', city: 'Pune', otherCity: '', budget: '1500000', guests: '250', community: 'North Indian Hindu' });
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const set = (k: string, v: string) => { setF({ ...f, [k]: v }); setError(''); };
+  const city = f.city === 'other' ? f.otherCity.trim() : f.city;
+  const go = async () => {
+    if (f.me.trim().length < 2 || f.partner.trim().length < 2) return setError(tr('Enter both names.'));
+    if (!f.date) return setError(tr('Choose your wedding date. You can change it later.'));
+    if (!city) return setError(tr('Enter your wedding city.'));
+    if (!(+f.budget > 0)) return setError(tr('Enter a budget, even a rough one.'));
+    setBusy(true);
+    try { await api('/wedding', 'POST', { title: `${f.me.trim()} & ${f.partner.trim()}`, date: f.date, city, community: f.community, budget_paise: +f.budget * 100, guests_est: +f.guests || 250 }); onDone(); }
+    catch (e: any) { setError(e?.message || String(e)); } finally { setBusy(false); }
+  };
+  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <View style={{ backgroundColor: C.primary, padding: 24, paddingTop: 20, overflow: 'hidden' }}>
+      <View pointerEvents="none" style={{ position: 'absolute', right: -30, bottom: -50, opacity: 0.3 }}><FloralArch size={150} color={C.goldSoft} /></View>
+      <Text style={{ color: '#F4DDE5', fontSize: 13 }}>{tr('Last step')}</Text>
+      <Text style={{ fontFamily: F.display, fontSize: 28, color: C.goldSoft, marginTop: 4 }}>{first ? `${tr('Welcome')}, ${first}` : tr('Welcome')}</Text>
+      <Text style={{ color: '#F4DDE5', fontSize: 15, lineHeight: 22, marginTop: 8, maxWidth: 300 }}>{tr('Four quick answers and we’ll build your checklist, budget split and ceremonies. You can change any of it later.')}</Text>
+    </View>
+    <View style={{ padding: 16, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
+      <SetupSection n={1} title={tr('Who’s getting married?')}>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={{ flex: 1 }}><Input label={tr('Your name')} value={f.me} onChangeText={v => set('me', v)} autoCapitalize="words" maxLength={40} /></View>
+          <View style={{ flex: 1 }}><Input label={tr('Partner’s name')} value={f.partner} onChangeText={v => set('partner', v)} autoCapitalize="words" maxLength={40} placeholder={tr('Name')} /></View>
+        </View>
+      </SetupSection>
+      <SetupSection n={2} title={tr('When and where?')}>
+        <DateField label={tr('Wedding date')} value={f.date} onChange={v => set('date', v)} min={todayISO()} placeholder={tr('Choose the main wedding day')} />
+        <Text style={s.label}>{tr('City')}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{SETUP_CITIES.map(c => <Chip key={c} label={c} on={f.city === c} onPress={() => set('city', c)} />)}<Chip label={tr('Other')} on={f.city === 'other'} onPress={() => set('city', 'other')} /></View>
+        {f.city === 'other' ? <Input label={tr('Your city')} value={f.otherCity} onChangeText={v => set('otherCity', v)} autoCapitalize="words" maxLength={60} /> : null}
+      </SetupSection>
+      <SetupSection n={3} title={tr('Budget and guests')} hint={tr('A rough number is fine. We split it across services for you.')}>
+        <Text style={s.label}>{tr('Total budget')}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{BUDGETS.map(b => <Chip key={b} label={inr(b * 100)} on={+f.budget === b} onPress={() => set('budget', String(b))} />)}</View>
+        <Input label={tr('Or enter an amount (₹)')} value={BUDGETS.includes(+f.budget) ? '' : f.budget} onChangeText={v => set('budget', v.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="e.g. 1800000" />
+        {+f.budget > 0 && !BUDGETS.includes(+f.budget) ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+f.budget * 100)}</M> : null}
+        <Text style={s.label}>{tr('About how many guests?')}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{GUEST_COUNTS.map(g => <Chip key={g} label={g === 1000 ? '1000+' : String(g)} on={+f.guests === g} onPress={() => set('guests', String(g))} />)}</View>
+      </SetupSection>
+      <SetupSection n={4} title={tr('Your traditions')} hint={tr('We suggest ceremonies to match. Keep only the ones your families want.')}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{COMMUNITIES.map(c => <Chip key={c} label={tr(c)} on={f.community === c} onPress={() => set('community', c)} />)}</View>
+      </SetupSection>
+      {!!error && <Text accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, lineHeight: 20, marginBottom: 8 }}>{error}</Text>}
+      <Btn title={busy ? tr('Creating your plan…') : tr('Create our wedding plan')} onPress={go} disabled={busy} />
+    </View>
+  </ScrollView>);
 }
 function Guests() {
   const [list, load] = useLoad<any[]>('/guests', []); const [events] = useLoad<any[]>('/events', []);
