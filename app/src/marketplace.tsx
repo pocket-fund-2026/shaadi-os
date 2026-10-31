@@ -12,6 +12,8 @@ const CATEGORIES: [string, string][] = [['photographer', 'Photography'], ['makeu
 const CITIES = ['Mumbai', 'Pune', 'Nashik', 'Nagpur'];
 // Couples budget in lakhs, so the common ceilings are one tap away.
 const BUDGET_PRESETS = [50000, 100000, 200000, 500000];
+// Recommended order: vendors on Shaadi OS, then real businesses that have not joined, then demo samples.
+const listingRank = (v: any) => v.sample ? 2 : v.unclaimed ? 1 : 0;
 // Unknown keys (e.g. budget lines like 'attire') are shown capitalised rather than as raw lowercase ids.
 export const categoryLabel = (category: string) => tr(CATEGORIES.find(([key]) => key === category)?.[1] || (category ? category[0].toUpperCase() + category.slice(1) : category));
 
@@ -93,7 +95,7 @@ export function Marketplace({ openVendor, onSignIn, preset }: { openVendor: (id:
     }, query ? 220 : 0);
     return () => { active = false; clearTimeout(timer); };
   }, [city, category, query, budget, refreshKey]);
-  const results = [...(vendors || [])].sort((a, b) => sort === 'price' ? (a.start_paise ?? Infinity) - (b.start_paise ?? Infinity) : sort === 'rating' ? (b.rating || 0) - (a.rating || 0) : b.verified - a.verified || a.id - b.id);
+  const results = [...(vendors || [])].sort((a, b) => sort === 'price' ? (a.start_paise ?? Infinity) - (b.start_paise ?? Infinity) : sort === 'rating' ? (b.rating || 0) - (a.rating || 0) : listingRank(a) - listingRank(b) || b.verified - a.verified || a.id - b.id);
   const filtered = !!(city || category || query || budget);
   return <FlatList style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 36, width: '100%', maxWidth: 760, alignSelf: 'center' }} data={results} keyExtractor={v => String(v.id)} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
     refreshControl={<RefreshControl refreshing={busy} onRefresh={() => setRefreshKey(k => k + 1)} tintColor={C.primary} />}
@@ -157,9 +159,9 @@ export function PublicExplore({ onSignIn, onBack }: { onSignIn: () => void; onBa
         <Text style={{ color: C.ink, fontSize: 15, lineHeight: 24, marginVertical: 20 }}>{vendor.description}</Text>
         {vendor.unclaimed ? <Card><M>{tr('This business has not joined Shaadi OS yet. Its details come from its own public pages and may be out of date.')}</M>{vendor.website ? <Btn kind="ghost" title={tr('Visit website')} onPress={() => Linking.openURL(vendor.website).catch(() => {})} /> : null}</Card>
           : <Card><M>{tr('Starting price')}</M><H style={{ color: C.primary, fontSize: 28 }}>{vendor.start_paise ? inr(vendor.start_paise) : tr('Price not listed')}</H><Btn title={tr('Sign in to enquire')} onPress={onSignIn} /></Card>}
-        <VendorCatalog vendor={vendor} />
+{vendor.unclaimed ? null : <>        <VendorCatalog vendor={vendor} />
         <SectionTitle title="Reviews" />
-        {vendor.reviewList?.length ? vendor.reviewList.map((review: any, i: number) => <Card key={i}><View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{review.name}</Text><M>{review.rating}/5</M></View><M style={{ marginTop: 8 }}>{review.text}</M></Card>) : <M>{tr('No reviews yet')}</M>}
+        {vendor.reviewList?.length ? vendor.reviewList.map((review: any, i: number) => <Card key={i}><View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{review.name}</Text><M>{review.rating}/5</M></View><M style={{ marginTop: 8 }}>{review.text}</M></Card>) : <M>{tr('No reviews yet')}</M>}</>}
       </Rise>}
     </ScrollView>}
   </View>;

@@ -37,7 +37,8 @@ export function importListings(path: string) {
     const name = r[at.name]?.trim(); const category = r[at.category]?.trim(); const city = r[at.city]?.trim();
     const website = httpUrl(r[at.website] || ''); const source = httpUrl(r[at.source] || '');
     if (!name || !CATEGORIES.has(category) || !city || !website) { skipped.push(name || '(no name)'); continue; }
-    const fields = [category, r[at.locality]?.trim() || null, r[at.notes]?.trim() || null, website, source];
+    const notes = r[at.notes]?.trim();
+    const fields = [category, r[at.locality]?.trim() || null, notes ? notes[0].toUpperCase() + notes.slice(1) : null, website, source];
     const existing = one('SELECT id FROM vendors WHERE unclaimed=1 AND name=? AND city=?', name, city);
     if (existing) { run('UPDATE vendors SET category=?,locality=?,description=?,website=?,source_url=? WHERE id=?', ...fields, existing.id); updated++; }
     else { run('INSERT INTO vendors(user_id,name,city,category,locality,description,website,source_url,start_paise,verified,travels,sample,unclaimed) VALUES(NULL,?,?,?,?,?,?,?,NULL,0,0,0,1)', name, city, ...fields); added++; }

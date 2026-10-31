@@ -27,12 +27,16 @@ function BootScreen({ fontsReady }: { fontsReady: boolean }) {
     const a = setTimeout(() => setSlow(1), 6000); const b = setTimeout(() => setSlow(2), 15000);
     return () => { clearTimeout(a); clearTimeout(b); fade.stopAnimation(); };
   }, [reduced, fade]);
-  return <View accessibilityRole="progressbar" accessibilityLabel={tr('Opening Shaadi OS')} style={{ flex: 1, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+  // The mark sits exactly where the native splash draws it (120 pt, centred), so the hand-off is invisible;
+  // only the wordmark and status underneath fade in.
+  return <View accessibilityRole="progressbar" accessibilityLabel={tr('Opening Shaadi OS')} style={{ flex: 1, backgroundColor: C.primary }}>
     <StatusBar style="light" />
-    <Animated.View style={{ alignItems: 'center', opacity: fade }}>
-      <Logo size={96} radius={0} />
-      <Text style={{ marginTop: 16, fontSize: 28, color: C.goldSoft, fontFamily: fontsReady ? F.display : Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }) }}>Shaadi OS</Text>
-      <ActivityIndicator style={{ marginTop: 32 }} color={C.goldSoft} />
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+      <Logo size={120} radius={0} />
+    </View>
+    <Animated.View style={{ position: 'absolute', top: '50%', left: 32, right: 32, marginTop: 84, alignItems: 'center', opacity: fade }}>
+      <Text style={{ fontSize: 28, color: C.goldSoft, fontFamily: fontsReady ? F.display : Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }) }}>Shaadi OS</Text>
+      <ActivityIndicator style={{ marginTop: 24 }} color={C.goldSoft} />
       <Text accessibilityLiveRegion="polite" style={{ marginTop: 16, minHeight: 60, maxWidth: 280, textAlign: 'center', fontSize: 13, lineHeight: 20, color: '#F4DDE5' }}>
         {slow === 2 ? tr('Still connecting. Check your internet connection; the app will open as soon as it reaches the server.') : slow === 1 ? tr('Connecting to the server…') : ''}
       </Text>
