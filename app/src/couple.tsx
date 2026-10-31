@@ -45,7 +45,9 @@ export function VendorScreen({ route, navigation }: any) {
           {v.sample ? <Tag label={tr('Sample listing')} /> : v.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
           {v.rating ? <View style={{ flexDirection: 'row', alignItems: 'center' }}><Stars n={Math.round(v.rating)} /><M> {v.rating} · {v.reviews} {tr('reviews')}</M></View> : <M>{tr('No reviews yet')}</M>}</View>
         {v.description ? <Text style={{ marginTop: 16, color: C.ink, fontSize: 15, lineHeight: 23 }}>{v.description}</Text> : null}
-        <View style={{ flexDirection: 'row', backgroundColor: C.okSoft, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="shield" size={18} color={C.ok} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('Booking Protection: you pay in milestones and each one is held until you release it.')}</M></View>
+        {v.unclaimed
+          ? <View style={{ flexDirection: 'row', backgroundColor: C.chipBg, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="alert" size={18} color={C.mute} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('This business has not joined Shaadi OS yet. Its details come from its own public pages and may be out of date.')}</M></View>
+          : <View style={{ flexDirection: 'row', backgroundColor: C.okSoft, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="shield" size={18} color={C.ok} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('Booking Protection: you pay in milestones and each one is held until you release it.')}</M></View>}
       </Rise>
       <VendorCatalog vendor={v} />
       <H style={{ marginTop: 28 }}>{tr('Reviews')}</H>
@@ -55,11 +57,13 @@ export function VendorScreen({ route, navigation }: any) {
         : <Empty icon="star" title={tr('No reviews yet')} text={tr('Only couples who booked and paid through Shaadi OS can review, so every review here is from a real booking.')} />}
     </ScrollView>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.line }}>
-      <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text style={{ fontFamily: F.display, fontSize: 20, color: C.primary }}>{inr(v.start_paise)}</Text></View>
+      <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text style={{ fontFamily: F.display, fontSize: v.start_paise ? 20 : 15, color: v.start_paise ? C.primary : C.mute }}>{v.start_paise ? inr(v.start_paise) : tr('Not listed')}</Text></View>
       <Pressable accessibilityRole="button" accessibilityLabel={saved ? tr('Shortlisted') : tr('Shortlist')} accessibilityState={{ selected: saved, disabled: saved }} disabled={saved} onPress={shortlist}
         style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 12, borderWidth: 1.3, borderColor: C.primary, backgroundColor: saved ? C.tint : 'transparent', alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.75 : 1 })}>
         <Icon name={saved ? 'heartFill' : 'heart'} size={20} color={C.primary} /></Pressable>
-      <View style={{ flex: 1 }}><Btn title={t('book')} onPress={() => navigation.navigate('EnquiryForm', { vendor: v })} /></View>
+      <View style={{ flex: 1 }}>{v.unclaimed
+        ? (v.website ? <Btn kind="ghost" title={tr('Visit website')} onPress={() => Linking.openURL(v.website).catch(err)} /> : null)
+        : <Btn title={t('book')} onPress={() => navigation.navigate('EnquiryForm', { vendor: v })} />}</View>
     </View>
   </View>);
 }

@@ -27,8 +27,11 @@ export async function api<T = any>(path: string, method = 'GET', body?: any): Pr
   let r: Response;
   // Scope offline data to the authenticated session; never return another user's cache.
   const key = 'c:' + base + ':' + (token || 'public') + ':' + path;
-  try { r = await globalThis.fetch(base + '/api' + path, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
-  catch { if (method === 'GET') { const c = await AsyncStorage.getItem(key).catch(() => null); if (c) return JSON.parse(c); } throw new Error('Cannot reach server. Check your internet or the server address.'); }
+  // A server that accepts the connection but never answers would otherwise leave screens loading forever.
+  const abort = new AbortController(); const timer = setTimeout(() => abort.abort(), 20000);
+  try { r = await globalThis.fetch(base + '/api' + path, { method, signal: abort.signal, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
+  catch { clearTimeout(timer); if (method === 'GET') { const c = await AsyncStorage.getItem(key).catch(() => null); if (c) return JSON.parse(c); } throw new Error('Cannot reach server. Check your internet or the server address.'); }
+  clearTimeout(timer);
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Something went wrong');
   if (method === 'GET') AsyncStorage.setItem(key, JSON.stringify(j)).catch(() => {});

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/server.ts",
-    "test": "node src/test.ts"
+    "test": "node src/test.ts",
+    "import-listings": "node src/import-listings.ts ../vendor-prospects.csv"
   },
   "dependencies": {
     "express": "^4.19.2",

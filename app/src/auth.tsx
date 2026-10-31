@@ -61,13 +61,13 @@ export default function Login({ onDone, onBrowse, lang, setLang }: { onDone: () 
         <Text style={{ fontFamily: F.display, fontSize: 34, color: C.ink, lineHeight: 42 }}>Shaadi OS</Text>
         <View style={{ backgroundColor: C.primaryDark, borderRadius: 20, padding: 24, marginVertical: 24, overflow: 'hidden' }}>
           <View pointerEvents="none" style={{ position: 'absolute', right: -24, top: 8, opacity: 0.4 }}><FloralArch size={150} /></View>
-          <Text style={{ fontFamily: F.display, fontSize: 34, lineHeight: 38, color: C.goldSoft, maxWidth: '85%' }}>{tr('A celebration that feels like you')}</Text>
-          <Text style={{ fontSize: 15, color: C.goldSoft, marginTop: 16, lineHeight: 23, maxWidth: '88%' }}>{tr('Find your vendors. Bring your people together. Plan every detail in one place.')}</Text>
+          <Text style={{ fontFamily: F.display, fontSize: 34, lineHeight: 38, color: C.goldSoft, maxWidth: '85%' }}>{tr('Find vendors and plan your wedding')}</Text>
+          <Text style={{ fontSize: 15, color: C.goldSoft, marginTop: 16, lineHeight: 23, maxWidth: '88%' }}>{tr('Compare venues, caterers, photographers and mehndi artists in Mumbai, Pune, Nashik and Nagpur, and keep your checklist, budget and guest list in the same app.')}</Text>
         </View>
         <Btn kind="ghost" icon="search" title={tr('Browse vendors without signing in')} onPress={onBrowse} />
       </Rise>
       <Rise i={1}>
-        <H>{step === 0 ? tr('Your wedding starts here') : step === 1 ? tr('Verify your number') : tr('Tell us about yourself')}</H>
+        <H>{step === 0 ? tr('Sign in with your mobile number') : step === 1 ? tr('Verify your number') : tr('Tell us about yourself')}</H>
         <Input label={tr('Mobile number (+91)')} value={phone} onChangeText={t => { setPhone(cleanPhone(t)); setError(''); }} keyboardType="number-pad" textContentType="telephoneNumber" autoComplete="tel" placeholder="10-digit mobile" editable={step === 0} returnKeyType="go" onSubmitEditing={go} />
         {step === 1 && <Rise>
           <Input label={tr('OTP (demo: 123456)')} value={otp} onChangeText={t => { setOtp(t.replace(/\D/g, '').slice(0, 6)); setError(''); }} keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="sms-otp" maxLength={6} placeholder="6-digit code" autoFocus returnKeyType="go" onSubmitEditing={go} />

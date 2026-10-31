@@ -22,6 +22,10 @@ export const run = (s: string, ...a: any[]) => db.prepare(s).run(...a);
 
 // The seeded demo vendors are invented businesses, so they are flagged as samples and never shown as verified.
 // Seed vendor accounts use phones 9000000001 to 9000000099.
+// Real businesses listed from public information before they join: no owner account, no price, no enquiries.
+for (const [column, type] of [['unclaimed', 'INT DEFAULT 0'], ['website', 'TEXT'], ['source_url', 'TEXT']]) {
+  if (!q('PRAGMA table_info(vendors)').some((c: any) => c.name === column)) db.exec(`ALTER TABLE vendors ADD COLUMN ${column} ${type}`);
+}
 if (!q('PRAGMA table_info(vendors)').some((c: any) => c.name === 'sample')) {
   db.exec('ALTER TABLE vendors ADD COLUMN sample INT DEFAULT 0');
   run("UPDATE vendors SET sample=1, verified=0 WHERE user_id IN (SELECT id FROM users WHERE role='vendor' AND phone BETWEEN '9000000001' AND '9000000099')");

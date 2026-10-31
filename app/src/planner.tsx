@@ -48,7 +48,7 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
     {!d ? <M>{tr('Loading your overview…')}</M> : <>
       <Card style={{ backgroundColor: C.primaryDark, borderColor: C.primaryDark, overflow: 'hidden', padding: 24 }}>
         <View pointerEvents="none" style={{ position: 'absolute', right: -36, top: -20, opacity: 0.25 }}><FloralArch size={180} /></View>
-        <M style={{ color: '#F4DDE5' }}>{tr('Your celebration, coming together')}</M>
+        <M style={{ color: '#F4DDE5' }}>{tr('Wedding countdown')}</M>
         <Text style={{ fontFamily: F.display, fontSize: 34, color: '#fff', marginVertical: 8 }}>{d.days_left > 0 ? `${d.days_left} ${tr('days to go')}` : d.days_left === 0 ? tr('Today is the day') : tr('Just married')}</Text>
         <M style={{ color: '#F4DDE5' }}>{dateLabel(d.wedding.date)} · {d.wedding.city} · {d.wedding.guests_est} {tr('guests')}</M>
         <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: '#A66B7E', paddingTop: 16 }}>
@@ -129,10 +129,10 @@ export function TaskManager() {
   return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
     <Failure error={error} retry={load} />
     <Card>
-      <M>{tr('Our plan')}</M>
-      <Text style={{ fontFamily: F.display, color: C.ink, fontSize: 24, marginTop: 4 }}>{tr('One step at a time')}</Text>
-      <M style={{ marginTop: 4 }}>{tr('A shared checklist for your celebration, on your schedule.')}</M>
-      <View style={{ marginTop: 16 }}><View style={s.row}><M style={{ color: C.ink }}>{done} {tr('of')} {tasks.length} {tr('done')}</M><M style={{ color: C.ink, fontVariant: ['tabular-nums'] }}>{tasks.length ? Math.round(done / tasks.length * 100) : 0}%</M></View><View style={{ marginTop: 8 }}><Bar pct={tasks.length ? done / tasks.length * 100 : 0} /></View></View>
+      <M>{tr('Checklist')}</M>
+      <Text style={{ fontFamily: F.display, color: C.ink, fontSize: 24, marginTop: 4 }}>{done} {tr('of')} {tasks.length} {tr('tasks done')}</Text>
+      <M style={{ marginTop: 4 }}>{tr('Suggested tasks are timed from your wedding date. Add your own at the bottom.')}</M>
+      <View style={{ marginTop: 16 }}><View><Bar pct={tasks.length ? done / tasks.length * 100 : 0} /></View></View>
       {mode === 'mine' && nextUp.length > 0 && <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: C.line }}>
         <Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', marginBottom: 4 }}>{tr('Suggested next steps')}</Text>
         {nextUp.map(item => <View key={item.key} style={[s.row, { paddingVertical: 8, gap: 12 }]}>

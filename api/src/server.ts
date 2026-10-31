@@ -53,7 +53,7 @@ app.get('/api/vendors', wrap((req: any, res: any) => {
   if (city) { w.push('(city=? OR travels=1)'); a.push(city); } if (category) { w.push('category=?'); a.push(category); }
   if (max) { const maximum = z.coerce.number().finite().positive().max(Number.MAX_SAFE_INTEGER / 100).parse(max); w.push('start_paise<=?'); a.push(Math.round(maximum * 100)); }
   if (text) { w.push('(name LIKE ? OR description LIKE ? OR locality LIKE ?)'); a.push(...Array(3).fill(`%${text}%`)); }
-  res.json(q(`SELECT v.*,${ratingSql},(SELECT url FROM vendor_photos p WHERE p.vendor_id=v.id ORDER BY p.id LIMIT 1) cover_url FROM vendors v WHERE ${w.join(' AND ')} ORDER BY verified DESC, id LIMIT 50`, ...a));
+  res.json(q(`SELECT v.*,${ratingSql},(SELECT url FROM vendor_photos p WHERE p.vendor_id=v.id ORDER BY p.id LIMIT 1) cover_url FROM vendors v WHERE ${w.join(' AND ')} ORDER BY sample ASC, unclaimed ASC, verified DESC, id LIMIT 200`, ...a));
 }));
 app.get('/api/vendors/:id', wrap((req: any, res: any) => {
   const v = one(`SELECT v.*,${ratingSql} FROM vendors v WHERE id=?`, req.params.id); if (!v) throw fail(404, 'Not found');
@@ -114,7 +114,8 @@ app.post('/rsvp/:token', express.urlencoded({ extended: false }), spamGuard(), w
 const canSee = (e: any, u: any) => e && (e.couple_id === u.id || one('SELECT 1 x FROM vendors WHERE id=? AND user_id=?', e.vendor_id, u.id));
 app.post('/api/enquiries', auth, wrap((req: any, res: any) => {
   const b = z.object({ vendor_id: z.number().int(), event_date: z.string(), guests: z.number().int().positive(), budget_paise: z.number().int().positive(), note: z.string().max(500).optional() }).parse(req.body);
-  const w = W(req); if (!one('SELECT 1 x FROM vendors WHERE id=?', b.vendor_id)) throw fail(404, 'Vendor not found');
+  const w = W(req); const target = one('SELECT unclaimed FROM vendors WHERE id=?', b.vendor_id); if (!target) throw fail(404, 'Vendor not found');
+  if (target.unclaimed) throw fail(409, 'This business has not joined Shaadi OS yet, so it cannot receive enquiries here. Use the link on its page to contact it directly.');
   res.json({ id: Number(run('INSERT INTO enquiries(wedding_id,couple_id,vendor_id,event_date,guests,budget_paise,note) VALUES(?,?,?,?,?,?,?)', w.id, req.user.id, b.vendor_id, b.event_date, b.guests, b.budget_paise, b.note || '').lastInsertRowid) });
 }));
 app.get('/api/enquiries', auth, wrap((req: any, res: any) => {

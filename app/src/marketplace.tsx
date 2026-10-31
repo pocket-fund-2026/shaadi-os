@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
+import { FlatList, Linking, Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
 import { api } from './api';
 import { tr } from './i18n';
 import { Btn, C, Card, Chip, Empty, F, H, Input, Loading, M, Rise, Tag, inr, s } from './ui';
@@ -39,11 +39,12 @@ export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress:
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
             <Text style={{ flex: 1, fontFamily: F.display, fontSize: 17, lineHeight: 24, color: C.ink }}>{vendor.name}</Text>
-            {vendor.sample ? <Tag label={tr('Sample listing')} /> : vendor.verified ? <View accessible accessibilityLabel={tr('Verified')}><Icon name="seal" size={18} color={C.ok} /></View> : null}
+            {vendor.verified ? <View accessible accessibilityLabel={tr('Verified')}><Icon name="seal" size={18} color={C.ok} /></View> : null}
           </View>
           <M style={{ marginTop: 2 }}>{categoryLabel(vendor.category)} · {place(vendor)}</M>
+          {vendor.sample || vendor.unclaimed ? <View style={{ flexDirection: 'row', marginTop: 4 }}><Tag label={tr(vendor.sample ? 'Sample listing' : 'Not on Shaadi OS yet')} /></View> : null}
           <View style={[s.row, { marginTop: 12, gap: 8 }]}>
-            <Text style={{ color: C.ink, fontSize: 15 }}><M style={{ fontSize: 12 }}>{tr('From')} </M><Text style={{ fontWeight: '500', fontSize: 17, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></Text>
+            {vendor.start_paise ? <Text style={{ color: C.ink, fontSize: 15 }}><M style={{ fontSize: 12 }}>{tr('From')} </M><Text style={{ fontWeight: '500', fontSize: 17, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></Text> : <M>{tr('Price not listed')}</M>}
             {compare ? <CompareToggle vendor={vendor} compare={compare} /> : <Rating vendor={vendor} />}
           </View>
           {compare && vendor.rating ? <View style={{ marginTop: 8 }}><Rating vendor={vendor} /></View> : null}
@@ -57,7 +58,7 @@ export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress:
     <View style={{ padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <Text style={{ flex: 1, fontFamily: F.display, fontSize: 20, lineHeight: 28, color: C.ink }}>{vendor.name}</Text>
-        {vendor.sample ? <Tag label={tr('Sample listing')} /> : vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
+        {vendor.sample || vendor.unclaimed ? <Tag label={tr(vendor.sample ? 'Sample listing' : 'Not on Shaadi OS yet')} /> : vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ flex: 1 }}>{place(vendor)}</M></View>
       <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, marginTop: 16, paddingTop: 16, gap: 8 }]}>
@@ -92,7 +93,7 @@ export function Marketplace({ openVendor, onSignIn, preset }: { openVendor: (id:
     }, query ? 220 : 0);
     return () => { active = false; clearTimeout(timer); };
   }, [city, category, query, budget, refreshKey]);
-  const results = [...(vendors || [])].sort((a, b) => sort === 'price' ? a.start_paise - b.start_paise : sort === 'rating' ? (b.rating || 0) - (a.rating || 0) : b.verified - a.verified || a.id - b.id);
+  const results = [...(vendors || [])].sort((a, b) => sort === 'price' ? (a.start_paise ?? Infinity) - (b.start_paise ?? Infinity) : sort === 'rating' ? (b.rating || 0) - (a.rating || 0) : b.verified - a.verified || a.id - b.id);
   const filtered = !!(city || category || query || budget);
   return <FlatList style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 36, width: '100%', maxWidth: 760, alignSelf: 'center' }} data={results} keyExtractor={v => String(v.id)} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
     refreshControl={<RefreshControl refreshing={busy} onRefresh={() => setRefreshKey(k => k + 1)} tintColor={C.primary} />}
@@ -100,8 +101,8 @@ export function Marketplace({ openVendor, onSignIn, preset }: { openVendor: (id:
       {onSignIn && <View style={[s.row, { marginBottom: 20 }]}><View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Logo size={28} /><Text style={{ fontFamily: F.display, color: C.primary, fontSize: 20 }}>Shaadi OS</Text></View><Btn small kind="quiet" title={tr('Sign in')} onPress={onSignIn} /></View>}
       <View style={{ backgroundColor: C.primaryDark, padding: 24, borderRadius: 18, marginBottom: 24, overflow: 'hidden' }}>
         <View style={{ position: 'absolute', right: -28, bottom: -55, opacity: 0.5 }}><FloralArch color="#DCC399" size={155} /></View>
-        <Text accessibilityRole="header" style={{ fontFamily: F.display, color: '#FFF9F0', fontSize: 34, lineHeight: 40, maxWidth: '80%' }}>{tr('Your wedding,\nyour people')}</Text>
-        <Text style={{ fontSize: 15, lineHeight: 22, color: '#E8D9D5', marginTop: 12, maxWidth: '78%' }}>{tr('Find the vendors who fit your celebration.')}</Text>
+        <Text accessibilityRole="header" style={{ fontFamily: F.display, color: '#FFF9F0', fontSize: 34, lineHeight: 40, maxWidth: '80%' }}>{tr('Wedding vendors in Maharashtra')}</Text>
+        <Text style={{ fontSize: 15, lineHeight: 22, color: '#E8D9D5', marginTop: 12, maxWidth: '78%' }}>{tr('Venues, caterers, photographers, mehndi artists and pandits in Mumbai, Pune, Nashik and Nagpur.')}</Text>
       </View>
       <Input icon="search" accessibilityLabel={tr('Search vendors')} placeholder={tr('Search vendors')} value={query} onChangeText={setQuery} returnKeyType="search" />
       <SectionTitle title="Choose a service" />
@@ -114,7 +115,7 @@ export function Marketplace({ openVendor, onSignIn, preset }: { openVendor: (id:
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20 }}><Chip label={tr('All cities')} on={!city} onPress={() => setCity('')} />{CITIES.map(c => <Chip key={c} label={c} on={city === c} onPress={() => setCity(city === c ? '' : c)} />)}</ScrollView>
       {comparison.length > 0 && <Card><View style={s.row}><H style={{ fontSize: 20 }}>{tr('Compare vendors')} ({comparison.length}/3)</H><Btn small kind="ghost" title={tr('Clear')} onPress={() => { setComparison([]); setShowComparison(false); }} /></View>
         <M>{tr('Select up to three vendors to compare prices, location and ratings.')}</M><Btn kind="quiet" title={showComparison ? tr('Hide comparison') : tr('Show comparison')} onPress={() => setShowComparison(!showComparison)} />
-        {showComparison && <ScrollView horizontal contentContainerStyle={{ gap: 12 }}>{comparison.map(item => <View key={item.id} style={{ width: 220, padding: 16, backgroundColor: C.bg, borderRadius: 12 }}><H style={{ fontSize: 20 }}>{item.name}</H><M>{categoryLabel(item.category)} · {item.city}</M><H style={{ color: C.primary }}>{inr(item.start_paise)}</H><M>{item.rating ? `${item.rating}/5 · ${item.reviews} ${tr('reviews')}` : tr('No reviews yet')}</M>{item.verified ? <Tag tone="ok" label={tr('Verified')} /> : null}<Btn small title={tr('View profile')} onPress={() => openVendor(item.id)} /><Btn small kind="ghost" title={tr('Remove')} onPress={() => toggleCompare(item)} /></View>)}</ScrollView>}
+        {showComparison && <ScrollView horizontal contentContainerStyle={{ gap: 12 }}>{comparison.map(item => <View key={item.id} style={{ width: 220, padding: 16, backgroundColor: C.bg, borderRadius: 12 }}><H style={{ fontSize: 20 }}>{item.name}</H><M>{categoryLabel(item.category)} · {item.city}</M><H style={{ color: C.primary }}>{item.start_paise ? inr(item.start_paise) : tr('Price not listed')}</H><M>{item.rating ? `${item.rating}/5 · ${item.reviews} ${tr('reviews')}` : tr('No reviews yet')}</M>{item.verified ? <Tag tone="ok" label={tr('Verified')} /> : null}<Btn small title={tr('View profile')} onPress={() => openVendor(item.id)} /><Btn small kind="ghost" title={tr('Remove')} onPress={() => toggleCompare(item)} /></View>)}</ScrollView>}
       </Card>}
       <SectionTitle title={filtered ? 'Matching vendors' : 'Vendor directory'} detail={vendors ? `${results.length} ${tr(results.length === 1 ? 'vendor' : 'vendors')}` : undefined} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, marginBottom: 8, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
@@ -152,9 +153,10 @@ export function PublicExplore({ onSignIn, onBack }: { onSignIn: () => void; onBa
       {error ? <Card><M style={{ color: C.warn }}>{error}</M><Btn title={tr('Try again')} onPress={() => setRetry(k => k + 1)} /></Card> : !vendor ? <Loading what={tr('vendor')} /> : <Rise>
         <View style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}><CategoryCover category={vendor.category} label={categoryLabel(vendor.category)} large /></View>
         <H style={{ fontSize: 28 }}>{vendor.name}</H><M>{categoryLabel(vendor.category)} · {vendor.city}</M>
-        {vendor.sample ? <View style={{ marginTop: 12 }}><Tag label={tr('Sample listing')} /></View> : vendor.verified ? <View style={{ marginTop: 12 }}><Tag tone="ok" icon="seal" label={tr('Verified')} /></View> : null}
+        {vendor.sample || vendor.unclaimed ? <View style={{ marginTop: 12 }}><Tag label={tr(vendor.sample ? 'Sample listing' : 'Not on Shaadi OS yet')} /></View> : vendor.verified ? <View style={{ marginTop: 12 }}><Tag tone="ok" icon="seal" label={tr('Verified')} /></View> : null}
         <Text style={{ color: C.ink, fontSize: 15, lineHeight: 24, marginVertical: 20 }}>{vendor.description}</Text>
-        <Card><M>{tr('Starting price')}</M><H style={{ color: C.primary, fontSize: 28 }}>{inr(vendor.start_paise)}</H><Btn title={tr('Sign in to enquire')} onPress={onSignIn} /></Card>
+        {vendor.unclaimed ? <Card><M>{tr('This business has not joined Shaadi OS yet. Its details come from its own public pages and may be out of date.')}</M>{vendor.website ? <Btn kind="ghost" title={tr('Visit website')} onPress={() => Linking.openURL(vendor.website).catch(() => {})} /> : null}</Card>
+          : <Card><M>{tr('Starting price')}</M><H style={{ color: C.primary, fontSize: 28 }}>{vendor.start_paise ? inr(vendor.start_paise) : tr('Price not listed')}</H><Btn title={tr('Sign in to enquire')} onPress={onSignIn} /></Card>}
         <VendorCatalog vendor={vendor} />
         <SectionTitle title="Reviews" />
         {vendor.reviewList?.length ? vendor.reviewList.map((review: any, i: number) => <Card key={i}><View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{review.name}</Text><M>{review.rating}/5</M></View><M style={{ marginTop: 8 }}>{review.text}</M></Card>) : <M>{tr('No reviews yet')}</M>}

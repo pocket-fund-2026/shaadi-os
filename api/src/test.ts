@@ -249,6 +249,19 @@ test('roadmap tracks each vendor service and a month-by-month timeline', async (
   assert.equal(r.data.months[0].month, new Date().toISOString().slice(0, 7));
   assert.ok(r.data.months.every((m: any) => m.tasks.every((t: any) => !t.overdue || m.month === r.data.months[0].month)), 'overdue tasks surface in the current month');
 });
+test('real businesses import as unclaimed listings that cannot take enquiries', async () => {
+  const { importListings, parseCsv } = await import('./import-listings.ts');
+  const { writeFileSync, mkdtempSync } = await import('node:fs'); const { join } = await import('node:path'); const { tmpdir } = await import('node:os');
+  assert.deepEqual(parseCsv('a,"b, c","d ""e"""\n'), [['a', 'b, c', 'd "e"']]);
+  const file = join(mkdtempSync(join(tmpdir(), 'listings-')), 'v.csv');
+  writeFileSync(file, 'business_name,category,city,locality,website_or_instagram,source_url,notes\n"Test Lawns, Baner",venue,Pune,Baner,https://example.com/lawns,https://example.com/src,"lawns, 400 guests"\nBad Link,venue,Pune,,javascript:alert(1),,x\n');
+  assert.deepEqual(importListings(file), { added: 1, updated: 0, skipped: ['Bad Link'] });
+  assert.equal(importListings(file).updated, 1, 'a rerun updates instead of duplicating');
+  const listed = (await request('/api/vendors?city=Pune&category=venue', couple)).data.find((v: any) => v.name === 'Test Lawns, Baner');
+  assert.equal(listed.unclaimed, 1); assert.equal(listed.start_paise, null); assert.equal(listed.verified, 0); assert.equal(listed.website, 'https://example.com/lawns');
+  const r = await request('/api/enquiries', couple, 'POST', { vendor_id: listed.id, event_date: '2027-02-14', guests: 200, budget_paise: 100000 });
+  assert.equal(r.status, 409);
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

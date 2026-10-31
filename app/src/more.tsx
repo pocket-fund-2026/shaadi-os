@@ -15,7 +15,7 @@ export function Events() {
   const save = async () => { setSaving(true); try { await api('/events/' + edit.id, 'PUT', { name: edit.name, date: edit.date || '', venue: edit.venue || '', dress: edit.dress || '' }); setEdit(null); await load(); } catch (e) { err(e); } finally { setSaving(false); } };
   const remove = async (id: number) => { if (!(await confirm(tr('Remove this celebration?'), tr('Its date and venue will be removed from your plan.'), tr('Remove'), true))) return; setSaving(true); try { await api('/events/' + id, 'DELETE'); setEdit(null); await load(); } catch (e) { err(e); } finally { setSaving(false); } };
   return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Card><M>{tr('Your celebrations')}</M><Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink, marginTop: 4 }}>{tr('Every event, one plan')}</Text><M style={{ marginTop: 4 }}>{tr('Keep only the celebrations that fit your families. Add dates and places when you know them.')}</M></Card>
+    <Card><M>{tr('Ceremonies')}</M><Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink, marginTop: 4 }}>{tr('Your ceremonies')}</Text><M style={{ marginTop: 4 }}>{tr('Keep only the celebrations that fit your families. Add dates and places when you know them.')}</M></Card>
     {!ev.length && !busy && <Empty icon="calendar" title={tr('No ceremonies yet')} text={tr('Start with suggested celebrations for your community, or add your own.')} />}
     <Btn kind="quiet" icon="calendar" title={tr('Add suggested celebrations')} disabled={saving} onPress={gen} />
     {ev.map((e, i) => (<Rise key={e.id} i={i}><View style={{ flexDirection: 'row' }}>

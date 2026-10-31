@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Text, ScrollView, Platform } from 'react-native';
+import { ActivityIndicator, Animated, View, Text, ScrollView, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -14,8 +14,31 @@ import { PublicExplore } from './src/marketplace';
 import { Discover, VendorScreen, EnquiryForm, Enquiries, Chat, Bookings, Plan } from './src/couple';
 import { Payouts } from './src/vendor';
 import { Business, Privacy, Admin } from './src/more';
-import { Btn, Chip, C, F, M, H, Card, TabIcon, ErrorBoundary } from './src/ui';
-import { Icon, IconName } from './src/icons';
+import { Btn, Chip, C, F, M, H, Card, TabIcon, ErrorBoundary, MOTION, useReducedMotion } from './src/ui';
+import { Icon, IconName, Logo } from './src/icons';
+// Shown while the session and fonts load. Same burgundy as the native splash so the hand-off has no flash,
+// and it says what is happening when the server is slow instead of spinning silently.
+function BootScreen({ fontsReady }: { fontsReady: boolean }) {
+  const { reduced } = useReducedMotion();
+  const fade = React.useRef(new Animated.Value(0)).current;
+  const [slow, setSlow] = useState(0);
+  useEffect(() => {
+    if (reduced) fade.setValue(1); else Animated.timing(fade, { toValue: 1, duration: MOTION.reveal, easing: MOTION.easing, useNativeDriver: Platform.OS !== 'web' }).start();
+    const a = setTimeout(() => setSlow(1), 6000); const b = setTimeout(() => setSlow(2), 15000);
+    return () => { clearTimeout(a); clearTimeout(b); fade.stopAnimation(); };
+  }, [reduced, fade]);
+  return <View accessibilityRole="progressbar" accessibilityLabel={tr('Opening Shaadi OS')} style={{ flex: 1, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+    <StatusBar style="light" />
+    <Animated.View style={{ alignItems: 'center', opacity: fade }}>
+      <Logo size={96} radius={0} />
+      <Text style={{ marginTop: 16, fontSize: 28, color: C.goldSoft, fontFamily: fontsReady ? F.display : Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }) }}>Shaadi OS</Text>
+      <ActivityIndicator style={{ marginTop: 32 }} color={C.goldSoft} />
+      <Text accessibilityLiveRegion="polite" style={{ marginTop: 16, minHeight: 60, maxWidth: 280, textAlign: 'center', fontSize: 13, lineHeight: 20, color: '#F4DDE5' }}>
+        {slow === 2 ? tr('Still connecting. Check your internet connection; the app will open as soon as it reaches the server.') : slow === 1 ? tr('Connecting to the server…') : ''}
+      </Text>
+    </Animated.View>
+  </View>;
+}
 const Tab = createBottomTabNavigator(); const Stack = createNativeStackNavigator();
 const hdr = { headerStyle: { backgroundColor: C.bg }, headerTintColor: C.primary, headerShadowVisible: false, headerTitleStyle: { fontFamily: F.display, color: C.ink, fontSize: 20 } };
 const tabs = { ...hdr, tabBarActiveTintColor: C.primary, tabBarInactiveTintColor: C.mute, tabBarStyle: { backgroundColor: '#fff', borderTopColor: C.line, ...(Platform.OS === 'web' ? { height: 72, paddingTop: 8, paddingBottom: 12 } : null) }, tabBarLabelStyle: { fontSize: 12, lineHeight: 14, fontWeight: '500' as const } };
@@ -58,7 +81,7 @@ export default function App() {
   const boot = async () => { try { const has = await restore(); { const l = (await AsyncStorage.getItem('lang')) || 'en'; setCur(l); setLangS(l); } if (!has) return setState('out'); setMe(await api('/me')); setState('in'); } catch { setState('out'); } };
   useEffect(() => { boot(); }, []);
   const logout = async () => { await setToken(''); setState('out'); };
-  if (state === 'boot' || !fonts) return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: C.bg }}><ActivityIndicator size="large" color={C.primary} /></View>;
+  if (state === 'boot' || !fonts) return <BootScreen fontsReady={!!fonts} />;
   if (state === 'out') return <SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary>{exploring ? <PublicExplore onSignIn={() => setExploring(false)} onBack={() => setExploring(false)} /> : <Login onDone={boot} onBrowse={() => setExploring(true)} lang={lang} setLang={setLang} />}</ErrorBoundary></SafeAreaProvider>;
   const vendor = me.user.role === 'vendor'; const Tabs = vendor ? VendorTabs(me, logout) : CoupleTabs(me, logout);
   return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang}>

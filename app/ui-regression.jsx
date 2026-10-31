@@ -58,7 +58,7 @@ window.runUiChecks = async () => {
   flushSync(() => root.render(<TaskManager />));
   await new Promise(resolve => setTimeout(resolve, 30));
   check(container.textContent.includes('Book venue'), 'Planner must render the couple checklist');
-  check(container.textContent.includes('One step at a time'), 'Planner progress card must render');
+  check(container.textContent.includes('tasks done'), 'Planner progress card must render');
   const ideas = [...container.querySelectorAll('[role="button"]')].find(el => el.textContent === 'Planning ideas');
   check(!!ideas, 'Planner must expose optional suggestions');
   flushSync(() => ideas.click());
