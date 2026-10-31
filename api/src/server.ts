@@ -7,7 +7,9 @@ const config = readRuntimeConfig();
 const SECRET = process.env.JWT_SECRET || randomBytes(16).toString('hex');
 const MOCK_OTP = '123456'; // MOCK: replace with SMS/WhatsApp provider (see providers.md)
 if (config.seedDemoData) seed();
-export const app = express(); mountSiteEarly(app); app.use(cors()); app.use(express.json({ limit: '1mb' }));
+export const app = express(); mountSiteEarly(app); app.use(cors()); // Photo uploads arrive as base64 JSON, so only that route accepts a larger body.
+const jsonSmall = express.json({ limit: '1mb' }); const jsonUpload = express.json({ limit: '12mb' });
+app.use((req, res, next) => (req.path === '/api/vendor/photos/upload' ? jsonUpload : jsonSmall)(req, res, next));
 const wrap = (f: any) => (req: any, res: any) => { const report = (e: any) => res.status(e instanceof z.ZodError ? 400 : e.status || 500).json({ error: e instanceof z.ZodError ? e.issues[0].message : e.message }); try { return Promise.resolve(f(req, res)).catch(report); } catch (e) { return report(e); } };
 const fail = (status: number, message: string) => Object.assign(new Error(message), { status });
 const auth = (req: any, _r: any, next: any) => { try { req.user = jwt.verify((req.headers.authorization || '').slice(7), SECRET); next(); } catch { next(fail(401, 'Login required')); } };

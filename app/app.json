@@ -40,7 +40,15 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose portfolio photos to show couples on your Shaadi OS storefront.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "web": {
       "bundler": "metro",

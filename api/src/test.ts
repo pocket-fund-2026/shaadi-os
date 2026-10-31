@@ -319,6 +319,18 @@ test('deleting account data removes the wedding and everything in it', async () 
     assert.equal(one(`SELECT COUNT(*) n FROM ${table} WHERE ${table === 'weddings' ? 'id' : 'wedding_id'}=?`, wid).n, 0, table + ' rows remain');
   }
 });
+test('photo uploads accept only real images from the owning vendor', async () => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64').toString('base64');
+  const body = { data: png, caption: 'Mandap at dusk', permission_confirmed: true };
+  assert.equal((await request('/api/vendor/photos/upload', couple, 'POST', body)).status, 403);
+  assert.equal((await request('/api/vendor/photos/upload', vendor, 'POST', { ...body, permission_confirmed: false })).status, 400);
+  assert.equal((await request('/api/vendor/photos/upload', vendor, 'POST', { ...body, data: Buffer.from('<script>alert(1)</script> not an image').toString('base64') })).status, 400);
+  const r = await request('/api/vendor/photos/upload', vendor, 'POST', body);
+  assert.equal(r.status, 201);
+  const photo = r.data.photos.find((p: any) => p.caption === 'Mandap at dusk');
+  assert.match(photo.url, /^\/uploads\/[0-9a-f]{24}\.png$/);
+  assert.equal((await request(`/api/vendor/photos/${photo.id}`, vendor, 'DELETE')).status, 200);
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

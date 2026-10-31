@@ -1,6 +1,8 @@
 import express from 'express'; import { z } from 'zod'; import { randomBytes } from 'node:crypto';
 import { db, q, one, run } from './db.ts';
 import { dateSchema } from './planner.ts';
+import { UPLOAD_DIR } from './catalog.ts';
+import { unlinkSync } from 'node:fs';
 db.exec(`
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, wedding_id INT, name TEXT, date TEXT, venue TEXT, dress TEXT, sort INT DEFAULT 0);
 CREATE TABLE IF NOT EXISTS guest_events(guest_id INT, event_id INT, rsvp TEXT DEFAULT 'pending', PRIMARY KEY(guest_id, event_id));
@@ -159,6 +161,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
       }
       const v = one('SELECT id FROM vendors WHERE user_id=?', uid);
       if (v) {
+        for (const p of q('SELECT url FROM vendor_photos WHERE vendor_id=?', v.id)) if (/^\/uploads\/[0-9a-f]{24}\.(jpg|png|webp)$/.test(p.url)) { try { unlinkSync(`${UPLOAD_DIR}/${p.url.slice(9)}`); } catch { /* already gone */ } }
         for (const table of ['crm_notes', 'blocked_dates', 'vendor_photos', 'vendor_packages']) run(`DELETE FROM ${table} WHERE vendor_id=?`, v.id);
         if (one('SELECT 1 x FROM bookings WHERE vendor_id=?', v.id)) run("UPDATE vendors SET name='Deleted vendor', description='', locality='' WHERE id=?", v.id); else run('DELETE FROM vendors WHERE id=?', v.id);
       }
