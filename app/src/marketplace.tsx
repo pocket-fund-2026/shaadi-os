@@ -4,7 +4,7 @@ import { api } from './api';
 import { tr } from './i18n';
 import { Btn, C, Card, Chip, Empty, F, H, Input, Loading, M, Rise, Tag, inr, s } from './ui';
 import { CAT_ICON, Icon, Logo } from './icons';
-import { CategoryCover, FloralArch, SectionTitle } from './visuals';
+import { CategoryCover, FloralArch, SectionTitle, categoryPalette } from './visuals';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PortfolioPhoto, VendorCatalog } from './catalog';
 
@@ -15,24 +15,54 @@ const BUDGET_PRESETS = [50000, 100000, 200000, 500000];
 // Unknown keys (e.g. budget lines like 'attire') are shown capitalised rather than as raw lowercase ids.
 export const categoryLabel = (category: string) => tr(CATEGORIES.find(([key]) => key === category)?.[1] || (category ? category[0].toUpperCase() + category.slice(1) : category));
 
-// Compare sits on the cover as a small toggle so it doesn't add a second full-width action under every card.
-export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress: () => void; compare?: { on: boolean; disabled: boolean; onToggle: () => void } }) {
+type CompareProps = { on: boolean; disabled: boolean; onToggle: () => void };
+function CompareToggle({ vendor, compare, floating }: { vendor: any; compare: CompareProps; floating?: boolean }) {
+  return <Pressable accessibilityRole="checkbox" accessibilityLabel={`${tr('Compare')} ${vendor.name}`} accessibilityState={{ checked: compare.on, disabled: compare.disabled }} disabled={compare.disabled} onPress={compare.onToggle} hitSlop={8}
+    style={({ pressed }) => ({ ...(floating ? { position: 'absolute' as const, top: 12, right: 12 } : null), flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: compare.on ? C.primary : '#FFFEFCEE', borderWidth: compare.on ? 0 : 1, borderColor: C.line, opacity: compare.disabled ? 0.5 : pressed ? 0.8 : 1 })}>
+    <Icon name={compare.on ? 'check' : 'plus'} size={14} color={compare.on ? '#fff' : C.primary} strokeWidth={2} />
+    <Text style={{ fontSize: 12, fontWeight: '500', color: compare.on ? '#fff' : C.primary }}>{compare.on ? tr('Comparing') : tr('Compare')}</Text>
+  </Pressable>;
+}
+const Rating = ({ vendor }: { vendor: any }) => vendor.rating
+  ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="star" size={15} color={C.gold} /><Text style={{ color: C.ink, fontWeight: '500' }}>{vendor.rating}</Text><M>({vendor.reviews})</M></View>
+  : <M>{tr('No reviews yet')}</M>;
+const place = (vendor: any) => `${vendor.locality ? vendor.locality + ', ' : ''}${vendor.city}${vendor.travels ? ' · ' + tr('travels') : ''}`;
+
+// Vendors with a real photo lead with it. Without one, a placeholder banner adds nothing, so the card is a compact
+// row with a small category tile and twice as many vendors fit on screen.
+export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress: () => void; compare?: CompareProps }) {
+  if (!vendor.cover_url) {
+    const palette = categoryPalette(vendor.category);
+    return <Card onPress={onPress} style={{ padding: 16, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <View style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: palette.bg, alignItems: 'center', justifyContent: 'center' }}><Icon name={CAT_ICON[vendor.category] || 'store'} size={28} color={palette.ink} /></View>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+            <Text style={{ flex: 1, fontFamily: F.display, fontSize: 17, lineHeight: 24, color: C.ink }}>{vendor.name}</Text>
+            {vendor.verified ? <View accessible accessibilityLabel={tr('Verified')}><Icon name="seal" size={18} color={C.ok} /></View> : null}
+          </View>
+          <M style={{ marginTop: 2 }}>{categoryLabel(vendor.category)} · {place(vendor)}</M>
+          <View style={[s.row, { marginTop: 12, gap: 8 }]}>
+            <Text style={{ color: C.ink, fontSize: 15 }}><M style={{ fontSize: 12 }}>{tr('From')} </M><Text style={{ fontWeight: '500', fontSize: 17, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></Text>
+            {compare ? <CompareToggle vendor={vendor} compare={compare} /> : <Rating vendor={vendor} />}
+          </View>
+          {compare && vendor.rating ? <View style={{ marginTop: 8 }}><Rating vendor={vendor} /></View> : null}
+        </View>
+      </View>
+    </Card>;
+  }
   return <Card onPress={onPress} style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
-    {vendor.cover_url ? <PortfolioPhoto uri={vendor.cover_url} caption={vendor.name} height={180} /> : <CategoryCover category={vendor.category} label={categoryLabel(vendor.category)} />}
-    {compare ? <Pressable accessibilityRole="checkbox" accessibilityLabel={`${tr('Compare')} ${vendor.name}`} accessibilityState={{ checked: compare.on, disabled: compare.disabled }} disabled={compare.disabled} onPress={compare.onToggle} hitSlop={8}
-      style={({ pressed }) => ({ position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: compare.on ? C.primary : '#FFFEFCEE', borderWidth: compare.on ? 0 : 1, borderColor: C.line, opacity: compare.disabled ? 0.5 : pressed ? 0.8 : 1 })}>
-      <Icon name={compare.on ? 'check' : 'plus'} size={14} color={compare.on ? '#fff' : C.primary} strokeWidth={2} />
-      <Text style={{ fontSize: 12, fontWeight: '500', color: compare.on ? '#fff' : C.primary }}>{compare.on ? tr('Comparing') : tr('Compare')}</Text>
-    </Pressable> : null}
+    <PortfolioPhoto uri={vendor.cover_url} caption={vendor.name} height={180} />
+    {compare ? <CompareToggle vendor={vendor} compare={compare} floating /> : null}
     <View style={{ padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <Text style={{ flex: 1, fontFamily: F.display, fontSize: 20, lineHeight: 28, color: C.ink }}>{vendor.name}</Text>
         {vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ flex: 1 }}>{vendor.locality ? vendor.locality + ', ' : ''}{vendor.city}{vendor.travels ? ' · ' + tr('travels') : ''}</M></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ flex: 1 }}>{place(vendor)}</M></View>
       <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, marginTop: 16, paddingTop: 16, gap: 8 }]}>
         <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text style={{ color: C.ink, fontWeight: '500', fontSize: 20, marginTop: 4, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></View>
-        {vendor.rating ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="star" size={15} color={C.gold} /><Text style={{ color: C.ink, fontWeight: '500' }}>{vendor.rating}</Text><M>({vendor.reviews})</M></View> : <M>{tr('No reviews yet')}</M>}
+        <Rating vendor={vendor} />
       </View>
     </View>
   </Card>;

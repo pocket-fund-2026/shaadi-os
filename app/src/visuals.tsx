@@ -40,7 +40,7 @@ export const categoryPalette = (category: string) => PALETTES[category] || PALET
 
 export function CategoryCover({ category, label, large = false }: { category: string; label: string; large?: boolean }) {
   const palette = categoryPalette(category);
-  return <View style={{ height: large ? 220 : 132, backgroundColor: palette.bg, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+  return <View style={{ height: large ? 168 : 132, backgroundColor: palette.bg, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
     <View pointerEvents="none" style={StyleSheet.absoluteFill} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Svg width="100%" height="100%" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
         <Path d="M45 220V132a82 82 0 0 1 164 0v88M54 220V132a73 73 0 0 1 146 0v88" fill="none" stroke={palette.light} strokeWidth="1.4" />
