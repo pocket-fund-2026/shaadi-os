@@ -19,3 +19,10 @@ CREATE TABLE IF NOT EXISTS reviews(id INTEGER PRIMARY KEY, booking_id INT UNIQUE
 export const q = (s: string, ...a: any[]) => db.prepare(s).all(...a) as any[];
 export const one = (s: string, ...a: any[]) => db.prepare(s).get(...a) as any;
 export const run = (s: string, ...a: any[]) => db.prepare(s).run(...a);
+
+// The seeded demo vendors are invented businesses, so they are flagged as samples and never shown as verified.
+// Seed vendor accounts use phones 9000000001 to 9000000099.
+if (!q('PRAGMA table_info(vendors)').some((c: any) => c.name === 'sample')) {
+  db.exec('ALTER TABLE vendors ADD COLUMN sample INT DEFAULT 0');
+  run("UPDATE vendors SET sample=1, verified=0 WHERE user_id IN (SELECT id FROM users WHERE role='vendor' AND phone BETWEEN '9000000001' AND '9000000099')");
+}

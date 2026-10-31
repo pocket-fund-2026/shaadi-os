@@ -17,8 +17,8 @@ export function seed(){
   if(one('SELECT 1 x FROM vendors')) return;
   V.forEach((v,i)=>{
     const u=run('INSERT INTO users(phone,name,role) VALUES(?,?,?)',`900000${String(i+1).padStart(4,'0')}`,v[0],'vendor');
-    run('INSERT INTO vendors(user_id,name,category,city,locality,start_paise,description,languages,verified,travels) VALUES(?,?,?,?,?,?,?,?,?,?)',
-      Number(u.lastInsertRowid),v[0],v[1],v[2],v[3],v[4]*100,v[5],'en,hi,mr',1,i%3===0?1:0);
+    run('INSERT INTO vendors(user_id,name,category,city,locality,start_paise,description,languages,verified,travels,sample) VALUES(?,?,?,?,?,?,?,?,?,?,1)',
+      Number(u.lastInsertRowid),v[0],v[1],v[2],v[3],v[4]*100,v[5],'en,hi,mr',0,i%3===0?1:0);
   });
 }
 if (process.argv[1]?.endsWith('seed.ts')) { seed(); console.log('seeded'); }

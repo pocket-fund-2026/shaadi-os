@@ -39,7 +39,7 @@ export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress:
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
             <Text style={{ flex: 1, fontFamily: F.display, fontSize: 17, lineHeight: 24, color: C.ink }}>{vendor.name}</Text>
-            {vendor.verified ? <View accessible accessibilityLabel={tr('Verified')}><Icon name="seal" size={18} color={C.ok} /></View> : null}
+            {vendor.sample ? <Tag label={tr('Sample listing')} /> : vendor.verified ? <View accessible accessibilityLabel={tr('Verified')}><Icon name="seal" size={18} color={C.ok} /></View> : null}
           </View>
           <M style={{ marginTop: 2 }}>{categoryLabel(vendor.category)} · {place(vendor)}</M>
           <View style={[s.row, { marginTop: 12, gap: 8 }]}>
@@ -57,7 +57,7 @@ export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress:
     <View style={{ padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <Text style={{ flex: 1, fontFamily: F.display, fontSize: 20, lineHeight: 28, color: C.ink }}>{vendor.name}</Text>
-        {vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
+        {vendor.sample ? <Tag label={tr('Sample listing')} /> : vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ flex: 1 }}>{place(vendor)}</M></View>
       <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, marginTop: 16, paddingTop: 16, gap: 8 }]}>
@@ -152,7 +152,7 @@ export function PublicExplore({ onSignIn, onBack }: { onSignIn: () => void; onBa
       {error ? <Card><M style={{ color: C.warn }}>{error}</M><Btn title={tr('Try again')} onPress={() => setRetry(k => k + 1)} /></Card> : !vendor ? <Loading what={tr('vendor')} /> : <Rise>
         <View style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}><CategoryCover category={vendor.category} label={categoryLabel(vendor.category)} large /></View>
         <H style={{ fontSize: 28 }}>{vendor.name}</H><M>{categoryLabel(vendor.category)} · {vendor.city}</M>
-        {vendor.verified ? <View style={{ marginTop: 12 }}><Tag tone="ok" icon="seal" label={tr('Verified')} /></View> : null}
+        {vendor.sample ? <View style={{ marginTop: 12 }}><Tag label={tr('Sample listing')} /></View> : vendor.verified ? <View style={{ marginTop: 12 }}><Tag tone="ok" icon="seal" label={tr('Verified')} /></View> : null}
         <Text style={{ color: C.ink, fontSize: 15, lineHeight: 24, marginVertical: 20 }}>{vendor.description}</Text>
         <Card><M>{tr('Starting price')}</M><H style={{ color: C.primary, fontSize: 28 }}>{inr(vendor.start_paise)}</H><Btn title={tr('Sign in to enquire')} onPress={onSignIn} /></Card>
         <VendorCatalog vendor={vendor} />

@@ -30,3 +30,20 @@ The subsequent iPhone screenshot showed a separate native integration failure: r
 Clickable cards previously used an outer animated wrapper with `flexShrink: 1` and a second flex layout on the inner pressable. This made their sizing differ from static cards and could collapse or constrain content in scroll layouts. Cards, chips and buttons now use a single animated pressable, which owns all padding, margins and layout styles. Animated pressables receive style arrays rather than style callbacks, so their styles survive animation processing on web as well as native.
 
 `app/ui-regression.jsx` and `app/scripts/check-ui.cjs` exercise the real web components in a DOM environment. They verify direct layout ownership, retained card padding and flex, direct chips in wrapping rows, SVG button content, login rendering, the browse action and API-driven vendor rendering. The checks use installed `esbuild` and `jsdom` tooling from the sibling project for this session: `NODE_PATH=/Users/kabir/jobless-board/node_modules node scripts/check-ui.cjs` from `app`. Set `UI_REDUCED_MOTION=false` to exercise the animated path. These checks do not measure browser pixel geometry or establish iPhone visual correctness.
+
+## Direction and decisions (31 October 2026)
+
+Design read: an Indian wedding marketplace and planner for couples and their families, in a wedding-stationery style. Dials: ENERGY 1, RHYTHM 2, MOTION 1.
+
+One-line reasons for the main choices (anti-slop R-31):
+
+- Light theme only: the identity is printed wedding stationery on ivory paper, and the audience plans in daylight on phones; `app.json` sets `userInterfaceStyle: "light"`.
+- Colour: burgundy `#74263F` and gold `#846120` are the two core colours; green and red appear only for status (booked, overdue). Burgundy blocks are kept to two moments: the Discover banner and the Plan countdown (plus the login brand card).
+- Type: Fraunces only for display headings, because invitation cards use a warm serif; body text uses the system font for legibility in every Indian script the app supports. One size scale: 12, 13, 15, 17, 20, 24, 28, 34.
+- Spaced capitals appear in one place: the invitation preview's "TOGETHER WITH THEIR FAMILIES", because printed Indian invitations set that line that way. Everywhere else labels are sentence case.
+- Icons: drawn in-house for wedding services (diya, mandap, mehndi leaf) at 1.5 stroke; the star is used only for ratings.
+- App icon: a solid gold mandap with interlocking rings cut in (`brand/mark-v3.svg`), chosen because the earlier pillars-and-leaves mark blurred below 40 pt.
+- Motion: one 300 ms entrance with a 40 ms stagger, press feedback and a tab scale; everything respects the OS reduce-motion setting.
+- Demo data: the seeded vendors are invented, so they carry `sample = 1`, are never verified, and show a "Sample listing" tag in the app.
+
+Added today: Plan overview with a vendor tracker and month-by-month timeline, suggested next steps in the checklist, a calendar date picker, compact vendor cards, budget chips in lakhs, a language picker before sign-up, Indian date format and an error boundary. Audit: `anti-slop/audit-001-2026-10-31.md`.

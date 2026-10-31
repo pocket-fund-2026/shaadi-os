@@ -16,7 +16,7 @@ const myWedding = (uid: number) => one('SELECT * FROM weddings WHERE owner_id=? 
 const commissionBps = (cat: string) => (['venue', 'caterer'].includes(cat) ? 300 : 600);
 const leak = (s: string) => /(\+?91[\s-]?)?[6-9]\d{9}|\b[\w.-]+@[a-z]{2,}\b/i.test(s.replace(/[\s-]/g, ' ').replace(/(\d)\s(?=\d)/g, '$1'));
 
-// ---- auth (mock OTP, rate limited per phone)
+// Auth (mock OTP, rate limited per phone)
 const otpTries = new Map<string, number[]>();
 app.post('/api/auth/otp', wrap((req: any, res: any) => {
   const { phone } = z.object({ phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number') }).parse(req.body);
@@ -36,7 +36,7 @@ app.post('/api/auth/verify', wrap((req: any, res: any) => {
 }));
 app.get('/api/me', auth, wrap((req: any, res: any) => res.json({ user: one('SELECT * FROM users WHERE id=?', req.user.id), wedding: myWedding(req.user.id) || null, vendor: myVendor(req.user.id) || null })));
 
-// ---- vendor profile
+// Vendor profile
 app.put('/api/vendor', auth, wrap((req: any, res: any) => {
   if (req.user.role !== 'vendor') throw fail(403, 'Vendors only');
   const b = z.object({ name: z.string().min(2), category: z.string(), city: z.string(), locality: z.string().optional(), start_paise: z.number().int().positive(), description: z.string().max(500).optional(), travels: z.number().optional() }).parse(req.body);
@@ -46,7 +46,7 @@ app.put('/api/vendor', auth, wrap((req: any, res: any) => {
   res.json(myVendor(req.user.id));
 }));
 
-// ---- discovery
+// Discovery
 const ratingSql = '(SELECT ROUND(AVG(rating),1) FROM reviews r WHERE r.vendor_id=v.id) rating,(SELECT COUNT(*) FROM reviews r WHERE r.vendor_id=v.id) reviews';
 app.get('/api/vendors', wrap((req: any, res: any) => {
   const { city, category, q: text, max } = req.query; const w: string[] = ['1=1']; const a: any[] = [];
@@ -60,7 +60,7 @@ app.get('/api/vendors/:id', wrap((req: any, res: any) => {
   res.json({ ...v, ...vendorCatalog(v.id), reviewList: q('SELECT r.rating,r.text,r.created_at,u.name FROM reviews r JOIN users u ON u.id=r.user_id WHERE vendor_id=?', v.id) });
 }));
 
-// ---- wedding workspace
+// Wedding workspace
 const CHECK = [['Set wedding date & budget', -365], ['Book venue', -300], ['Book photographer', -240], ['Book makeup artist', -180], ['Finalise guest list', -120], ['Send save-the-dates', -90], ['Book decor & mehndi', -75], ['Send invites with RSVP link', -45], ['Final vendor payments', -7], ['Day-of run-of-show shared', -1]] as const;
 const SPLIT: Record<string, number> = { venue: 30, caterer: 25, photographer: 10, decor: 12, makeup: 5, mehndi: 3, dj: 5, other: 10 };
 app.post('/api/wedding', auth, wrap((req: any, res: any) => {
@@ -105,12 +105,12 @@ app.get('/rsvp/:token', wrap((req: any, res: any) => {
 }));
 app.post('/rsvp/:token', express.urlencoded({ extended: false }), spamGuard(), wrap((req: any, res: any) => {
   const b = z.object({ rsvp: z.enum(['yes', 'no']), meal: z.enum(['Veg', 'Non-veg', 'Jain']).default('Veg'), plus: z.coerce.number().int().min(0).max(5).default(0) }).safeParse(req.body);
-  if (!b.success) return res.status(400).send('<body style="font-family:sans-serif;padding:30px"><h3>That response didn\'t look right — please go back and try again.</h3>');
+  if (!b.success) return res.status(400).send('<body style="font-family:sans-serif;padding:30px"><h3>That response didn\'t look right. Please go back and try again.</h3>');
   const r = run('UPDATE guests SET rsvp=?,meal=?,plus_ones=? WHERE token=?', b.data.rsvp, b.data.meal, b.data.plus, req.params.token);
   res.send(r.changes ? '<body style="font-family:sans-serif;padding:30px"><h3>Thank you! Your response is recorded.</h3>' : 'Invalid link');
 }));
 
-// ---- enquiries / chat
+// Enquiries / chat
 const canSee = (e: any, u: any) => e && (e.couple_id === u.id || one('SELECT 1 x FROM vendors WHERE id=? AND user_id=?', e.vendor_id, u.id));
 app.post('/api/enquiries', auth, wrap((req: any, res: any) => {
   const b = z.object({ vendor_id: z.number().int(), event_date: z.string(), guests: z.number().int().positive(), budget_paise: z.number().int().positive(), note: z.string().max(500).optional() }).parse(req.body);
@@ -132,11 +132,11 @@ app.post('/api/enquiries/:id/messages', auth, wrap((req: any, res: any) => {
   const e = one('SELECT * FROM enquiries WHERE id=?', req.params.id); if (!canSee(e, req.user)) throw fail(404, 'Not found');
   const { body } = z.object({ body: z.string().min(1).max(1000) }).parse(req.body);
   const booked = !!one('SELECT 1 x FROM bookings WHERE enquiry_id=?', e.id); const flagged = !booked && leak(body);
-  if (flagged) throw fail(422, 'For your protection, phone numbers and UPI IDs can be shared only after booking. Book in-app to unlock Booking Protection.');
+  if (flagged) throw fail(422, 'For your protection, phone numbers and UPI IDs can be shared only after booking. Book in-app to get Booking Protection.');
   run('INSERT INTO messages(enquiry_id,sender_id,body) VALUES(?,?,?)', e.id, req.user.id, body); res.json({ ok: true });
 }));
 
-// ---- quotes & bookings
+// Quotes & bookings
 app.post('/api/enquiries/:id/quotes', auth, wrap((req: any, res: any) => {
   const e = one('SELECT * FROM enquiries WHERE id=?', req.params.id); const v = myVendor(req.user.id);
   if (!e || !v || e.vendor_id !== v.id) throw fail(403, 'Not your enquiry');
@@ -197,6 +197,6 @@ mountCatalog(app, auth, wrap);
 mountPlanner(app, auth, myWedding, wrap);
 mountExtras(app, auth, myWedding, myVendor, () => []);
 app.get('/health', (_q, r) => { r.json({ ok: true }); });
-mountSite(app); // legal pages, SEO files, landing page, 404 — must mount last so it doesn't shadow API/extras routes
+mountSite(app); // legal pages, SEO files, landing page and 404; must mount last so it doesn't shadow API/extras routes
 app.use((e: any, _q: any, res: any, _n: any) => res.status(e.status || 500).json({ error: e.message }));
 if (process.argv[1]?.endsWith('server.ts')) app.listen(Number(process.env.PORT) || 4600, '0.0.0.0', () => console.log('API on :4600'));

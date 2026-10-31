@@ -29,7 +29,7 @@ window.runUiChecks = async () => {
   check(container.firstElementChild.getAttribute('role') === 'button', 'Button must own its margins directly');
   let browsed = false;
   flushSync(() => root.render(<SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, bottom: 34, left: 0, right: 0 } }}><Login onDone={() => {}} onBrowse={() => { browsed = true; }} /></SafeAreaProvider>));
-  const browse = [...container.querySelectorAll('[role="button"]')].find(el => el.textContent === 'Explore wedding vendors');
+  const browse = [...container.querySelectorAll('[role="button"]')].find(el => el.textContent === 'Browse vendors without signing in');
   check(!!browse, 'Login must render a public browsing action');
   browse.click();
   check(browsed, 'Public browsing action must open the directory');

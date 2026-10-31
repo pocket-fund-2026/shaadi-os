@@ -42,7 +42,7 @@ export function VendorScreen({ route, navigation }: any) {
         <H style={{ marginVertical: 0, fontSize: 28, lineHeight: 34 }}>{v.name}</H>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ marginLeft: 4, flex: 1 }}>{catLabel(v.category)} · {v.locality ? v.locality + ', ' : ''}{v.city}</M></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
-          {v.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
+          {v.sample ? <Tag label={tr('Sample listing')} /> : v.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
           {v.rating ? <View style={{ flexDirection: 'row', alignItems: 'center' }}><Stars n={Math.round(v.rating)} /><M> {v.rating} · {v.reviews} {tr('reviews')}</M></View> : <M>{tr('No reviews yet')}</M>}</View>
         {v.description ? <Text style={{ marginTop: 16, color: C.ink, fontSize: 15, lineHeight: 23 }}>{v.description}</Text> : null}
         <View style={{ flexDirection: 'row', backgroundColor: C.okSoft, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="shield" size={18} color={C.ok} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('Booking Protection: you pay in milestones and each one is held until you release it.')}</M></View>

@@ -64,7 +64,7 @@ export default function Login({ onDone, onBrowse, lang, setLang }: { onDone: () 
           <Text style={{ fontFamily: F.display, fontSize: 34, lineHeight: 38, color: C.goldSoft, maxWidth: '85%' }}>{tr('A celebration that feels like you')}</Text>
           <Text style={{ fontSize: 15, color: C.goldSoft, marginTop: 16, lineHeight: 23, maxWidth: '88%' }}>{tr('Find your vendors. Bring your people together. Plan every detail in one place.')}</Text>
         </View>
-        <Btn kind="ghost" icon="search" title={tr('Explore wedding vendors')} onPress={onBrowse} />
+        <Btn kind="ghost" icon="search" title={tr('Browse vendors without signing in')} onPress={onBrowse} />
       </Rise>
       <Rise i={1}>
         <H>{step === 0 ? tr('Your wedding starts here') : step === 1 ? tr('Verify your number') : tr('Tell us about yourself')}</H>
