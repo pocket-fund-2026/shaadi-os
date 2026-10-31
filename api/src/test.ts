@@ -388,6 +388,17 @@ test('organiser: reminders, shopping, contacts, documents and seating', async ()
   await request(`/api/seating/tables/${t2}/guests/${g.id}`, owner, 'PUT', { seated: true });
   assert.deepEqual((await request('/api/seating', owner)).data.seats.map((x: any) => x.table_id), [t2], 'a guest sits at one table per ceremony');
 });
+test('profile: edit name and language; marketing choice is remembered', async () => {
+  const user = await login('9812300201');
+  assert.equal((await request('/api/me', user, 'PATCH', { name: 'A' })).status, 400);
+  assert.equal((await request('/api/me', user, 'PATCH', { lang: 'xx' })).status, 400);
+  const r = await request('/api/me', user, 'PATCH', { name: '  Meera Iyer ', lang: 'mr' });
+  assert.equal(r.status, 200); assert.equal(r.data.name, 'Meera Iyer'); assert.equal(r.data.lang, 'mr');
+  assert.equal((await request('/api/consent', user)).data.marketing, null);
+  await request('/api/consent', user, 'POST', { purpose: 'marketing', granted: true });
+  await request('/api/consent', user, 'POST', { purpose: 'marketing', granted: false });
+  assert.equal((await request('/api/consent', user)).data.marketing, false, 'the latest choice wins');
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

@@ -13,10 +13,11 @@ import Login from './src/auth';
 import { PublicExplore } from './src/marketplace';
 import { Discover, VendorScreen, EnquiryForm, Enquiries, Chat, Bookings, Plan } from './src/couple';
 import { Payouts } from './src/vendor';
-import { Business, Privacy, Admin } from './src/more';
+import { Business } from './src/more';
+import { ProfileScreen } from './src/profile';
 import { Btn, Chip, C, F, M, H, Card, TabIcon, ErrorBoundary, MOTION, useReducedMotion } from './src/ui';
 import { Icon, IconName, Logo } from './src/icons';
-import { disableReminders, enableReminders, remindersEnabled, syncReminders } from './src/reminders';
+import { syncReminders } from './src/reminders';
 // Shown while the session and fonts load. Same burgundy as the native splash so the hand-off has no flash,
 // and it says what is happening when the server is slow instead of spinning silently.
 function BootScreen({ fontsReady }: { fontsReady: boolean }) {
@@ -48,36 +49,6 @@ const Tab = createBottomTabNavigator(); const Stack = createNativeStackNavigator
 const hdr = { headerStyle: { backgroundColor: C.bg }, headerTintColor: C.primary, headerShadowVisible: false, headerTitleStyle: { fontFamily: F.display, color: C.ink, fontSize: 20 } };
 const tabs = { ...hdr, tabBarActiveTintColor: C.primary, tabBarInactiveTintColor: C.mute, tabBarStyle: { backgroundColor: '#fff', borderTopColor: C.line, ...(Platform.OS === 'web' ? { height: 72, paddingTop: 8, paddingBottom: 12 } : null) }, tabBarLabelStyle: { fontSize: 12, lineHeight: 14, fontWeight: '500' as const } };
 const ti = (name: IconName) => ({ color, focused }: { color: string; focused: boolean }) => <TabIcon name={name} focused={focused} color={color} />;
-// Phone notifications for task due dates; scheduled on the device, so they work without a push server.
-function PhoneReminders() {
-  const [on, setOn] = useState<boolean | null>(null); const [note, setNote] = useState('');
-  useEffect(() => { remindersEnabled().then(setOn); }, []);
-  const toggle = async () => {
-    setNote('');
-    try { if (on) { await disableReminders(); setOn(false); } else { const n = await enableReminders(); setOn(true); setNote(`${n} ${tr('reminders scheduled')}`); } }
-    catch (e: any) { setNote(e?.message || String(e)); }
-  };
-  return <Card style={{ marginTop: 16 }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <View style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Phone reminders')}</Text><M>{tr('A notification at 9 am on the day each checklist task is due.')}</M></View>
-      <Chip label={on ? tr('On') : tr('Off')} on={!!on} onPress={toggle} />
-    </View>
-    {note ? <M style={{ marginTop: 8 }}>{note}</M> : null}
-  </Card>;
-}
-function Profile({ me, onLogout }: any) {
-  const { lang, setLang } = React.useContext(LangCtx);
-  return (<ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-      <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.primary }}>{(me.user.name || '?')[0].toUpperCase()}</Text></View>
-      <View><H style={{ marginVertical: 0 }}>{me.user.name}</H><M>+91 {me.user.phone} · {me.user.role === 'vendor' ? tr('Vendor') : tr('Couple')}</M></View></View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 }}><Icon name="globe" size={18} color={C.mute} /><Text style={{ marginLeft: 8, fontWeight: '500', color: C.ink }}>{tr('Language')}</Text></View>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{LANGS.map(([k, n]) => <Chip key={k} label={n} on={lang === k} onPress={() => setLang(k)} />)}</View>
-    {me.user.role !== 'vendor' ? <PhoneReminders /> : null}
-    <Privacy onDeleted={onLogout} /><Admin />
-    <Card style={{ backgroundColor: C.goldSoft, borderColor: C.goldSoft }}><M style={{ color: C.ink }}>{tr('Demo build: payments, OTP and WhatsApp are simulated. Booking Protection and escrow do not move real money.')}</M></Card>
-    <Btn kind="ghost" icon="logout" title={tr('Log out')} onPress={onLogout} /></ScrollView>);
-}
 const CoupleTabs = (me: any, logout: () => void, landing?: string) => function T() {
   const t = useT();
   return (<Tab.Navigator screenOptions={tabs} initialRouteName={landing}>
@@ -85,7 +56,7 @@ const CoupleTabs = (me: any, logout: () => void, landing?: string) => function T
     <Tab.Screen name="Enquiries" options={{ title: t('enquiries'), tabBarIcon: ti('chat') }} component={Enquiries} />
     <Tab.Screen name="Bookings" options={{ title: t('bookings'), tabBarIcon: ti('ledger') }}>{() => <Bookings />}</Tab.Screen>
     <Tab.Screen name="Plan" options={{ title: t('plan'), tabBarIcon: ti('partnership'), headerShown: false }} component={Plan} />
-    <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <Profile me={me} onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
+    <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <ProfileScreen onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
 };
 const VendorTabs = (me: any, logout: () => void, landing?: string) => function T() {
   const t = useT();
@@ -94,7 +65,7 @@ const VendorTabs = (me: any, logout: () => void, landing?: string) => function T
     <Tab.Screen name="Bookings" options={{ title: t('bookings'), tabBarIcon: ti('ledger') }}>{() => <Bookings vendor />}</Tab.Screen>
     <Tab.Screen name="Payouts" options={{ title: t('payouts'), tabBarIcon: ti('wallet') }} component={Payouts} />
     <Tab.Screen name="Store" options={{ title: tr('Business'), tabBarIcon: ti('store') }}>{() => <Business />}</Tab.Screen>
-    <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <Profile me={me} onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
+    <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <ProfileScreen onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
 };
 export default function App() {
   const [exploring, setExploring] = useState(() => typeof window !== 'undefined' && !!window.location && new URLSearchParams(window.location.search).get('browse') === '1');

@@ -145,6 +145,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
   app.post('/api/admin/disputes/:id/resolve', auth, admin, wrap((req: any, res: any) => { const b = z.object({ resolution: z.string().min(3), booking_status: z.enum(['confirmed', 'cancelled', 'completed']) }).parse(req.body); const d = one('SELECT * FROM disputes WHERE id=?', req.params.id); if (!d) throw fail(404, 'Not found'); run("UPDATE disputes SET status='resolved',resolution=? WHERE id=?", b.resolution, d.id); run('UPDATE bookings SET status=? WHERE id=?', b.booking_status, d.booking_id); audit(req.user.id, 'resolve_dispute', { id: d.id }); res.json({ ok: true }); }));
   app.get('/api/admin/audit', auth, admin, wrap((_q: any, r: any) => r.json(q('SELECT * FROM audit ORDER BY id DESC LIMIT 100'))));
   // DPDP: consent log, data export, deletion
+  app.get('/api/consent', auth, wrap((req: any, res: any) => { const r = one("SELECT granted FROM consents WHERE user_id=? AND purpose='marketing' ORDER BY id DESC LIMIT 1", req.user.id); res.json({ marketing: r ? !!r.granted : null }); }));
   app.post('/api/consent', auth, wrap((req: any, res: any) => { const b = z.object({ purpose: z.enum(['marketing', 'contacts', 'face_grouping']), granted: z.boolean() }).parse(req.body); run('INSERT INTO consents(user_id,purpose,granted) VALUES(?,?,?)', req.user.id, b.purpose, b.granted ? 1 : 0); res.json({ ok: true }); }));
   // DPDP export: everything this account created, including the wedding it owns.
   app.get('/api/my-data', auth, wrap((req: any, res: any) => {

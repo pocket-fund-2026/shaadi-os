@@ -6,7 +6,7 @@ import { FlatList, ScrollView, Text, View, RefreshControl, Linking, KeyboardAvoi
 import { useFocusEffect } from '@react-navigation/native';
 import { api, getBase } from './api';
 import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO } from './ui';
-import { Icon, CAT_ICON } from './icons';
+import { Icon, CAT_ICON, IconName } from './icons';
 import { Marketplace } from './marketplace';
 import { CategoryCover, FloralArch } from './visuals';
 import { VendorCatalog } from './catalog';
@@ -158,22 +158,61 @@ export function Bookings({ vendor }: any) {
 }
 
 const longDate = (d: string) => { const x = new Date(d + 'T00:00:00Z'); return isNaN(+x) ? d : x.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); };
+const PLAN_BAR = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family'], ['tools', 'Tools', 'store']] as const;
+const PLAN_TOOLS: [string, string, IconName, string][] = [
+  ['events', 'Ceremonies', 'marigold', 'Dates, venues and dress codes'], ['run', 'Run sheet', 'flag', 'Timings for each ceremony'],
+  ['shortlist', 'Shortlist', 'heart', 'Vendors you’re considering, with family votes'], ['family', 'Family', 'family', 'Who can see and edit the plan'],
+  ['shagun', 'Shagun', 'rupee', 'Gifts received and thank-you notes'], ['stays', 'Guest stays', 'pin', 'Hotels, arrivals and pickups'],
+  ['shopping', 'Shopping', 'receipt', 'Outfits, jewellery and family gifts'], ['contacts', 'Day contacts', 'phone', 'Everyone to call on the day'],
+  ['documents', 'Documents', 'seal', 'Marriage registration papers'], ['seating', 'Seating', 'ledger', 'Tables for each ceremony'],
+  ['invite', 'Wedding website', 'globe', 'A page to share with guests'], ['settings', 'Wedding details', 'ring', 'Names, date, city and budget'],
+];
+// Every planning tool beyond the four main sections, as a grid of labelled tiles.
+function ToolsHub({ open }: { open: (tab: string) => void }) {
+  return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, width: '100%', maxWidth: 700, alignSelf: 'center' }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+      {PLAN_TOOLS.map(([k, n, icon, detail], i) => <Rise key={k} i={i} style={{ width: '47%', flexGrow: 1 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr(n)} onPress={() => open(k)} style={({ pressed }) => ({ minHeight: 120, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, opacity: pressed ? 0.8 : 1 })}>
+          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} size={22} color={C.primary} /></View>
+          <Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', marginTop: 12 }}>{tr(n)}</Text>
+          <M style={{ marginTop: 2 }}>{tr(detail)}</M>
+        </Pressable>
+      </Rise>)}
+    </View>
+  </ScrollView>;
+}
 const PLAN_TABS: [string, string][] = [['overview', 'Overview'], ['checklist', 'Checklist'], ['events', 'Events'], ['budget', 'Budget'], ['guests', 'Guests'], ['shortlist', 'Shortlist'], ['family', 'Family'], ['shagun', 'Shagun'], ['stays', 'Guest stays'], ['run', 'Run sheet'], ['shopping', 'Shopping'], ['contacts', 'Day contacts'], ['documents', 'Documents'], ['seating', 'Seating'], ['invite', 'Invite'], ['settings', 'Wedding details']];
 const PLAN_MAIN = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family']] as const;
 export function Plan(props: any) {
   const insets = useSafeAreaInsets();
   return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: C.bg }}><PlanBody {...props} /></View>;
 }
-function PlanBody({ navigation: nav }: any) {
-  const [me, reload] = useLoad<any>('/me', null); const [tab, setTab] = useState('overview'); const [showMore, setShowMore] = useState(false);
+function PlanBody({ navigation: nav, route }: any) {
+  const [me, reload] = useLoad<any>('/me', null); const [tab, setTab] = useState('overview');
+  // Other screens (Profile) can open a specific section of the plan.
+  useEffect(() => { if (route?.params?.tab) setTab(route.params.tab); }, [route?.params?.tab, route?.params?.at]); 
   if (!me) return <Loading what={tr('your wedding')} />;
   if (!me.wedding) return <Setup onDone={reload} name={me.user?.name} />;
+  const tool = PLAN_TOOLS.find(t => t[0] === tab);
   return (<View style={{ flex: 1, backgroundColor: C.bg }}>
-    <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, maxWidth: 700, width: '100%', alignSelf: 'center' }}><M style={{ color: C.gold, fontWeight: '500' }}>{tr('The wedding plan')}</M><Text style={{ fontFamily: F.display, fontSize: 28, color: C.ink, marginTop: 2 }}>{me.wedding.title}</Text><M>{longDate(me.wedding.date)} · {me.wedding.city}</M></View>
-    <View style={{ maxWidth: 700, width: '100%', alignSelf: 'center' }}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12 }}>{PLAN_MAIN.map(([k, n, icon]) => <Chip key={k} icon={icon} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}<Chip icon="plus" label={tr('More')} on={showMore || !PLAN_MAIN.some(([k]) => k === tab)} onPress={() => setShowMore(!showMore)} /></ScrollView>
-      {showMore && <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 4 }}>{PLAN_TABS.filter(([k]) => !PLAN_MAIN.some(([main]) => main === k)).map(([k, n]) => <Chip key={k} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}</View>}
-      {!showMore && !PLAN_MAIN.some(([k]) => k === tab) && <M style={{ paddingHorizontal: 16, paddingBottom: 3 }}>{tr(PLAN_TABS.find(([k]) => k === tab)?.[1] || '')}</M>}</View>
-    <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'run' ? <RunSheet /> : tab === 'shopping' ? <Shopping /> : tab === 'contacts' ? <DayContacts /> : tab === 'documents' ? <Documents /> : tab === 'seating' ? <Seating /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, maxWidth: 700, width: '100%', alignSelf: 'center' }}>
+      <Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink }} numberOfLines={1}>{me.wedding.title}</Text>
+      <M>{longDate(me.wedding.date)} · {me.wedding.city}</M>
+      {/* Five fixed sections that always fit the width; everything else lives under Tools. */}
+      <View accessibilityRole="tablist" style={{ flexDirection: 'row', marginTop: 12, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 4 }}>
+        {PLAN_BAR.map(([k, n, icon]) => { const on = k === 'tools' ? tab === 'tools' || !!tool : tab === k; return (
+          <Pressable key={k} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tr(n)} onPress={() => setTab(k)}
+            style={({ pressed }) => ({ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 52, borderRadius: 10, backgroundColor: on ? C.tint : 'transparent', opacity: pressed ? 0.7 : 1 })}>
+            <Icon name={icon} size={20} color={on ? C.primary : C.mute} strokeWidth={on ? 1.8 : 1.5} />
+            <Text style={{ fontSize: 12, color: on ? C.primary : C.mute, fontWeight: on ? '600' : '500' }} numberOfLines={1}>{tr(n)}</Text>
+          </Pressable>); })}
+      </View>
+      {tool ? <Pressable accessibilityRole="button" onPress={() => setTab('tools')} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, marginTop: 4 }}>
+        <View style={{ transform: [{ scaleX: -1 }] }}><Icon name="chevron" size={16} color={C.primary} /></View>
+        <Text style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{tr('All tools')}</Text><Text style={{ color: C.mute, fontSize: 13 }}> · {tr(tool[1])}</Text>
+      </Pressable> : null}
+    </View>
+    <Rise key={tab} style={{ flex: 1 }}>{tab === 'tools' ? <ToolsHub open={setTab} /> : tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'run' ? <RunSheet /> : tab === 'shopping' ? <Shopping /> : tab === 'contacts' ? <DayContacts /> : tab === 'documents' ? <Documents /> : tab === 'seating' ? <Seating /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
 }
 const COMMUNITIES = ['North Indian Hindu', 'South Indian', 'Bengali', 'Gujarati', 'Marathi', 'Punjabi/Sikh', 'Muslim', 'Christian', 'Jain', 'Inter-faith'];
 const SETUP_CITIES = ['Mumbai', 'Pune', 'Nashik', 'Nagpur'];

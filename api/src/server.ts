@@ -38,6 +38,13 @@ app.post('/api/auth/verify', wrap((req: any, res: any) => {
   res.json({ token: jwt.sign({ id: u.id, role: u.role }, SECRET, { expiresIn: '30d' }), user: u });
 }));
 app.get('/api/me', auth, wrap((req: any, res: any) => res.json({ user: one('SELECT * FROM users WHERE id=?', req.user.id), wedding: myWedding(req.user.id) || null, vendor: myVendor(req.user.id) || null })));
+// Profile edits: display name and app language.
+app.patch('/api/me', auth, wrap((req: any, res: any) => {
+  const b = z.object({ name: z.string().trim().min(2, 'Enter your name').max(80).optional(), lang: z.enum(['en', 'hi', 'mr', 'ta', 'te', 'bn', 'gu', 'pa', 'kn', 'ml']).optional() }).parse(req.body);
+  if (b.name) run('UPDATE users SET name=? WHERE id=?', b.name, req.user.id);
+  if (b.lang) run('UPDATE users SET lang=? WHERE id=?', b.lang, req.user.id);
+  res.json(one('SELECT * FROM users WHERE id=?', req.user.id));
+}));
 
 // Vendor profile
 app.put('/api/vendor', auth, wrap((req: any, res: any) => {

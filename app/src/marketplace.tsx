@@ -102,18 +102,18 @@ export function Marketplace({ openVendor, onSignIn, preset, weddingDate }: { ope
     refreshControl={<RefreshControl refreshing={busy} onRefresh={() => setRefreshKey(k => k + 1)} tintColor={C.primary} />}
     ListHeaderComponent={<>
       {onSignIn && <View style={[s.row, { marginBottom: 20 }]}><View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Logo size={28} /><Text style={{ fontFamily: F.display, color: C.primary, fontSize: 20 }}>Shaadi OS</Text></View><Btn small kind="quiet" title={tr('Sign in')} onPress={onSignIn} /></View>}
-      <View style={{ backgroundColor: C.primaryDark, padding: 24, borderRadius: 18, marginBottom: 24, overflow: 'hidden' }}>
-        <View style={{ position: 'absolute', right: -28, bottom: -55, opacity: 0.5 }}><FloralArch color="#DCC399" size={155} /></View>
-        <Text accessibilityRole="header" style={{ fontFamily: F.display, color: '#FFF9F0', fontSize: 34, lineHeight: 40, maxWidth: '80%' }}>{tr('Wedding vendors in Maharashtra')}</Text>
-        <Text style={{ fontSize: 15, lineHeight: 22, color: '#E8D9D5', marginTop: 12, maxWidth: '78%' }}>{tr('Venues, caterers, photographers, mehndi artists and pandits in Mumbai, Pune, Nashik and Nagpur.')}</Text>
-      </View>
+      <Text accessibilityRole="header" style={{ fontFamily: F.display, color: C.ink, fontSize: 28, lineHeight: 34 }}>{tr('Find wedding vendors')}</Text>
+      <M style={{ marginTop: 4, marginBottom: 16 }}>{tr('Venues, caterers, photographers, mehndi artists and pandits in Mumbai, Pune, Nashik and Nagpur.')}</M>
       <Input icon="search" accessibilityLabel={tr('Search vendors')} placeholder={tr('Search vendors')} value={query} onChangeText={setQuery} returnKeyType="search" />
-      <SectionTitle title="Choose a service" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 4 }}>
-        {CATEGORIES.map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={tr(label)} accessibilityState={{ selected: category === key }} onPress={() => setCategory(category === key ? '' : key)} style={({ pressed }) => ({ width: 94, paddingVertical: 16, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1, borderColor: category === key ? C.primary : C.line, backgroundColor: category === key ? C.tint : C.card, opacity: pressed ? 0.75 : 1, alignItems: 'center', gap: 12 })}>
-          <Icon name={CAT_ICON[key] || 'store'} size={26} color={category === key ? C.primary : C.ink} strokeWidth={1.5} /><Text style={{ fontSize: 12, color: C.ink, fontWeight: '500', textAlign: 'center' }}>{tr(label)}</Text>
-        </Pressable>)}
-      </ScrollView>
+      {/* All eight services visible at once, as a 4 x 2 grid. */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+        {CATEGORIES.map(([key, label]) => { const on = category === key; const pal = categoryPalette(key); return (
+          <Pressable key={key} accessibilityRole="button" accessibilityLabel={tr(label)} accessibilityState={{ selected: on }} onPress={() => setCategory(on ? '' : key)}
+            style={({ pressed }) => ({ width: '23%', flexGrow: 1, minHeight: 84, paddingVertical: 12, borderRadius: 12, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.tint : C.card, alignItems: 'center', justifyContent: 'center', gap: 8, opacity: pressed ? 0.75 : 1 })}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: pal.bg, alignItems: 'center', justifyContent: 'center' }}><Icon name={CAT_ICON[key] || 'store'} size={20} color={pal.ink} /></View>
+            <Text style={{ fontSize: 12, color: C.ink, fontWeight: on ? '600' : '500', textAlign: 'center' }} numberOfLines={1}>{tr(label)}</Text>
+          </Pressable>); })}
+      </View>
       <M style={{ marginTop: 20, marginBottom: 8 }}>{tr('Wedding city')}</M>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20 }}><Chip label={tr('All cities')} on={!city} onPress={() => setCity('')} />{CITIES.map(c => <Chip key={c} label={c} on={city === c} onPress={() => setCity(city === c ? '' : c)} />)}</ScrollView>
       {comparison.length > 0 && <Card><View style={s.row}><H style={{ fontSize: 20 }}>{tr('Compare vendors')} ({comparison.length}/3)</H><Btn small kind="ghost" title={tr('Clear')} onPress={() => { setComparison([]); setShowComparison(false); }} /></View>

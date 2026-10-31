@@ -121,21 +121,6 @@ function CRM() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>{STAGES.map(st => <Chip key={st} label={cap(st)} on={c.stage === st} onPress={() => mv(c.id, st)} />)}</ScrollView></Card></Rise>)}</ScrollView>);
 }
 
-export function Privacy({ onDeleted }: { onDeleted?: () => void }) {
-  const [mkt, setMkt] = useState<boolean | null>(null);
-  const exp = async () => { try { const d = await api('/my-data'); await Share.share({ message: JSON.stringify(d, null, 1) }); } catch (e) { err(e); } };
-  const cons = async (g: boolean) => { await api('/consent', 'POST', { purpose: 'marketing', granted: g }).then(() => setMkt(g)).catch(err); };
-  const del = async () => { if (await confirm(tr('Delete your account data?'), tr('This removes your profile, wedding plans and messages. Bookings with money in escrow are kept until they settle. This cannot be undone.'), tr('Delete'), true)) api('/my-data', 'DELETE').then(() => onDeleted?.()).catch(err); };
-  return (<Card style={{ marginTop: 16 }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}><Icon name="lock" size={18} color={C.primary} /><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginLeft: 8 }}>{tr('Privacy')}</Text></View>
-    <M style={{ marginTop: 4 }}>{tr('Under the DPDP Act you can export or delete your data. Every consent choice is logged.')}</M>
-    <Text style={[s.label, { marginTop: 12 }]}>{tr('Marketing messages')}</Text>
-    <View style={{ flexDirection: 'row' }}><Chip label={tr('Allow')} on={mkt === true} onPress={() => cons(true)} /><Chip label={tr('Don’t allow')} on={mkt === false} onPress={() => cons(false)} /></View>
-    <Btn small kind="quiet" icon="share" title={tr('Export my data')} onPress={exp} />
-    <Btn small kind="ghost" title={tr('Delete my account data')} onPress={del} />
-    <M style={{ marginTop: 8 }}>{tr('Grievance officer')}: grievance@shaadios.example {tr('(placeholder, set before launch)')}</M></Card>);
-}
-
 export function Admin() {
   const [sum, setSum] = useState<any>(null); const [vs, setVs] = useState<any[]>([]);
   const load = async () => { try { setSum(await api('/admin/summary')); setVs(await api('/admin/vendors')); } catch { setSum(null); } };
