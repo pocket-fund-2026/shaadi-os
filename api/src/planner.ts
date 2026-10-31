@@ -37,8 +37,10 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
     const booked = q(`SELECT v.category,v.name,b.total_paise FROM bookings b JOIN vendors v ON v.id=b.vendor_id WHERE b.wedding_id=? AND b.status!='cancelled' ORDER BY b.id`, w.id);
     const enquired = q(`SELECT v.category,v.name,e.id,(SELECT COUNT(*) FROM quotes x WHERE x.enquiry_id=e.id AND x.status='sent') quotes FROM enquiries e JOIN vendors v ON v.id=e.vendor_id WHERE e.wedding_id=? AND e.status!='booked' ORDER BY e.id DESC`, w.id);
     const shortlisted = q('SELECT v.category,COUNT(*) n FROM shortlist s JOIN vendors v ON v.id=s.vendor_id WHERE s.wedding_id=? GROUP BY v.category', w.id);
+    // A service paid outside the app (cash to a local caterer, say) counts as booked too.
+    const outside = q('SELECT category, payee, amount_paise FROM expenses WHERE wedding_id=? ORDER BY id', w.id);
     const vendors = ROADMAP_CATEGORIES.map(category => {
-      const b = booked.filter((x: any) => x.category === category); const e = enquired.filter((x: any) => x.category === category);
+      const b = [...booked.filter((x: any) => x.category === category), ...outside.filter((x: any) => x.category === category).map((x: any) => ({ name: `${x.payee} (outside the app)`, total_paise: x.amount_paise }))]; const e = enquired.filter((x: any) => x.category === category);
       const sl = shortlisted.find((x: any) => x.category === category)?.n || 0;
       return { category, stage: b.length ? 'booked' : e.length ? 'enquired' : sl ? 'shortlisted' : 'not_started',
         allocated_paise: alloc[category] ?? null, booked_paise: b.reduce((sum: number, x: any) => sum + x.total_paise, 0), booked_vendor: b[0]?.name ?? null,
@@ -62,6 +64,21 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
     for (const e of events) months.find(m => m.month === e.date.slice(0, 7))?.events.push(e);
     res.json({ wedding: w, vendors, booked_count: vendors.filter(v => v.stage === 'booked').length, months, unscheduled: tasks.filter((t: any) => !t.due) });
   }));
+  // Payments made outside the app, so the budget shows what is really spent.
+  const expenseBody = z.object({ category: z.string().trim().min(1).max(40), payee: z.string().trim().min(1).max(120), amount_paise: money.positive(), paid: z.boolean().default(true), note: z.string().trim().max(300).optional() });
+  app.get('/api/expenses', auth, wrap((req: any, res: any) => res.json(q('SELECT * FROM expenses WHERE wedding_id=? ORDER BY id DESC', wedding(req).id))));
+  app.post('/api/expenses', auth, wrap((req: any, res: any) => {
+    const w = wedding(req); const b = expenseBody.parse(req.body);
+    if (!one('SELECT 1 x FROM budget_items WHERE wedding_id=? AND category=?', w.id, b.category)) throw fail(400, 'Choose one of your budget categories');
+    res.status(201).json({ id: Number(run('INSERT INTO expenses(wedding_id,category,payee,amount_paise,paid,note) VALUES(?,?,?,?,?,?)', w.id, b.category, b.payee, b.amount_paise, b.paid ? 1 : 0, b.note || '').lastInsertRowid) });
+  }));
+  app.patch('/api/expenses/:id', auth, wrap((req: any, res: any) => {
+    const { paid } = z.object({ paid: z.boolean() }).parse(req.body);
+    if (!run('UPDATE expenses SET paid=? WHERE id=? AND wedding_id=?', paid ? 1 : 0, req.params.id, wedding(req).id).changes) throw fail(404, 'Expense not found'); res.json({ ok: true });
+  }));
+  app.delete('/api/expenses/:id', auth, wrap((req: any, res: any) => {
+    if (!run('DELETE FROM expenses WHERE id=? AND wedding_id=?', req.params.id, wedding(req).id).changes) throw fail(404, 'Expense not found'); res.json({ ok: true });
+  }));
   app.get('/api/planner/overview', auth, wrap((req: any, res: any) => {
     const w = wedding(req);
     const tasks = q('SELECT * FROM tasks WHERE wedding_id=? ORDER BY COALESCE(due,\'9999-12-31\'),id', w.id);
@@ -71,7 +88,8 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
     const today = new Date().toISOString().slice(0, 10);
     res.json({ wedding: w, days_left: Math.ceil((new Date(w.date + 'T00:00:00Z').getTime() - new Date(today + 'T00:00:00Z').getTime()) / 864e5),
       tasks: { total: tasks.length, done: tasks.filter(t => t.done).length, overdue: tasks.filter(t => !t.done && t.due && t.due < today).length, upcoming: tasks.filter(t => !t.done).slice(0, 5) },
-      budget: { total_paise: w.budget_paise, booked_paise: totals.booked, paid_paise: paid, remaining_paise: w.budget_paise - totals.booked }, guests,
+      budget: (() => { const out = one('SELECT COALESCE(SUM(amount_paise),0) committed, COALESCE(SUM(CASE WHEN paid=1 THEN amount_paise ELSE 0 END),0) paid FROM expenses WHERE wedding_id=?', w.id);
+        return { total_paise: w.budget_paise, booked_paise: totals.booked + out.committed, paid_paise: paid + out.paid, remaining_paise: w.budget_paise - totals.booked - out.committed }; })(), guests,
       events: q('SELECT * FROM events WHERE wedding_id=? AND date>=? ORDER BY date,sort LIMIT 3', w.id, today),
       shortlisted: one('SELECT COUNT(*) count FROM shortlist WHERE wedding_id=?', w.id).count });
   }));

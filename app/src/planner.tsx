@@ -210,12 +210,46 @@ export function BudgetManager() {
         {editing ? <Input label={tr('Allocation (₹)')} value={amounts[r.category]} onChangeText={value => setAmounts({ ...amounts, [r.category]: value })} keyboardType="decimal-pad" /> : <>
           <View style={{ marginVertical: 12 }}><Bar pct={r.allocated_paise ? Math.min(100, r.booked_paise / r.allocated_paise * 100) : r.booked_paise ? 100 : 0} color={r.booked_paise > r.allocated_paise ? C.warn : C.primary} /></View>
           <View style={s.row}><M>{tr('Booked')} {inr(r.booked_paise)}</M><M>{tr('Due')} {inr(r.due_paise)}</M></View>
+          {r.outside_paise ? <M style={{ marginTop: 2 }}>{tr('Includes')} {inr(r.outside_paise)} {tr('paid outside the app')}</M> : null}
           {r.booked_paise > r.allocated_paise && <Tag tone="warn" label={tr('Over budget')} />}
         </>}
       </Card>)}
       {editing && <><Btn title={tr('Save budget')} disabled={saving} onPress={save} /><Btn kind="ghost" title={tr('Cancel')} disabled={saving} onPress={() => setEditing(false)} /></>}
+      {!editing && <Expenses categories={b.rows.map((r: any) => r.category)} onChange={load} />}
     </>}
   </ScrollView>;
+}
+
+// Cash and bank payments to vendors who are not on the app (tent house, halwai, pandit), so spending is complete.
+function Expenses({ categories, onChange }: { categories: string[]; onChange: () => void }) {
+  const { data, load } = usePlanner<any[]>('/expenses');
+  const [category, setCategory] = useState(categories[0] || ''); const [payee, setPayee] = useState(''); const [amount, setAmount] = useState(''); const [paid, setPaid] = useState(true); const [saving, setSaving] = useState(false);
+  const refresh = async () => { await load(); onChange(); };
+  const add = async () => {
+    if (!payee.trim()) return err(new Error(tr('Enter who you paid.')));
+    setSaving(true);
+    try { await api('/expenses', 'POST', { category, payee: payee.trim(), amount_paise: rupees(amount), paid }); setPayee(''); setAmount(''); setPaid(true); await refresh(); } catch (e) { err(e); } finally { setSaving(false); }
+  };
+  const toggle = async (x: any) => { try { await api(`/expenses/${x.id}`, 'PATCH', { paid: !x.paid }); await refresh(); } catch (e) { err(e); } };
+  const remove = async (x: any) => { if (await confirm(tr('Remove this payment?'), `${x.payee} · ${inr(x.amount_paise)}`, tr('Remove'), true)) { try { await api(`/expenses/${x.id}`, 'DELETE'); await refresh(); } catch (e) { err(e); } } };
+  return <View style={{ marginTop: 16 }}>
+    <H style={{ marginBottom: 2 }}>{tr('Paid outside the app')}</H>
+    <M style={{ marginBottom: 12 }}>{tr('Cash or bank payments to vendors not booked here, so your budget shows everything.')}</M>
+    <Card>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>{categories.map(c => <Chip key={c} label={categoryLabel(c)} on={category === c} onPress={() => setCategory(c)} />)}</ScrollView>
+      <Input label={tr('Paid to')} value={payee} onChangeText={setPayee} placeholder={tr('e.g. Sharma Tent House')} maxLength={120} />
+      <Input label={tr('Amount (₹)')} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+      <View style={{ flexDirection: 'row' }}><Chip label={tr('Paid')} on={paid} onPress={() => setPaid(true)} /><Chip label={tr('Still due')} on={!paid} onPress={() => setPaid(false)} /></View>
+      <Btn icon="plus" title={tr('Add payment')} disabled={saving || !amount.trim()} onPress={add} />
+    </Card>
+    {(data || []).map((x: any) => <Card key={x.id} style={{ paddingVertical: 16 }}>
+      <View style={s.row}>
+        <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.payee}</Text><M>{categoryLabel(x.category)} · {inr(x.amount_paise)}</M></View>
+        <Tag tone={x.paid ? 'ok' : 'gold'} label={x.paid ? tr('Paid') : tr('Still due')} />
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}><Btn small kind="quiet" title={x.paid ? tr('Mark as due') : tr('Mark as paid')} onPress={() => toggle(x)} /><Btn small kind="quiet" title={tr('Remove')} onPress={() => remove(x)} /></View>
+    </Card>)}
+  </View>;
 }
 
 export function WeddingSettings({ wedding, onSaved }: { wedding: any; onSaved: () => void }) {

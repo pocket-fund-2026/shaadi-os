@@ -51,7 +51,9 @@ app.put('/api/vendor', auth, wrap((req: any, res: any) => {
 // Discovery
 const ratingSql = '(SELECT ROUND(AVG(rating),1) FROM reviews r WHERE r.vendor_id=v.id) rating,(SELECT COUNT(*) FROM reviews r WHERE r.vendor_id=v.id) reviews';
 app.get('/api/vendors', wrap((req: any, res: any) => {
-  const { city, category, q: text, max } = req.query; const w: string[] = ['1=1']; const a: any[] = [];
+  const { city, category, q: text, max, free_on } = req.query; const w: string[] = ['1=1']; const a: any[] = [];
+  // Only vendors on Shaadi OS keep a calendar, so "free on" can't vouch for unclaimed listings and leaves them out.
+  if (free_on) { const day = dateSchema.parse(free_on); w.push("unclaimed=0 AND NOT EXISTS (SELECT 1 FROM blocked_dates b WHERE b.vendor_id=v.id AND b.date=?) AND NOT EXISTS (SELECT 1 FROM bookings bk JOIN enquiries e ON e.id=bk.enquiry_id WHERE bk.vendor_id=v.id AND bk.status!='cancelled' AND e.event_date=?)"); a.push(day, day); }
   if (city) { w.push('(city=? OR travels=1)'); a.push(city); } if (category) { w.push('category=?'); a.push(category); }
   if (max) { const maximum = z.coerce.number().finite().positive().max(Number.MAX_SAFE_INTEGER / 100).parse(max); w.push('start_paise<=?'); a.push(Math.round(maximum * 100)); }
   if (text) { w.push('(name LIKE ? OR description LIKE ? OR locality LIKE ?)'); a.push(...Array(3).fill(`%${text}%`)); }
@@ -105,7 +107,8 @@ app.get('/api/budget', auth, wrap((req: any, res: any) => {
     const bk = q(`SELECT b.id,b.total_paise FROM bookings b JOIN vendors v ON v.id=b.vendor_id WHERE b.wedding_id=? AND v.category=? AND b.status!='cancelled'`, w.id, i.category);
     const booked = bk.reduce((s, x) => s + x.total_paise, 0);
     const paid = bk.reduce((s, x) => s + (one("SELECT COALESCE(SUM(amount_paise),0) s FROM milestones WHERE booking_id=? AND status IN ('held','released')", x.id).s), 0);
-    return { category: i.category, allocated_paise: i.allocated_paise, booked_paise: booked, paid_paise: paid, due_paise: booked - paid };
+    const out = one("SELECT COALESCE(SUM(amount_paise),0) committed, COALESCE(SUM(CASE WHEN paid=1 THEN amount_paise ELSE 0 END),0) paid FROM expenses WHERE wedding_id=? AND category=?", w.id, i.category);
+    return { category: i.category, allocated_paise: i.allocated_paise, booked_paise: booked + out.committed, paid_paise: paid + out.paid, due_paise: booked + out.committed - paid - out.paid, outside_paise: out.committed };
   });
   res.json({ total_paise: w.budget_paise, rows });
 }));

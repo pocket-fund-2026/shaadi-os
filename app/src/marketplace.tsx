@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, Linking, Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
 import { api } from './api';
 import { tr } from './i18n';
-import { Btn, C, Card, Chip, Empty, F, H, Input, Loading, M, Rise, Tag, inr, s } from './ui';
+import { Btn, C, Card, Chip, Empty, F, H, Input, Loading, M, Rise, Tag, inr, s, dateIN } from './ui';
 import { CAT_ICON, Icon, Logo } from './icons';
 import { CategoryCover, FloralArch, SectionTitle, categoryPalette } from './visuals';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,7 +71,8 @@ export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress:
   </Card>;
 }
 
-export function Marketplace({ openVendor, onSignIn, preset }: { openVendor: (id: number) => void; onSignIn?: () => void; preset?: { category?: string; at?: number } }) {
+export function Marketplace({ openVendor, onSignIn, preset, weddingDate }: { openVendor: (id: number) => void; onSignIn?: () => void; preset?: { category?: string; at?: number }; weddingDate?: string }) {
+  const [freeOn, setFreeOn] = useState(false);
   const [budgetDraft, setBudgetDraft] = useState(''); const [budget, setBudget] = useState('');
   const [comparison, setComparison] = useState<any[]>([]); const [showComparison, setShowComparison] = useState(false);
   const validBudget = !budgetDraft || (/^\d+(\.\d{1,2})?$/.test(budgetDraft) && Number(budgetDraft) > 0 && Number(budgetDraft) <= Number.MAX_SAFE_INTEGER / 100);
@@ -80,23 +81,23 @@ export function Marketplace({ openVendor, onSignIn, preset }: { openVendor: (id:
   const [showBudget, setShowBudget] = useState(false);
   // Arriving from the plan's vendor tracker opens Discover on that service.
   useEffect(() => { if (preset?.category) setCategory(preset.category); }, [preset?.category, preset?.at]);
-  const clearFilters = () => { setCity(''); setCategory(''); setQuery(''); setBudget(''); setBudgetDraft(''); setShowBudget(false); };
+  const clearFilters = () => { setCity(''); setCategory(''); setQuery(''); setBudget(''); setBudgetDraft(''); setShowBudget(false); setFreeOn(false); };
   const [vendors, setVendors] = useState<any[] | null>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     let active = true;
     const timer = setTimeout(async () => {
       setBusy(true); setError('');
       try {
-        const params = `city=${encodeURIComponent(city)}&category=${encodeURIComponent(category)}&q=${encodeURIComponent(query.trim())}${budget ? '&max=' + encodeURIComponent(budget) : ''}`;
+        const params = `city=${encodeURIComponent(city)}&category=${encodeURIComponent(category)}&q=${encodeURIComponent(query.trim())}${budget ? '&max=' + encodeURIComponent(budget) : ''}${freeOn && weddingDate ? '&free_on=' + weddingDate : ''}`;
         const result = await api<any[]>('/vendors?' + params);
         if (active) setVendors(result);
       } catch (e) { if (active) setError(e instanceof Error ? e.message : String(e)); }
       finally { if (active) setBusy(false); }
     }, query ? 220 : 0);
     return () => { active = false; clearTimeout(timer); };
-  }, [city, category, query, budget, refreshKey]);
+  }, [city, category, query, budget, refreshKey, freeOn, weddingDate]);
   const results = [...(vendors || [])].sort((a, b) => sort === 'price' ? (a.start_paise ?? Infinity) - (b.start_paise ?? Infinity) : sort === 'rating' ? (b.rating || 0) - (a.rating || 0) : listingRank(a) - listingRank(b) || b.verified - a.verified || a.id - b.id);
-  const filtered = !!(city || category || query || budget);
+  const filtered = !!(city || category || query || budget || freeOn);
   return <FlatList style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 36, width: '100%', maxWidth: 760, alignSelf: 'center' }} data={results} keyExtractor={v => String(v.id)} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
     refreshControl={<RefreshControl refreshing={busy} onRefresh={() => setRefreshKey(k => k + 1)} tintColor={C.primary} />}
     ListHeaderComponent={<>
@@ -121,6 +122,7 @@ export function Marketplace({ openVendor, onSignIn, preset }: { openVendor: (id:
       </Card>}
       <SectionTitle title={filtered ? 'Matching vendors' : 'Vendor directory'} detail={vendors ? `${results.length} ${tr(results.length === 1 ? 'vendor' : 'vendors')}` : undefined} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, marginBottom: 8, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
+        {weddingDate ? <Chip icon="calendar" label={`${tr('Free on')} ${dateIN(weddingDate)}`} on={freeOn} onPress={() => setFreeOn(!freeOn)} /> : null}
         <Chip icon="rupee" label={budget ? `${tr('Up to')} ${inr(Number(budget) * 100)}` : tr('Budget')} on={!!budget || showBudget} onPress={() => setShowBudget(!showBudget)} />
         <View style={{ width: 1, height: 26, backgroundColor: C.line, marginRight: 8, marginTop: 8 }} />
         {[['recommended', 'Recommended'], ['price', 'Price: low to high'], ['rating', 'Top rated']].map(([key, label]) => <Chip key={key} label={tr(label)} on={sort === key} onPress={() => setSort(key)} />)}

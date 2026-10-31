@@ -331,6 +331,39 @@ test('photo uploads accept only real images from the owning vendor', async () =>
   assert.match(photo.url, /^\/uploads\/[0-9a-f]{24}\.png$/);
   assert.equal((await request(`/api/vendor/photos/${photo.id}`, vendor, 'DELETE')).status, 200);
 });
+test('expenses paid outside the app count in the budget and mark the service booked', async () => {
+  const owner = await login('9812300171');
+  await request('/api/wedding', owner, 'POST', { title: 'E & X', date: '2027-07-01', city: 'Nashik', budget_paise: 100000000 });
+  assert.equal((await request('/api/expenses', owner, 'POST', { category: 'not-a-category', payee: 'X', amount_paise: 100 })).status, 400);
+  const r = await request('/api/expenses', owner, 'POST', { category: 'caterer', payee: 'Annapurna Caterers', amount_paise: 30000000, paid: false });
+  assert.equal(r.status, 201);
+  const caterer = (await request('/api/budget', owner)).data.rows.find((x: any) => x.category === 'caterer');
+  assert.deepEqual([caterer.booked_paise, caterer.paid_paise, caterer.due_paise], [30000000, 0, 30000000]);
+  assert.equal((await request(`/api/expenses/${r.data.id}`, owner, 'PATCH', { paid: true })).status, 200);
+  assert.equal((await request(`/api/expenses/${r.data.id}`, outsider, 'PATCH', { paid: false })).status, 404);
+  assert.equal((await request('/api/planner/overview', owner)).data.budget.remaining_paise, 70000000);
+  const tracker = (await request('/api/planner/roadmap', owner)).data.vendors.find((v: any) => v.category === 'caterer');
+  assert.equal(tracker.stage, 'booked'); assert.match(tracker.booked_vendor, /Annapurna Caterers/);
+});
+test('free-on filter leaves out vendors who blocked or booked that date', async () => {
+  const me = (await request('/api/me', vendor)).data.vendor;
+  await request('/api/vendor/block', vendor, 'POST', { date: '2027-11-20', note: 'Family function' });
+  const ids = async (day: string) => (await request('/api/vendors?free_on=' + day)).data.map((v: any) => v.id);
+  assert.ok(!(await ids('2027-11-20')).includes(me.id), 'blocked vendor is hidden on that date');
+  assert.ok((await ids('2027-11-21')).includes(me.id), 'and shown on other dates');
+  assert.ok((await request('/api/vendors?free_on=2027-11-21')).data.every((v: any) => !v.unclaimed));
+  assert.equal((await request('/api/vendors?free_on=21-11-2027')).status, 400);
+});
+test('run sheet keeps timed items per ceremony and checks times', async () => {
+  const owner = await login('9812300181');
+  await request('/api/wedding', owner, 'POST', { title: 'R & S', date: '2027-08-01', city: 'Nagpur', budget_paise: 100000000 });
+  await request('/api/events', owner, 'POST', { name: 'Pheras', date: '2027-08-01' });
+  const ev = (await request('/api/events', owner)).data.find((e: any) => e.name === 'Pheras');
+  assert.equal((await request('/api/run-sheet', owner, 'POST', { event_id: ev.id, time: '6:30 pm', title: 'Baraat arrives' })).status, 400);
+  for (const [time, title] of [['20:15', 'Pheras begin'], ['18:30', 'Baraat arrives']]) assert.equal((await request('/api/run-sheet', owner, 'POST', { event_id: ev.id, time, title, owner: 'Rohan bhaiya' })).status, 201);
+  assert.deepEqual((await request('/api/run-sheet', owner)).data.map((x: any) => x.time), ['18:30', '20:15']);
+  assert.equal((await request('/api/run-sheet', outsider, 'POST', { event_id: ev.id, time: '19:00', title: 'X' })).status, 404);
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

@@ -10,7 +10,7 @@ import { Icon, CAT_ICON } from './icons';
 import { Marketplace } from './marketplace';
 import { CategoryCover } from './visuals';
 import { VendorCatalog } from './catalog';
-import { Gifts, Stays } from './hospitality';
+import { Gifts, RunSheet, Stays } from './hospitality';
 import { useT } from './i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export const useLoad = <T,>(path: string, init: T) => {
@@ -27,8 +27,8 @@ const CatMark = ({ c, size = 46 }: { c: string; size?: number }) => (
 
 // Discover and Plan open with their own heading, so the tab hides the nav bar and these take the top safe area.
 export function Discover({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
-  return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: C.bg }}><Marketplace openVendor={id => navigation.navigate('Vendor', { id })} preset={route?.params} /></View>;
+  const insets = useSafeAreaInsets(); const [me] = useLoad<any>('/me', null);
+  return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: C.bg }}><Marketplace openVendor={id => navigation.navigate('Vendor', { id })} preset={route?.params} weddingDate={me?.wedding?.date} /></View>;
 }
 
 export function VendorScreen({ route, navigation }: any) {
@@ -157,7 +157,7 @@ export function Bookings({ vendor }: any) {
 }
 
 const longDate = (d: string) => { const x = new Date(d + 'T00:00:00Z'); return isNaN(+x) ? d : x.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); };
-const PLAN_TABS: [string, string][] = [['overview', 'Overview'], ['checklist', 'Checklist'], ['events', 'Events'], ['budget', 'Budget'], ['guests', 'Guests'], ['shortlist', 'Shortlist'], ['family', 'Family'], ['shagun', 'Shagun'], ['stays', 'Guest stays'], ['invite', 'Invite'], ['settings', 'Wedding details']];
+const PLAN_TABS: [string, string][] = [['overview', 'Overview'], ['checklist', 'Checklist'], ['events', 'Events'], ['budget', 'Budget'], ['guests', 'Guests'], ['shortlist', 'Shortlist'], ['family', 'Family'], ['shagun', 'Shagun'], ['stays', 'Guest stays'], ['run', 'Run sheet'], ['invite', 'Invite'], ['settings', 'Wedding details']];
 const PLAN_MAIN = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family']] as const;
 export function Plan(props: any) {
   const insets = useSafeAreaInsets();
@@ -172,7 +172,7 @@ function PlanBody({ navigation: nav }: any) {
     <View style={{ maxWidth: 700, width: '100%', alignSelf: 'center' }}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12 }}>{PLAN_MAIN.map(([k, n, icon]) => <Chip key={k} icon={icon} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}<Chip icon="plus" label={tr('More')} on={showMore || !PLAN_MAIN.some(([k]) => k === tab)} onPress={() => setShowMore(!showMore)} /></ScrollView>
       {showMore && <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 4 }}>{PLAN_TABS.filter(([k]) => !PLAN_MAIN.some(([main]) => main === k)).map(([k, n]) => <Chip key={k} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}</View>}
       {!showMore && !PLAN_MAIN.some(([k]) => k === tab) && <M style={{ paddingHorizontal: 16, paddingBottom: 3 }}>{tr(PLAN_TABS.find(([k]) => k === tab)?.[1] || '')}</M>}</View>
-    <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
+    <Rise key={tab} style={{ flex: 1 }}>{tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'run' ? <RunSheet /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
 }
 function Setup({ onDone }: any) {
   const [f, setF] = useState({ title: '', date: '', city: 'Pune', budget: '1500000', guests: '250', community: 'North Indian Hindu' });

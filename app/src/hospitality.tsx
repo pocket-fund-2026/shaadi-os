@@ -97,3 +97,47 @@ export function Stays() {
     </Card></Rise>)}
   </ScrollView>;
 }
+
+// Accepts how people write times ("6:30 pm", "6.30pm", "18:30") and stores 24-hour HH:MM.
+export const parseTime = (text: string) => {
+  const m = text.trim().toLowerCase().match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/); if (!m) return null;
+  let h = Number(m[1]); const min = Number(m[2] || 0); if (min > 59 || h > 23 || (m[3] && (h < 1 || h > 12))) return null;
+  if (m[3] === 'pm' && h < 12) h += 12; if (m[3] === 'am' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+};
+const showTime = (t: string) => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`; };
+
+// Wedding-day run sheet: what happens when at each ceremony and who is in charge.
+export function RunSheet() {
+  const [events] = useLoad<any[]>('/events', []); const [items, load, busy] = useLoad<any[]>('/run-sheet', []);
+  const [eventId, setEventId] = useState<number | null>(null); const [time, setTime] = useState(''); const [title, setTitle] = useState(''); const [owner, setOwner] = useState(''); const [saving, setSaving] = useState(false);
+  const current = eventId ?? events[0]?.id ?? null; const event = events.find(e => e.id === current);
+  const rows = items.filter(x => x.event_id === current);
+  const add = async () => {
+    const t = parseTime(time); if (!t) return err(new Error(tr('Enter a time such as 6:30 pm.')));
+    if (!title.trim()) return err(new Error(tr('Enter what happens at that time.')));
+    setSaving(true);
+    try { await api('/run-sheet', 'POST', { event_id: current, time: t, title: title.trim(), owner: owner.trim() }); setTime(''); setTitle(''); setOwner(''); await load(); } catch (e) { err(e); } finally { setSaving(false); }
+  };
+  const remove = async (x: any) => { if (await confirm(tr('Remove this item?'), `${showTime(x.time)} · ${x.title}`, tr('Remove'), true)) { try { await api(`/run-sheet/${x.id}`, 'DELETE'); load(); } catch (e) { err(e); } } };
+  const share = () => Share.share({ message: `${event?.name}${event?.date ? ` · ${dateIN(event.date)}` : ''}\n` + rows.map(x => `${showTime(x.time)}  ${x.title}${x.owner ? ` (${x.owner})` : ''}`).join('\n') }).catch(() => {});
+  if (!events.length) return busy ? null : <Empty icon="calendar" title={tr('Add your ceremonies first')} text={tr('Each ceremony gets its own run sheet. Add them under More, then Events.')} />;
+  return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{events.map(e => <Chip key={e.id} label={e.name} on={current === e.id} onPress={() => setEventId(e.id)} />)}</ScrollView>
+    <Card>
+      <View style={s.row}><View style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{event?.name}</Text><M>{event?.date ? dateIN(event.date) : tr('Date not set')}{event?.venue ? ` · ${event.venue}` : ''}</M></View>
+        {rows.length ? <Btn small kind="quiet" icon="share" title={tr('Share')} onPress={share} /> : null}</View>
+      {rows.length ? rows.map((x, i) => <View key={x.id} style={[s.row, { paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line, gap: 12, marginTop: i ? 0 : 12 }]}>
+        <Text style={{ width: 72, color: C.primary, fontSize: 15, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{showTime(x.time)}</Text>
+        <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{x.title}</Text>{x.owner ? <M>{x.owner}</M> : null}</View>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Remove')} ${x.title}`} onPress={() => remove(x)} hitSlop={12} style={{ padding: 4 }}><Text style={{ color: C.mute, fontSize: 13 }}>{tr('Remove')}</Text></Pressable>
+      </View>) : <M style={{ marginTop: 12 }}>{tr('Nothing scheduled yet. Add the first item below.')}</M>}
+    </Card>
+    <Card>
+      <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ width: 120 }}><Input label={tr('Time')} value={time} onChangeText={setTime} placeholder="6:30 pm" autoCapitalize="none" /></View>
+        <View style={{ flex: 1 }}><Input label={tr('In charge')} value={owner} onChangeText={setOwner} placeholder={tr('Name')} maxLength={80} /></View></View>
+      <Input label={tr('What happens')} value={title} onChangeText={setTitle} placeholder={tr('e.g. Baraat arrives at the gate')} maxLength={160} />
+      <Btn icon="plus" title={tr('Add to run sheet')} disabled={saving} onPress={add} />
+    </Card>
+  </ScrollView>;
+}
