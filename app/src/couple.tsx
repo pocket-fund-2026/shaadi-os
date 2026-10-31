@@ -266,10 +266,10 @@ function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
 function Guests() {
   const [list, load] = useLoad<any[]>('/guests', []); const [events] = useLoad<any[]>('/events', []);
   const [invites, loadInvites] = useLoad<any[]>('/guest-events', []); const [counts, loadCounts] = useLoad<any[]>('/events/headcount', []);
-  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [side, setSide] = useState('bride'); const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [side, setSide] = useState('bride'); const [busy, setBusy] = useState(false); const [adding, setAdding] = useState(false);
   const add = async () => {
     if (!name.trim()) return; if (phone && !/^[6-9]\d{9}$/.test(phone)) return err(new Error(tr('Enter a 10-digit mobile number, or leave it empty.')));
-    try { await api('/guests', 'POST', { name: name.trim(), phone, side }); setName(''); setPhone(''); load(); } catch (e) { err(e); }
+    try { await api('/guests', 'POST', { name: name.trim(), phone, side }); setName(''); setPhone(''); setAdding(false); load(); } catch (e) { err(e); }
   };
   const share = (g: any) => Linking.openURL(`https://wa.me/91${g.phone}?text=${encodeURIComponent(`Namaste ${g.name}, you're invited. Please reply here: ${getBase()}/rsvp/${g.token}`)}`).catch(err);
   // Tapping a ceremony chip invites or uninvites the guest for that ceremony.
@@ -291,8 +291,9 @@ function Guests() {
         <View style={{ alignItems: 'flex-end' }}><Text style={{ color: C.ok, fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{c.coming}</Text><M>{c.waiting} {tr('waiting')}</M></View>
       </View>)}
     </Card> : null}
-    <Input label={tr('Guest name')} placeholder="Guest Name" value={name} onChangeText={setName} /><Input label={tr('WhatsApp number (optional)')} placeholder="10-digit mobile" value={phone} onChangeText={setPhone} keyboardType="number-pad" maxLength={10} />
-    <View style={{ flexDirection: 'row' }}><Chip label={tr('Bride side')} on={side === 'bride'} onPress={() => setSide('bride')} /><Chip label={tr('Groom side')} on={side === 'groom'} onPress={() => setSide('groom')} /></View><Btn icon="plus" title={tr('Add guest')} onPress={add} />
+    {adding || !list.length ? <Card><Input label={tr('Guest name')} placeholder={tr('e.g. Meera Iyer')} value={name} onChangeText={setName} autoFocus={adding} /><Input label={tr('WhatsApp number (optional)')} placeholder="10-digit mobile" value={phone} onChangeText={setPhone} keyboardType="number-pad" maxLength={10} />
+    <View style={{ flexDirection: 'row' }}><Chip label={tr('Bride side')} on={side === 'bride'} onPress={() => setSide('bride')} /><Chip label={tr('Groom side')} on={side === 'groom'} onPress={() => setSide('groom')} /></View><Btn icon="plus" title={tr('Add guest')} onPress={add} />{list.length ? <Btn kind="ghost" title={tr('Done')} onPress={() => setAdding(false)} /> : null}</Card>
+      : <Btn kind="quiet" icon="plus" title={tr('Add a guest')} onPress={() => setAdding(true)} />}
     {list.length && !events.length ? <M style={{ marginVertical: 8 }}>{tr('Add your ceremonies under More, then Events, to invite guests to each one separately.')}</M> : null}
     {!list.length && <Empty icon="family" title={tr('No guests yet')} text={tr('Add guests with a WhatsApp number and send each one a personal RSVP link.')} />}
     {list.map((g, i) => (<Rise key={g.id} i={i}><Card><View style={s.row}><View style={{ flex: 1 }}><Text style={{ fontWeight: '500', color: C.ink }}>{g.name}</Text>

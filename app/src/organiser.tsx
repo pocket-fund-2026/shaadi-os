@@ -11,23 +11,23 @@ import { categoryLabel } from './marketplace';
 const rupees = (v: string) => { const n = Number(String(v).replace(/,/g, '')); return v.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null; };
 const remove = async (path: string, label: string, reload: () => void) => { if (await confirm(tr('Remove this?'), label, tr('Remove'), true)) { try { await api(path, 'DELETE'); reload(); } catch (e) { err(e); } } };
 
-// What needs attention now, at the top of the plan. Each row opens the section that fixes it.
-export function RemindersCard({ open }: { open: (tab: string) => void }) {
-  const [d] = useLoad<any>('/reminders', null);
-  if (!d?.items?.length) return null;
-  const nav = useNavigation<any>();
+// The reminders under "Up next": a few short lines, each opening the section that fixes it.
+export function RemindersList({ open, skip }: { open: (tab: string) => void; skip?: string }) {
+  const [d] = useLoad<any>('/reminders', null); const nav = useNavigation<any>();
+  const items = (d?.items || []).filter((i: any) => !(i.kind === 'task' && i.title === skip)).slice(0, 3);
+  if (!items.length) return null;
   const text = (i: any) => i.kind === 'instalment' ? `${i.title} · ${inr(i.amount_paise)} · ${tr(i.overdue ? 'overdue since' : 'due')} ${dateIN(i.date)}` : i.kind === 'task' ? `${i.title} · ${tr(i.detail === 'overdue' ? 'overdue since' : 'due')} ${dateIN(i.date)}`
     : i.kind === 'payment' ? `${i.count} ${tr(i.count === 1 ? 'payment still due' : 'payments still due')} · ${inr(i.amount_paise)}`
     : i.kind === 'pickup' ? `${i.count} ${tr(i.count === 1 ? 'pickup this week' : 'pickups this week')} · ${tr('from')} ${dateIN(i.date)}`
     : `${i.count} ${tr(i.count === 1 ? 'guest yet to reply' : 'guests yet to reply')}`;
-  return <Card>
-    <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginBottom: 4 }}>{tr('Reminders')}</Text>
-    {d.items.map((i: any, k: number) => <Pressable key={k} accessibilityRole="button" onPress={() => i.open === 'vendors' ? nav.navigate('Vendors') : open(i.open)} style={[s.row, { paddingVertical: 10, borderTopWidth: k ? 1 : 0, borderTopColor: C.line, gap: 8 }]}>
+  return <View style={{ marginTop: 12 }}>
+    <M style={{ marginBottom: 4 }}>{tr('Also coming up')}</M>
+    {items.map((i: any, k: number) => <Pressable key={k} accessibilityRole="button" onPress={() => i.open === 'vendors' ? nav.navigate('Vendors') : open(i.open)} style={[s.row, { paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line, gap: 8 }]}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: i.tone === 'warn' ? C.warn : C.gold }} />
-      <Text style={{ flex: 1, color: i.tone === 'warn' ? C.warn : C.ink, fontSize: 15 }}>{text(i)}</Text>
-      <Icon name="chevron" size={16} color={C.faint} />
+      <Text style={{ flex: 1, color: i.tone === 'warn' ? C.warn : C.ink, fontSize: 13 }} numberOfLines={2}>{text(i)}</Text>
+      <Icon name="chevron" size={14} color={C.faint} />
     </Pressable>)}
-  </Card>;
+  </View>;
 }
 
 const KINDS: [string, string][] = [['outfit', 'Outfit'], ['jewellery', 'Jewellery'], ['gift', 'Gift for family'], ['other', 'Other']];
@@ -35,7 +35,7 @@ const KINDS: [string, string][] = [['outfit', 'Outfit'], ['jewellery', 'Jeweller
 export function Shopping() {
   const [list, load, busy] = useLoad<any[]>('/shopping', []);
   const blank = { item: '', kind: 'outfit', for_whom: '', buyer: '', budget: '', spent: '' };
-  const [f, setF] = useState(blank); const [saving, setSaving] = useState(false); const [filter, setFilter] = useState('all');
+  const [f, setF] = useState(blank); const [saving, setSaving] = useState(false); const [filter, setFilter] = useState('all'); const [adding, setAdding] = useState(false);
   const set = (k: string, v: string) => setF({ ...f, [k]: v });
   const body = (x: any, over: any = {}) => ({ item: x.item, kind: x.kind, for_whom: x.for_whom, buyer: x.buyer, budget_paise: x.budget_paise ?? null, spent_paise: x.spent_paise ?? null, bought: !!x.bought, ...over });
   const add = async () => {
@@ -49,15 +49,15 @@ export function Shopping() {
   return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card><View style={{ flexDirection: 'row' }}>{[[`${list.filter(x => x.bought).length}/${list.length}`, tr('Bought')], [inr(spent), tr('Spent')], [inr(budget), tr('Planned')]].map(([v, l], i) =>
       <View key={i} style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, fontVariant: ['tabular-nums'] }}>{v}</Text><M>{l}</M></View>)}</View></Card>
-    <Card>
+    {!adding && list.length ? <Btn kind="quiet" icon="plus" title={tr('Add an item')} onPress={() => setAdding(true)} /> : <Card>
       <Input label={tr('Item')} value={f.item} onChangeText={v => set('item', v)} placeholder={tr('e.g. Sangeet lehenga')} maxLength={160} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>{KINDS.map(([k, n]) => <Chip key={k} label={tr(n)} on={f.kind === k} onPress={() => set('kind', k)} />)}</ScrollView>
       <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('For')} value={f.for_whom} onChangeText={v => set('for_whom', v)} placeholder={tr('Bride, Mama ji…')} /></View>
         <View style={{ flex: 1 }}><Input label={tr('Who is buying')} value={f.buyer} onChangeText={v => set('buyer', v)} /></View></View>
       <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Budget (₹)')} value={f.budget} onChangeText={v => set('budget', v)} keyboardType="decimal-pad" /></View>
         <View style={{ flex: 1 }}><Input label={tr('Spent (₹)')} value={f.spent} onChangeText={v => set('spent', v)} keyboardType="decimal-pad" /></View></View>
-      <Btn icon="plus" title={tr('Add to list')} disabled={saving} onPress={add} />
-    </Card>
+      <Btn icon="plus" title={tr('Add to list')} disabled={saving} onPress={add} />{list.length ? <Btn kind="ghost" title={tr('Done')} onPress={() => setAdding(false)} /> : null}
+    </Card>}
     {list.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{[['all', 'All'], ['todo', 'To buy'], ...KINDS].map(([k, n]) => <Chip key={k} label={tr(n)} on={filter === k} onPress={() => setFilter(k)} />)}</ScrollView> : null}
     {!list.length && !busy ? <Empty icon="receipt" title={tr('Nothing on the list yet')} text={tr('Add outfits, jewellery and gifts for family, with who is buying each one.')} /> : null}
     {shown.map((x, i) => <Rise key={x.id} i={i}><Card style={{ paddingVertical: 16 }}><View style={s.row}>
@@ -75,7 +75,7 @@ export function Shopping() {
 // One list for the day: booked vendors (their numbers unlock after booking), people paid outside the app, and anyone added.
 export function DayContacts() {
   const [d, load, busy] = useLoad<any>('/day-contacts', { contacts: [], booked: [], outside: [] });
-  const blank = { name: '', role: '', phone: '', arrival: '' }; const [f, setF] = useState(blank); const [saving, setSaving] = useState(false);
+  const blank = { name: '', role: '', phone: '', arrival: '' }; const [f, setF] = useState(blank); const [saving, setSaving] = useState(false); const [adding, setAdding] = useState(false);
   const add = async () => {
     if (!f.name.trim()) return err(new Error(tr('Enter a name.')));
     if (f.phone && !/^[6-9]\d{9}$/.test(f.phone)) return err(new Error(tr('Enter a 10-digit mobile number, or leave it empty.')));
@@ -99,13 +99,13 @@ export function DayContacts() {
     {d.outside.map((c: any, i: number) => row(c, 'o' + i))}
     {d.contacts.map((c: any) => row(c, 'c' + c.id, true))}
     {empty && !busy ? <Empty icon="family" title={tr('No contacts yet')} text={tr('Add the decorator’s supervisor, the driver, the venue manager and anyone else you may need to call.')} /> : null}
-    <Card>
+    {!adding && !empty ? <Btn kind="quiet" icon="plus" title={tr('Add a contact')} onPress={() => setAdding(true)} /> : <Card>
       <Input label={tr('Name')} value={f.name} onChangeText={v => setF({ ...f, name: v })} maxLength={120} />
       <Input label={tr('Role')} value={f.role} onChangeText={v => setF({ ...f, role: v })} placeholder={tr('e.g. Driver, venue manager')} maxLength={80} />
       <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Mobile')} value={f.phone} onChangeText={v => setF({ ...f, phone: v.replace(/\D/g, '').slice(0, 10) })} keyboardType="number-pad" placeholder="10-digit mobile" /></View>
         <View style={{ flex: 1 }}><Input label={tr('Arrives')} value={f.arrival} onChangeText={v => setF({ ...f, arrival: v })} placeholder="4:00 pm" maxLength={80} /></View></View>
-      <Btn icon="plus" title={tr('Add contact')} disabled={saving} onPress={add} />
-    </Card>
+      <Btn icon="plus" title={tr('Add contact')} disabled={saving} onPress={add} />{!empty ? <Btn kind="ghost" title={tr('Done')} onPress={() => setAdding(false)} /> : null}
+    </Card>}
   </ScrollView>;
 }
 

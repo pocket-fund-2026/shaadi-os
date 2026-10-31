@@ -11,7 +11,7 @@ const rupeesToPaise = (value: string) => { const n = Number(value.replace(/,/g, 
 export function Gifts() {
   const [list, load, busy] = useLoad<any[] | null>('/gifts', null); const [events] = useLoad<any[]>('/events', []);
   const [giver, setGiver] = useState(''); const [kind, setKind] = useState<'cash' | 'gift'>('cash'); const [amount, setAmount] = useState(''); const [what, setWhat] = useState('');
-  const [eventId, setEventId] = useState<number | null>(null); const [pendingOnly, setPendingOnly] = useState(false); const [saving, setSaving] = useState(false);
+  const [eventId, setEventId] = useState<number | null>(null); const [pendingOnly, setPendingOnly] = useState(false); const [saving, setSaving] = useState(false); const [adding, setAdding] = useState(false);
   if (list === null) return busy ? null : <Empty icon="lock" title={tr('Gifts are private')} text={tr('Only the couple and family members who can see the budget can see gifts.')} />;
   const add = async () => {
     if (!giver.trim()) return err(new Error(tr('Enter who gave it.')));
@@ -30,7 +30,7 @@ export function Gifts() {
       <View style={{ flex: 1 }}><M>{tr('Shagun received')}</M><Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{inr(cash)}</Text></View>
       <View style={{ flex: 1 }}><M>{tr('Thank-you notes')}</M><Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{thanked}/{list.length}</Text></View>
     </View></Card>
-    <Card>
+    {!adding && list.length ? <Btn kind="quiet" icon="plus" title={tr('Add a gift')} onPress={() => setAdding(true)} /> : <Card>
       <Input label={tr('From')} value={giver} onChangeText={setGiver} placeholder={tr('Name or family')} maxLength={120} />
       <View style={{ flexDirection: 'row' }}><Chip icon="rupee" label={tr('Cash')} on={kind === 'cash'} onPress={() => setKind('cash')} /><Chip icon="receipt" label={tr('Gift')} on={kind === 'gift'} onPress={() => setKind('gift')} /></View>
       {kind === 'cash'
@@ -38,8 +38,8 @@ export function Gifts() {
         : <Input label={tr('What they gave')} value={what} onChangeText={setWhat} placeholder={tr('e.g. silver dinner set')} maxLength={300} />}
       {events.length ? <><M style={{ marginBottom: 8 }}>{tr('Ceremony (optional)')}</M>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>{events.map(e => <Chip key={e.id} label={e.name} on={eventId === e.id} onPress={() => setEventId(eventId === e.id ? null : e.id)} />)}</ScrollView></> : null}
-      <Btn icon="plus" title={tr('Add to register')} disabled={saving} onPress={add} />
-    </Card>
+      <Btn icon="plus" title={tr('Add to register')} disabled={saving} onPress={add} />{list.length ? <Btn kind="ghost" title={tr('Done')} onPress={() => setAdding(false)} /> : null}
+    </Card>}
     {list.length ? <View style={{ flexDirection: 'row', marginBottom: 8 }}><Chip label={tr('All')} on={!pendingOnly} onPress={() => setPendingOnly(false)} /><Chip label={tr('Thank-you pending')} on={pendingOnly} onPress={() => setPendingOnly(true)} /></View> : null}
     {!list.length && !busy ? <Empty icon="receipt" title={tr('No gifts recorded yet')} text={tr('Note each shagun envelope or gift as it arrives, so thank-you notes are easy later.')} /> : null}
     {shown.map((g, i) => <Rise key={g.id} i={i}><Card style={{ paddingVertical: 16 }}>

@@ -6,7 +6,7 @@ import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err
 import { FloralArch } from './visuals';
 import { Icon, IconName } from './icons';
 import { categoryLabel } from './marketplace';
-import { RemindersCard } from './organiser';
+import { RemindersList } from './organiser';
 import { syncReminders } from './reminders';
 
 function usePlanner<T>(path: string) {
@@ -46,7 +46,7 @@ const monthLabel = (ym: string) => new Date(ym + '-01T00:00:00Z').toLocaleDateSt
 function UpNext({ roadmap, open, nav }: { roadmap: any; open: (tab: string) => void; nav: any }) {
   const tasks = roadmap.months.flatMap((m: any) => m.tasks).sort((a: any, b: any) => Number(!!b.overdue) - Number(!!a.overdue) || String(a.due).localeCompare(String(b.due)));
   const task = tasks[0];
-  if (!task) return null;
+  if (!task) return <Card><Text style={{ color: C.ink, fontSize: 15 }}>{tr('Nothing on the checklist is due.')}</Text><RemindersList open={open} /></Card>;
   const service = TASK_SERVICE.find(([re]) => re.test(task.title))?.[1];
   const v = service ? roadmap.vendors.find((x: any) => x.category === service) : null;
   const label = categoryLabel(service || '').toLowerCase();
@@ -59,6 +59,7 @@ function UpNext({ roadmap, open, nav }: { roadmap: any; open: (tab: string) => v
     <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 4 }}>{task.title}</Text>
     {v && v.stage !== 'booked' ? <M style={{ marginTop: 2 }}>{categoryLabel(service!)}: {tr(STAGE[v.stage].label).toLowerCase()}</M> : null}
     <Btn title={action.title} onPress={action.go} />
+    <RemindersList open={open} skip={task.title} />
   </Card>;
 }
 
@@ -67,6 +68,7 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
   const { data: d, busy, error, load } = usePlanner<any>('/planner/overview');
   const { data: r, load: loadRoadmap, error: roadmapError } = usePlanner<any>('/planner/roadmap');
   const refresh = () => { load(); loadRoadmap(); };
+  const [showAllVendors, setShowAllVendors] = useState(false); const [showFullTimeline, setShowFullTimeline] = useState(false);
   return <ScrollView contentContainerStyle={content} refreshControl={<RefreshControl refreshing={busy} onRefresh={refresh} tintColor={C.primary} />}>
     <Failure error={error || roadmapError} retry={refresh} />
     {!d ? <M>{tr('Loading your overview…')}</M> : <>
@@ -75,23 +77,17 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
         <M style={{ color: '#F4DDE5' }}>{tr('Wedding countdown')}</M>
         <Text style={{ fontFamily: F.display, fontSize: 34, color: '#fff', marginVertical: 8 }}>{d.days_left > 0 ? `${d.days_left} ${tr('days to go')}` : d.days_left === 0 ? tr('Today is the day') : tr('Just married')}</Text>
         <M style={{ color: '#F4DDE5' }}>{dateLabel(d.wedding.date)} · {d.wedding.city} · {d.wedding.guests_est} {tr('guests')}</M>
-        <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: '#A66B7E', paddingTop: 16 }}>
-          <View style={s.row}><M style={{ color: '#F4DDE5' }}>{tr('Your planning progress')}</M><Text style={{ color: '#fff', fontWeight: '500', fontVariant: ['tabular-nums'] }}>{d.tasks.total ? Math.round(d.tasks.done / d.tasks.total * 100) : 0}%</Text></View>
-          <View style={{ marginTop: 12 }}><Bar pct={d.tasks.total ? d.tasks.done / d.tasks.total * 100 : 0} color={C.goldSoft} /></View>
+        <View style={{ flexDirection: 'row', marginTop: 20, borderTopWidth: 1, borderTopColor: '#A66B7E', paddingTop: 16 }}>
+          {[[`${d.tasks.done}/${d.tasks.total}`, tr('Tasks'), 'checklist'], [String(d.guests.attending), tr('Guests coming'), 'guests'], [inr(d.budget.remaining_paise), tr('Left to book'), 'budget']].map(([value, label, tab]) =>
+            <Pressable key={tab} accessibilityRole="button" onPress={() => open(tab)} style={{ flex: 1 }}>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }} numberOfLines={1}>{value}</Text><M style={{ color: '#F4DDE5' }}>{label}</M>
+            </Pressable>)}
         </View>
       </Card>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {[[`${d.tasks.done}/${d.tasks.total}`, tr('Tasks'), 'checklist', d.tasks.overdue ? `${d.tasks.overdue} ${tr('Overdue')}` : ''], [String(d.guests.attending), tr('Guests coming'), 'guests', ''], [inr(d.budget.remaining_paise), tr('Left to book'), 'budget', d.budget.remaining_paise < 0 ? tr('Over budget') : '']].map(([value, label, tab, warn]) =>
-          <Card key={tab} onPress={() => open(tab)} style={{ flex: 1, padding: 12, marginBottom: 16 }}>
-            <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, fontVariant: ['tabular-nums'] }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
-            <M style={{ marginTop: 2 }}>{label}</M>{warn ? <M style={{ color: C.warn, marginTop: 2 }}>{warn}</M> : null}
-          </Card>)}
-      </View>
 
-      <RemindersCard open={open} />
       {r ? <UpNext roadmap={r} open={open} nav={nav} /> : null}
       <View style={[s.row, { marginTop: 8 }]}><H style={{ marginVertical: 8 }}>{tr('Vendors')}</H>{r ? <M style={{ fontVariant: ['tabular-nums'] }}>{r.booked_count} {tr('of')} {r.vendors.length} {tr('booked')}</M> : null}</View>
-      {r ? <Card style={{ paddingVertical: 4 }}>{r.vendors.map((v: any, i: number) => {
+      {r ? <Card style={{ paddingVertical: 4 }}>{(showAllVendors ? r.vendors : r.vendors.filter((v: any) => v.stage !== 'booked').slice(0, 3)).map((v: any, i: number) => {
         const st = STAGE[v.stage];
         const action = v.stage === 'not_started' ? { title: tr('Find'), go: () => nav.navigate('Discover', { category: v.category, at: Date.now() }) }
           : v.stage === 'shortlisted' ? { title: tr('Compare'), go: () => open('shortlist') }
@@ -105,13 +101,15 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
             {detail ? <M style={{ marginTop: 4 }} numberOfLines={2}>{detail}</M> : null}
           </View>
           {action ? <Btn small kind="quiet" title={action.title} onPress={action.go} /> : null}
-        </View>; })}</Card> : <M>{tr('Loading your vendors…')}</M>}
+        </View>; })}
+        <Pressable accessibilityRole="button" onPress={() => setShowAllVendors(!showAllVendors)} style={{ minHeight: 44, justifyContent: 'center', borderTopWidth: 1, borderTopColor: C.line }}><Text style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{showAllVendors ? tr('Show less') : `${tr('Show all')} ${r.vendors.length}`}</Text></Pressable>
+      </Card> : <M>{tr('Loading your vendors…')}</M>}
 
       <H style={{ marginTop: 16 }}>{tr('Timeline')}</H>
-      {r ? r.months.map((m: any, i: number) => <View key={m.month} style={{ flexDirection: 'row' }}>
+      {r ? (showFullTimeline ? r.months : r.months.slice(0, 2)).map((m: any, i: number, shown: any[]) => <View key={m.month} style={{ flexDirection: 'row' }}>
         <View style={{ width: 24, alignItems: 'center' }}>
           <View style={{ width: 12, height: 12, borderRadius: 6, marginTop: 6, backgroundColor: i === 0 ? C.primary : m.wedding ? C.gold : C.card, borderWidth: 2, borderColor: i === 0 ? C.primary : m.wedding ? C.gold : C.line }} />
-          {i < r.months.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: C.line, marginTop: 4 }} /> : null}
+          {i < shown.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: C.line, marginTop: 4 }} /> : null}
         </View>
         <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text accessibilityRole="header" style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{monthLabel(m.month)}</Text>{i === 0 ? <Tag tone="gold" label={tr('This month')} /> : null}</View>
@@ -126,6 +124,7 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
           {!m.events.length && !m.tasks.length && !m.wedding ? <M style={{ marginTop: 4 }}>{tr('Nothing planned yet')}</M> : null}
         </View>
       </View>) : null}
+      {r && r.months.length > 2 ? <Btn kind="quiet" title={showFullTimeline ? tr('Show less') : `${tr('Show full timeline')} · ${r.months.length} ${tr('months')}`} onPress={() => setShowFullTimeline(!showFullTimeline)} /> : null}
       {r?.unscheduled.length ? <Btn kind="quiet" icon="calendar" title={`${r.unscheduled.length} ${tr('tasks without a date')}`} onPress={() => open('checklist')} /> : null}
     </>}
   </ScrollView>;
@@ -135,14 +134,14 @@ export function TaskManager() {
   const { data, busy, error, load } = usePlanner<any[]>('/tasks');
   const { data: guide, load: loadGuide, error: guideError } = usePlanner<any[]>('/planner/guide');
   const [title, setTitle] = useState(''); const [due, setDue] = useState(''); const [filter, setFilter] = useState('pending'); const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState<'mine' | 'ideas'>('mine'); const [phase, setPhase] = useState('All');
+  const [mode, setMode] = useState<'mine' | 'ideas'>('mine'); const [phase, setPhase] = useState('All'); const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<number | null>(null); const [editTitle, setEditTitle] = useState(''); const [editDue, setEditDue] = useState('');
   const tasks = data || []; const today = new Date().toISOString().slice(0, 10); const done = tasks.filter(t => t.done).length;
   const action = async (path: string, method: string, body?: any) => {
     setSaving(true);
     try { await api(path, method, body); await load(); await loadGuide(); syncReminders().catch(() => {}); return true; } catch (e) { err(e); return false; } finally { setSaving(false); }
   };
-  const add = async () => { if (await action('/tasks', 'POST', { title: title.trim(), ...(due ? { due } : {}) })) { setTitle(''); setDue(''); } };
+  const add = async () => { if (await action('/tasks', 'POST', { title: title.trim(), ...(due ? { due } : {}) })) { setTitle(''); setDue(''); return true; } return false; };
   const saveEdit = async () => { if (editing !== null && await action(`/tasks/${editing}`, 'PATCH', { title: editTitle.trim(), due: editDue || null })) setEditing(null); };
   const addIdea = async (key: string) => action(`/planner/guide/${key}`, 'POST');
   const remove = async (id: number) => { if (await confirm(tr('Delete task?'), tr('This task will be removed from your checklist.'), tr('Delete'), true)) await action(`/tasks/${id}`, 'DELETE'); };
@@ -172,7 +171,6 @@ export function TaskManager() {
     </Card>
     <View style={{ flexDirection: 'row', marginBottom: 8 }}><Chip label={tr('My tasks')} on={mode === 'mine'} onPress={() => setMode('mine')} /><Chip label={tr('Planning ideas')} on={mode === 'ideas'} onPress={() => setMode('ideas')} /></View>
     {mode === 'mine' ? <>
-      <View style={{ marginBottom: 8 }}><H style={{ marginVertical: 2 }}>{tr('Your checklist')}</H><M>{tr('Choose what matters and adjust any date.')}</M></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{[['pending', 'To do'], ['overdue', 'Overdue'], ['done', 'Done'], ['all', 'All']].map(([key, label]) => <Chip key={key} label={tr(label)} on={filter === key} onPress={() => setFilter(key)} />)}</ScrollView>
       {!busy && !visible.length && <Empty icon="checklist" title={tr('No tasks here')} text={tr('Add a task or choose another filter.')} />}
       {visible.map((t, index) => <Rise key={t.id} i={index}><Card style={{ paddingVertical: 16 }}>
@@ -180,7 +178,8 @@ export function TaskManager() {
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><View style={{ flex: 1 }}><Btn small kind="quiet" icon={t.done ? 'checklist' : 'check'} title={t.done ? tr('Reopen') : tr('Mark done')} disabled={saving} onPress={() => action(`/tasks/${t.id}`, 'PATCH', { done: !t.done })} /></View><View style={{ flex: 1 }}><Btn small kind="ghost" title={tr('Edit')} disabled={saving} onPress={() => { setEditing(editing === t.id ? null : t.id); setEditTitle(t.title); setEditDue(t.due || ''); }} /></View></View>
         {editing === t.id && <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 16 }}><Input label={tr('Task name')} value={editTitle} onChangeText={setEditTitle} maxLength={200} /><DateField label={tr('Due date (optional)')} value={editDue || ''} onChange={setEditDue} optional /><Btn small title={tr('Save task')} disabled={saving || !editTitle.trim()} onPress={saveEdit} /><Btn small kind="quiet" title={tr('Delete task')} disabled={saving} onPress={() => remove(t.id)} /></View>}
       </Card></Rise>)}
-      <Card style={{ marginTop: 8 }}><H style={{ fontSize: 20, marginTop: 0 }}>{tr('Add your own')}</H><Input label={tr('Task name')} value={title} onChangeText={setTitle} placeholder={tr('What needs to be done?')} maxLength={200} /><DateField label={tr('Due date (optional)')} value={due} onChange={setDue} optional /><Btn title={tr('Add task')} disabled={saving || !title.trim()} onPress={add} /></Card>
+      {adding ? <Card style={{ marginTop: 8 }}><Input label={tr('Task name')} value={title} onChangeText={setTitle} placeholder={tr('What needs to be done?')} maxLength={200} autoFocus /><DateField label={tr('Due date (optional)')} value={due} onChange={setDue} optional /><Btn title={tr('Add task')} disabled={saving || !title.trim()} onPress={async () => { if (await add()) setAdding(false); }} /><Btn kind="ghost" title={tr('Cancel')} onPress={() => setAdding(false)} /></Card>
+        : <Btn kind="quiet" icon="plus" title={tr('Add a task')} onPress={() => setAdding(true)} />}
     </> : <>
       <H style={{ marginBottom: 2 }}>{tr('Planning ideas')}</H><M style={{ marginBottom: 16 }}>{tr('Suggested timing follows your wedding date. Choose only what suits you.')}</M>
       <Failure error={guideError} retry={loadGuide} />
@@ -209,14 +208,13 @@ export function BudgetManager() {
         {!editing && <Btn kind="quiet" title={tr('Edit allocations')} onPress={edit} />}
       </Card>
       {editing && <Input label={tr('Total budget (₹)')} value={total} onChangeText={setTotal} keyboardType="decimal-pad" />}
-      {b.rows.map((r: any) => <Card key={r.category}><View style={s.row}><Text style={{ color: C.ink, fontWeight: '500' }}>{categoryLabel(r.category)}</Text><M>{inr(r.allocated_paise)}</M></View>
+      <Card style={{ paddingVertical: 4 }}>{b.rows.map((r: any, i: number) => <View key={r.category} style={{ paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }}>
+        <View style={s.row}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{categoryLabel(r.category)}</Text><M style={{ fontVariant: ['tabular-nums'] }}>{inr(r.booked_paise)} / {inr(r.allocated_paise)}</M></View>
         {editing ? <Input label={tr('Allocation (₹)')} value={amounts[r.category]} onChangeText={value => setAmounts({ ...amounts, [r.category]: value })} keyboardType="decimal-pad" /> : <>
-          <View style={{ marginVertical: 12 }}><Bar pct={r.allocated_paise ? Math.min(100, r.booked_paise / r.allocated_paise * 100) : r.booked_paise ? 100 : 0} color={r.booked_paise > r.allocated_paise ? C.warn : C.primary} /></View>
-          <View style={s.row}><M>{tr('Booked')} {inr(r.booked_paise)}</M><M>{tr('Due')} {inr(r.due_paise)}</M></View>
-          {r.outside_paise ? <M style={{ marginTop: 2 }}>{tr('Includes')} {inr(r.outside_paise)} {tr('paid outside the app')}</M> : null}
-          {r.booked_paise > r.allocated_paise && <Tag tone="warn" label={tr('Over budget')} />}
+          <View style={{ marginTop: 8 }}><Bar pct={r.allocated_paise ? Math.min(100, r.booked_paise / r.allocated_paise * 100) : r.booked_paise ? 100 : 0} color={r.booked_paise > r.allocated_paise ? C.warn : C.primary} /></View>
+          {r.booked_paise > r.allocated_paise ? <M style={{ color: C.warn, marginTop: 4 }}>{tr('Over budget')} {tr('by')} {inr(r.booked_paise - r.allocated_paise)}</M> : r.due_paise ? <M style={{ marginTop: 4 }}>{tr('Due')} {inr(r.due_paise)}{r.outside_paise ? ` · ${tr('Includes')} ${inr(r.outside_paise)} ${tr('paid outside the app')}` : ''}</M> : null}
         </>}
-      </Card>)}
+      </View>)}</Card>
       {editing && <><Btn title={tr('Save budget')} disabled={saving} onPress={save} /><Btn kind="ghost" title={tr('Cancel')} disabled={saving} onPress={() => setEditing(false)} /></>}
       {!editing && <Expenses categories={b.rows.map((r: any) => r.category)} onChange={load} />}
     </>}
@@ -226,25 +224,25 @@ export function BudgetManager() {
 // Cash and bank payments to vendors who are not on the app (tent house, halwai, pandit), so spending is complete.
 function Expenses({ categories, onChange }: { categories: string[]; onChange: () => void }) {
   const { data, load } = usePlanner<any[]>('/expenses');
-  const [category, setCategory] = useState(categories[0] || ''); const [payee, setPayee] = useState(''); const [amount, setAmount] = useState(''); const [paid, setPaid] = useState(true); const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState(false); const [category, setCategory] = useState(categories[0] || ''); const [payee, setPayee] = useState(''); const [amount, setAmount] = useState(''); const [paid, setPaid] = useState(true); const [saving, setSaving] = useState(false);
   const refresh = async () => { await load(); onChange(); };
   const add = async () => {
-    if (!payee.trim()) return err(new Error(tr('Enter who you paid.')));
+    if (!payee.trim()) { err(new Error(tr('Enter who you paid.'))); return false; }
     setSaving(true);
-    try { await api('/expenses', 'POST', { category, payee: payee.trim(), amount_paise: rupees(amount), paid }); setPayee(''); setAmount(''); setPaid(true); await refresh(); } catch (e) { err(e); } finally { setSaving(false); }
+    try { await api('/expenses', 'POST', { category, payee: payee.trim(), amount_paise: rupees(amount), paid }); setPayee(''); setAmount(''); setPaid(true); await refresh(); return true; } catch (e) { err(e); return false; } finally { setSaving(false); }
   };
   const toggle = async (x: any) => { try { await api(`/expenses/${x.id}`, 'PATCH', { paid: !x.paid }); await refresh(); } catch (e) { err(e); } };
   const remove = async (x: any) => { if (await confirm(tr('Remove this payment?'), `${x.payee} · ${inr(x.amount_paise)}`, tr('Remove'), true)) { try { await api(`/expenses/${x.id}`, 'DELETE'); await refresh(); } catch (e) { err(e); } } };
   return <View style={{ marginTop: 16 }}>
     <H style={{ marginBottom: 2 }}>{tr('Paid outside the app')}</H>
     <M style={{ marginBottom: 12 }}>{tr('Cash or bank payments to vendors not booked here, so your budget shows everything.')}</M>
-    <Card>
+    {!adding ? <Btn kind="quiet" icon="plus" title={tr('Add a payment')} onPress={() => setAdding(true)} /> : <Card>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>{categories.map(c => <Chip key={c} label={categoryLabel(c)} on={category === c} onPress={() => setCategory(c)} />)}</ScrollView>
       <Input label={tr('Paid to')} value={payee} onChangeText={setPayee} placeholder={tr('e.g. Sharma Tent House')} maxLength={120} />
       <Input label={tr('Amount (₹)')} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
       <View style={{ flexDirection: 'row' }}><Chip label={tr('Paid')} on={paid} onPress={() => setPaid(true)} /><Chip label={tr('Still due')} on={!paid} onPress={() => setPaid(false)} /></View>
-      <Btn icon="plus" title={tr('Add payment')} disabled={saving || !amount.trim()} onPress={add} />
-    </Card>
+      <Btn icon="plus" title={tr('Add payment')} disabled={saving || !amount.trim()} onPress={async () => { if (await add()) setAdding(false); }} /><Btn kind="ghost" title={tr('Cancel')} onPress={() => setAdding(false)} />
+    </Card>}
     {(data || []).map((x: any) => <Card key={x.id} style={{ paddingVertical: 16 }}>
       <View style={s.row}>
         <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.payee}</Text><M>{categoryLabel(x.category)} · {inr(x.amount_paise)}</M></View>
