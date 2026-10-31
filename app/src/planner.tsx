@@ -6,6 +6,8 @@ import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err
 import { FloralArch } from './visuals';
 import { Icon, IconName } from './icons';
 import { categoryLabel } from './marketplace';
+import { RemindersCard } from './organiser';
+import { syncReminders } from './reminders';
 
 function usePlanner<T>(path: string) {
   const [data, setData] = useState<T | null>(null);
@@ -86,6 +88,7 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
           </Card>)}
       </View>
 
+      <RemindersCard open={open} />
       {r ? <UpNext roadmap={r} open={open} nav={nav} /> : null}
       <View style={[s.row, { marginTop: 8 }]}><H style={{ marginVertical: 8 }}>{tr('Vendors')}</H>{r ? <M style={{ fontVariant: ['tabular-nums'] }}>{r.booked_count} {tr('of')} {r.vendors.length} {tr('booked')}</M> : null}</View>
       {r ? <Card style={{ paddingVertical: 4 }}>{r.vendors.map((v: any, i: number) => {
@@ -137,7 +140,7 @@ export function TaskManager() {
   const tasks = data || []; const today = new Date().toISOString().slice(0, 10); const done = tasks.filter(t => t.done).length;
   const action = async (path: string, method: string, body?: any) => {
     setSaving(true);
-    try { await api(path, method, body); await load(); await loadGuide(); return true; } catch (e) { err(e); return false; } finally { setSaving(false); }
+    try { await api(path, method, body); await load(); await loadGuide(); syncReminders().catch(() => {}); return true; } catch (e) { err(e); return false; } finally { setSaving(false); }
   };
   const add = async () => { if (await action('/tasks', 'POST', { title: title.trim(), ...(due ? { due } : {}) })) { setTitle(''); setDue(''); } };
   const saveEdit = async () => { if (editing !== null && await action(`/tasks/${editing}`, 'PATCH', { title: editTitle.trim(), due: editDue || null })) setEditing(null); };

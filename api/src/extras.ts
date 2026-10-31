@@ -2,6 +2,7 @@ import express from 'express'; import { z } from 'zod'; import { randomBytes } f
 import { db, q, one, run } from './db.ts';
 import { dateSchema } from './planner.ts';
 import { UPLOAD_DIR } from './catalog.ts';
+import { mountOrganiser, organiserDelete, organiserExport } from './organiser.ts';
 import { unlinkSync } from 'node:fs';
 db.exec(`
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, wedding_id INT, name TEXT, date TEXT, venue TEXT, dress TEXT, sort INT DEFAULT 0);
@@ -52,7 +53,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
   app.get('/api/events', auth, wrap((req: any, res: any) => res.json(q("SELECT * FROM events WHERE wedding_id=? ORDER BY COALESCE(date,'9999-12-31'),sort,id", W(req).id))));
   app.post('/api/events', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); const b = z.object({ name: z.string().trim().min(2).max(100), date: dateSchema.optional(), venue: z.string().trim().max(120).optional() }).parse(req.body); if (one('SELECT id FROM events WHERE wedding_id=? AND lower(name)=lower(?)', w.id, b.name)) throw fail(409, 'This celebration is already in your plan'); const sort = one('SELECT COALESCE(MAX(sort),-1)+1 next FROM events WHERE wedding_id=?', w.id).next; const id = Number(run('INSERT INTO events(wedding_id,name,date,venue,sort) VALUES(?,?,?,?,?)', w.id, b.name, b.date || null, b.venue || '', sort).lastInsertRowid); res.status(201).json(one('SELECT * FROM events WHERE id=?', id)); }));
   app.put('/api/events/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); const b = z.object({ name: z.string().trim().min(2).max(100).optional(), date: z.union([dateSchema, z.literal('')]).optional(), venue: z.string().trim().max(120).optional(), dress: z.string().trim().max(80).optional() }).parse(req.body); const event = one('SELECT * FROM events WHERE id=? AND wedding_id=?', req.params.id, w.id); if (!event) throw fail(404, 'Celebration not found'); if (b.name && b.name !== event.name && one('SELECT id FROM events WHERE wedding_id=? AND lower(name)=lower(?) AND id!=?', w.id, b.name, event.id)) throw fail(409, 'This celebration is already in your plan'); run('UPDATE events SET name=?,date=?,venue=?,dress=? WHERE id=? AND wedding_id=?', b.name ?? event.name, b.date === undefined ? event.date : b.date || null, b.venue ?? event.venue, b.dress ?? event.dress, event.id, w.id); res.json({ ok: true }); }));
-  app.delete('/api/events/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); run('DELETE FROM guest_events WHERE event_id IN (SELECT id FROM events WHERE id=? AND wedding_id=?)', req.params.id, w.id); run('DELETE FROM run_items WHERE event_id=? AND wedding_id=?', req.params.id, w.id); if (!run('DELETE FROM events WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Celebration not found'); res.json({ ok: true }); }));
+  app.delete('/api/events/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only'); run('DELETE FROM guest_events WHERE event_id IN (SELECT id FROM events WHERE id=? AND wedding_id=?)', req.params.id, w.id); run('DELETE FROM run_items WHERE event_id=? AND wedding_id=?', req.params.id, w.id); run('DELETE FROM seat_assignments WHERE table_id IN (SELECT id FROM seating_tables WHERE event_id=? AND wedding_id=?)', req.params.id, w.id); run('DELETE FROM seating_tables WHERE event_id=? AND wedding_id=?', req.params.id, w.id); if (!run('DELETE FROM events WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Celebration not found'); res.json({ ok: true }); }));
   // Shagun and gift register. Amounts are budget information, so plain viewers don't see it.
   const seesMoney = (req: any, w: any) => ['owner', 'editor', 'budget_viewer'].includes(role(req, w));
   const giftBody = z.object({ giver: z.string().trim().min(1).max(120), event_id: z.number().int().nullable().optional(), kind: z.enum(['cash', 'gift']), amount_paise: z.number().int().positive().max(100_000_000_000).nullable().optional(), description: z.string().trim().max(300).optional() });
@@ -66,6 +67,8 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
     if (!run('UPDATE gifts SET thanked=? WHERE id=? AND wedding_id=?', thanked ? 1 : 0, req.params.id, w.id).changes) throw fail(404, 'Gift not found'); res.json({ ok: true }); }));
   app.delete('/api/gifts/:id', auth, wrap((req: any, res: any) => { const w = W(req); if (!canEdit(req, w)) throw fail(403, 'View only');
     if (!run('DELETE FROM gifts WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Gift not found'); res.json({ ok: true }); }));
+
+  mountOrganiser(app, auth, wrap, { W, canEdit, seesMoney, fail });
 
   // Outstation guests: where they stay, when they arrive and whether someone must pick them up.
   const stayBody = z.object({ guest_name: z.string().trim().min(1).max(120), people: z.number().int().min(1).max(50).default(1), hotel: z.string().trim().max(120).optional(), room: z.string().trim().max(40).optional(),
@@ -150,7 +153,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
       tasks: q('SELECT * FROM tasks WHERE wedding_id=?', id), budget: q('SELECT * FROM budget_items WHERE wedding_id=?', id), events: q('SELECT * FROM events WHERE wedding_id=?', id),
       guests: q('SELECT * FROM guests WHERE wedding_id=?', id), guest_events: q('SELECT ge.* FROM guest_events ge JOIN guests g ON g.id=ge.guest_id WHERE g.wedding_id=?', id),
       family: q('SELECT * FROM members WHERE wedding_id=?', id), shortlist: q('SELECT * FROM shortlist WHERE wedding_id=?', id), invite: one('SELECT * FROM invites WHERE wedding_id=?', id) || null,
-      gifts: q('SELECT * FROM gifts WHERE wedding_id=?', id), stays: q('SELECT * FROM stays WHERE wedding_id=?', id), expenses: q('SELECT * FROM expenses WHERE wedding_id=?', id), run_sheet: q('SELECT * FROM run_items WHERE wedding_id=?', id),
+      gifts: q('SELECT * FROM gifts WHERE wedding_id=?', id), stays: q('SELECT * FROM stays WHERE wedding_id=?', id), expenses: q('SELECT * FROM expenses WHERE wedding_id=?', id), run_sheet: q('SELECT * FROM run_items WHERE wedding_id=?', id), ...organiserExport(id),
       enquiries: q('SELECT * FROM enquiries WHERE couple_id=?', req.user.id), messages: q('SELECT * FROM messages WHERE sender_id=?', req.user.id),
       bookings: q('SELECT * FROM bookings WHERE couple_id=?', req.user.id), reviews: q('SELECT * FROM reviews WHERE user_id=?', req.user.id) });
   }));
@@ -167,6 +170,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
         run(`DELETE FROM enquiries WHERE wedding_id=? ${keep}`, w.id, ...open);
         run('DELETE FROM guest_events WHERE guest_id IN (SELECT id FROM guests WHERE wedding_id=?)', w.id);
         run('DELETE FROM votes WHERE shortlist_id IN (SELECT id FROM shortlist WHERE wedding_id=?)', w.id);
+        organiserDelete(w.id);
         for (const table of ['tasks', 'budget_items', 'guests', 'events', 'members', 'shortlist', 'invites', 'gifts', 'stays', 'expenses', 'run_items']) run(`DELETE FROM ${table} WHERE wedding_id=?`, w.id);
         if (open.length) run("UPDATE weddings SET title='Deleted wedding', city='', community='' WHERE id=?", w.id); else run('DELETE FROM weddings WHERE id=?', w.id);
       }

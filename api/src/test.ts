@@ -364,6 +364,30 @@ test('run sheet keeps timed items per ceremony and checks times', async () => {
   assert.deepEqual((await request('/api/run-sheet', owner)).data.map((x: any) => x.time), ['18:30', '20:15']);
   assert.equal((await request('/api/run-sheet', outsider, 'POST', { event_id: ev.id, time: '19:00', title: 'X' })).status, 404);
 });
+test('organiser: reminders, shopping, contacts, documents and seating', async () => {
+  const owner = await login('9812300191');
+  await request('/api/wedding', owner, 'POST', { title: 'O & P', date: new Date(Date.now() + 20 * 864e5).toISOString().slice(0, 10), city: 'Pune', budget_paise: 100000000 });
+  await request('/api/tasks', owner, 'POST', { title: 'Old task', due: '2026-01-01' });
+  await request('/api/expenses', owner, 'POST', { category: 'decor', payee: 'Phoolwala', amount_paise: 500000, paid: false });
+  const kinds = (await request('/api/reminders', owner)).data.items.map((i: any) => i.kind);
+  assert.ok(kinds.includes('task') && kinds.includes('payment'), 'overdue task and unpaid payment are reminders: ' + kinds);
+  assert.equal((await request('/api/shopping', owner, 'POST', { item: 'Bridal lehenga', kind: 'outfit', for_whom: 'Bride', budget_paise: 15000000 })).status, 201);
+  assert.equal((await request('/api/shopping', owner, 'POST', { item: 'X', kind: 'car' })).status, 400);
+  assert.equal((await request('/api/day-contacts', owner, 'POST', { name: 'Driver Raju', role: 'Car', phone: '12345' })).status, 400);
+  assert.equal((await request('/api/day-contacts', owner, 'POST', { name: 'Driver Raju', role: 'Car', phone: '9876501234', arrival: '5:00 pm' })).status, 201);
+  const contacts = (await request('/api/day-contacts', owner)).data; assert.equal(contacts.contacts.length, 1); assert.equal(contacts.outside[0].name, 'Phoolwala');
+  const docs = (await request('/api/documents', owner)).data; assert.ok(docs.length >= 9);
+  assert.equal((await request('/api/documents', owner)).data.length, docs.length, 'seeded only once');
+  assert.equal((await request(`/api/documents/${docs[0].id}`, owner, 'PATCH', { done: true })).status, 200);
+  assert.equal((await request(`/api/documents/${docs[0].id}`, outsider, 'PATCH', { done: true })).status, 404);
+  await request('/api/events', owner, 'POST', { name: 'Reception' }); const ev = (await request('/api/events', owner)).data.find((e: any) => e.name === 'Reception');
+  await request('/api/guests', owner, 'POST', { name: 'Seated Guest' }); const g = (await request('/api/guests', owner)).data[0];
+  const t1 = (await request('/api/seating/tables', owner, 'POST', { event_id: ev.id, name: 'Table 1', seats: 8 })).data.id;
+  const t2 = (await request('/api/seating/tables', owner, 'POST', { event_id: ev.id, name: 'Table 2', seats: 8 })).data.id;
+  await request(`/api/seating/tables/${t1}/guests/${g.id}`, owner, 'PUT', { seated: true });
+  await request(`/api/seating/tables/${t2}/guests/${g.id}`, owner, 'PUT', { seated: true });
+  assert.deepEqual((await request('/api/seating', owner)).data.seats.map((x: any) => x.table_id), [t2], 'a guest sits at one table per ceremony');
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

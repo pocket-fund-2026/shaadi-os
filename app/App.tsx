@@ -16,6 +16,7 @@ import { Payouts } from './src/vendor';
 import { Business, Privacy, Admin } from './src/more';
 import { Btn, Chip, C, F, M, H, Card, TabIcon, ErrorBoundary, MOTION, useReducedMotion } from './src/ui';
 import { Icon, IconName, Logo } from './src/icons';
+import { disableReminders, enableReminders, remindersEnabled, syncReminders } from './src/reminders';
 // Shown while the session and fonts load. Same burgundy as the native splash so the hand-off has no flash,
 // and it says what is happening when the server is slow instead of spinning silently.
 function BootScreen({ fontsReady }: { fontsReady: boolean }) {
@@ -47,6 +48,23 @@ const Tab = createBottomTabNavigator(); const Stack = createNativeStackNavigator
 const hdr = { headerStyle: { backgroundColor: C.bg }, headerTintColor: C.primary, headerShadowVisible: false, headerTitleStyle: { fontFamily: F.display, color: C.ink, fontSize: 20 } };
 const tabs = { ...hdr, tabBarActiveTintColor: C.primary, tabBarInactiveTintColor: C.mute, tabBarStyle: { backgroundColor: '#fff', borderTopColor: C.line, ...(Platform.OS === 'web' ? { height: 72, paddingTop: 8, paddingBottom: 12 } : null) }, tabBarLabelStyle: { fontSize: 12, lineHeight: 14, fontWeight: '500' as const } };
 const ti = (name: IconName) => ({ color, focused }: { color: string; focused: boolean }) => <TabIcon name={name} focused={focused} color={color} />;
+// Phone notifications for task due dates; scheduled on the device, so they work without a push server.
+function PhoneReminders() {
+  const [on, setOn] = useState<boolean | null>(null); const [note, setNote] = useState('');
+  useEffect(() => { remindersEnabled().then(setOn); }, []);
+  const toggle = async () => {
+    setNote('');
+    try { if (on) { await disableReminders(); setOn(false); } else { const n = await enableReminders(); setOn(true); setNote(`${n} ${tr('reminders scheduled')}`); } }
+    catch (e: any) { setNote(e?.message || String(e)); }
+  };
+  return <Card style={{ marginTop: 16 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <View style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Phone reminders')}</Text><M>{tr('A notification at 9 am on the day each checklist task is due.')}</M></View>
+      <Chip label={on ? tr('On') : tr('Off')} on={!!on} onPress={toggle} />
+    </View>
+    {note ? <M style={{ marginTop: 8 }}>{note}</M> : null}
+  </Card>;
+}
 function Profile({ me, onLogout }: any) {
   const { lang, setLang } = React.useContext(LangCtx);
   return (<ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
@@ -55,6 +73,7 @@ function Profile({ me, onLogout }: any) {
       <View><H style={{ marginVertical: 0 }}>{me.user.name}</H><M>+91 {me.user.phone} · {me.user.role === 'vendor' ? tr('Vendor') : tr('Couple')}</M></View></View>
     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 }}><Icon name="globe" size={18} color={C.mute} /><Text style={{ marginLeft: 8, fontWeight: '500', color: C.ink }}>{tr('Language')}</Text></View>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{LANGS.map(([k, n]) => <Chip key={k} label={n} on={lang === k} onPress={() => setLang(k)} />)}</View>
+    {me.user.role !== 'vendor' ? <PhoneReminders /> : null}
     <Privacy onDeleted={onLogout} /><Admin />
     <Card style={{ backgroundColor: C.goldSoft, borderColor: C.goldSoft }}><M style={{ color: C.ink }}>{tr('Demo build: payments, OTP and WhatsApp are simulated. Booking Protection and escrow do not move real money.')}</M></Card>
     <Btn kind="ghost" icon="logout" title={tr('Log out')} onPress={onLogout} /></ScrollView>);
@@ -84,7 +103,7 @@ export default function App() {
   const navState = React.useRef<any>(undefined);
   const [state, setState] = useState<'boot' | 'out' | 'in'>('boot'); const [me, setMe] = useState<any>(null); const [lang, setLangS] = useState('en');
   const setLang = (l: string) => { setCur(l); setLangS(l); AsyncStorage.setItem('lang', l).catch(() => {}); };
-  const boot = async () => { try { const has = await restore(); { const l = (await AsyncStorage.getItem('lang')) || 'en'; setCur(l); setLangS(l); } if (!has) return setState('out'); setMe(await api('/me')); setState('in'); } catch { setState('out'); } };
+  const boot = async () => { try { const has = await restore(); { const l = (await AsyncStorage.getItem('lang')) || 'en'; setCur(l); setLangS(l); } if (!has) return setState('out'); setMe(await api('/me')); setState('in'); syncReminders().catch(() => {}); } catch { setState('out'); } };
   useEffect(() => { boot(); }, []);
   const logout = async () => { await setToken(''); navState.current = undefined; setState('out'); };
   if (state === 'boot' || !fonts) return <BootScreen fontsReady={!!fonts} />;
