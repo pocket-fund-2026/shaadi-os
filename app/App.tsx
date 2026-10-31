@@ -9,14 +9,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, Fraunces_600SemiBold, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { api, restore, setToken } from './src/api';
 import { LangCtx, useT, LANGS, setCur, tr } from './src/i18n';
-import Login from './src/auth';
-import { PublicExplore } from './src/marketplace';
+import Login, { SignedIn } from './src/auth';
+import { GuestProfile, GuestVendors, StartPlanning } from './src/guest';
 import { Discover, VendorScreen, EnquiryForm, Plan } from './src/couple';
 import { CompareQuotes, DealScreen, DealsList } from './src/deals';
 import { Payouts } from './src/vendor';
 import { Business } from './src/more';
 import { ProfileScreen } from './src/profile';
-import { Btn, Chip, C, F, M, H, Card, TabIcon, ErrorBoundary, MOTION, useReducedMotion } from './src/ui';
+import { Btn, Chip, C, F, M, H, Card, TabIcon, ErrorBoundary, GuestCtx, MOTION, useReducedMotion } from './src/ui';
 import { Icon, IconName, Logo } from './src/icons';
 import { syncReminders } from './src/reminders';
 // Shown while the session and fonts load. Same burgundy as the native splash so the hand-off has no flash,
@@ -66,8 +66,16 @@ const VendorTabs = (me: any, logout: () => void, landing?: string) => function T
     <Tab.Screen name="Store" options={{ title: tr('Business'), tabBarIcon: ti('store') }}>{() => <Business />}</Tab.Screen>
     <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <ProfileScreen onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
 };
+// Signed out, the app is still the app: Discover works fully, and the other tabs explain what signing in unlocks.
+const GuestTabs = function T() {
+  const t = useT();
+  return (<Tab.Navigator screenOptions={tabs}>
+    <Tab.Screen name="Discover" options={{ title: t('discover'), tabBarIcon: ti('search'), headerShown: false }} component={Discover} />
+    <Tab.Screen name="Vendors" options={{ title: tr('My vendors'), tabBarIcon: ti('chat') }} component={GuestVendors} />
+    <Tab.Screen name="Plan" options={{ title: t('plan'), tabBarIcon: ti('partnership'), headerShown: false }} component={StartPlanning} />
+    <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }} component={GuestProfile} /></Tab.Navigator>);
+};
 export default function App() {
-  const [exploring, setExploring] = useState(() => typeof window !== 'undefined' && !!window.location && new URLSearchParams(window.location.search).get('browse') === '1');
   const [fonts] = useFonts({ Fraunces_600SemiBold, Fraunces_700Bold });
   // Language changes remount navigation so every title re-renders; this keeps the user on the screen they were on.
   const navState = React.useRef<any>(undefined);
@@ -79,7 +87,13 @@ export default function App() {
   useEffect(() => { boot(); }, []);
   const logout = async () => { await setToken(''); navState.current = undefined; setState('out'); };
   if (state === 'boot' || !fonts) return <BootScreen fontsReady={!!fonts} />;
-  if (state === 'out') return <SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary>{exploring ? <PublicExplore onSignIn={() => setExploring(false)} onBack={() => setExploring(false)} /> : <Login onDone={signedIn => { landing.current = signedIn.isNew ? (signedIn.role === 'vendor' ? 'Store' : 'Plan') : undefined; navState.current = undefined; boot(); }} onBrowse={() => setExploring(true)} lang={lang} setLang={setLang} />}</ErrorBoundary></SafeAreaProvider>;
+  const signedIn = (result: SignedIn) => { landing.current = result.isNew ? (result.role === 'vendor' ? 'Store' : 'Plan') : undefined; navState.current = undefined; boot(); };
+  if (state === 'out') return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><GuestCtx.Provider value={true}><NavigationContainer key={'guest-' + lang}>
+    <Stack.Navigator screenOptions={{ ...hdr, animation: 'slide_from_right' }}>
+      <Stack.Screen name="Home" component={GuestTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="Vendor" component={VendorScreen} options={{ title: '' }} />
+      <Stack.Screen name="SignIn" options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }}>{(p: any) => <Login onDone={signedIn} onClose={() => p.navigation.goBack()} lang={lang} setLang={setLang} />}</Stack.Screen>
+    </Stack.Navigator></NavigationContainer></GuestCtx.Provider></ErrorBoundary></SafeAreaProvider></LangCtx.Provider>);
   const vendor = me.user.role === 'vendor'; const Tabs = vendor ? VendorTabs(me, logout, landing.current) : CoupleTabs(me, logout, landing.current);
   return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang} initialState={navState.current} onStateChange={state => { navState.current = state; }}>
     <Stack.Navigator screenOptions={{ ...hdr, animation: 'slide_from_right' }}><Stack.Screen name="Home" component={Tabs} options={{ title: 'Shaadi OS', headerShown: false }} />

@@ -142,29 +142,3 @@ export function Marketplace({ openVendor, onSignIn, preset, weddingDate }: { ope
     renderItem={({ item, index }) => { const selected = comparison.some(v => v.id === item.id); return <Rise i={Math.min(index, 3)}><VendorCard vendor={item} onPress={() => openVendor(item.id)} compare={{ on: selected, disabled: !selected && comparison.length >= 3, onToggle: () => toggleCompare(item) }} /></Rise>; }} />;
 }
 
-export function PublicExplore({ onSignIn, onBack }: { onSignIn: () => void; onBack: () => void }) {
-  const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState<number | null>(null); const [vendor, setVendor] = useState<any>(null); const [error, setError] = useState(''); const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    if (selected === null) return;
-    let active = true; setVendor(null); setError('');
-    api('/vendors/' + selected).then(v => { if (active) setVendor(v); }).catch(e => { if (active) setError(e.message); });
-    return () => { active = false; };
-  }, [selected, retry]);
-  return <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
-    <View style={{ paddingHorizontal: 20 }}><Btn small kind="ghost" title={tr('Back')} onPress={() => selected === null ? onBack() : setSelected(null)} /></View>
-    {selected === null ? <Marketplace openVendor={setSelected} onSignIn={onSignIn} /> : <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-      {error ? <Card><M style={{ color: C.warn }}>{error}</M><Btn title={tr('Try again')} onPress={() => setRetry(k => k + 1)} /></Card> : !vendor ? <Loading what={tr('vendor')} /> : <Rise>
-        <View style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}><CategoryCover category={vendor.category} label={categoryLabel(vendor.category)} large /></View>
-        <H style={{ fontSize: 28 }}>{vendor.name}</H><M>{categoryLabel(vendor.category)} · {vendor.city}</M>
-        {vendor.sample || vendor.unclaimed ? <View style={{ marginTop: 12 }}><Tag label={tr(vendor.sample ? 'Sample listing' : 'Not on Shaadi OS yet')} /></View> : vendor.verified ? <View style={{ marginTop: 12 }}><Tag tone="ok" icon="seal" label={tr('Verified')} /></View> : null}
-        <Text style={{ color: C.ink, fontSize: 15, lineHeight: 24, marginVertical: 20 }}>{vendor.description}</Text>
-        {vendor.unclaimed ? <Card><M>{tr('This business has not joined Shaadi OS yet. Its details come from its own public pages and may be out of date.')}</M>{vendor.website ? <Btn kind="ghost" title={tr('Visit website')} onPress={() => Linking.openURL(vendor.website).catch(() => {})} /> : null}</Card>
-          : <Card><M>{tr('Starting price')}</M><H style={{ color: C.primary, fontSize: 28 }}>{vendor.start_paise ? inr(vendor.start_paise) : tr('Price not listed')}</H><Btn title={tr('Sign in to enquire')} onPress={onSignIn} /></Card>}
-{vendor.unclaimed ? null : <>        <VendorCatalog vendor={vendor} />
-        <SectionTitle title="Reviews" />
-        {vendor.reviewList?.length ? vendor.reviewList.map((review: any, i: number) => <Card key={i}><View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{review.name}</Text><M>{review.rating}/5</M></View><M style={{ marginTop: 8 }}>{review.text}</M></Card>) : <M>{tr('No reviews yet')}</M>}</>}
-      </Rise>}
-    </ScrollView>}
-  </View>;
-}

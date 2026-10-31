@@ -3,6 +3,9 @@ import { Text, TextInput, Pressable, View, StyleSheet, TextInputProps, Alert, Pl
 import { tr } from './i18n';
 import { Icon, IconName } from './icons';
 
+// True while nobody is signed in: the app is open to browse, and actions that need an account ask to sign in.
+export const GuestCtx = React.createContext(false);
+
 export const C = {
   primary: '#74263F', primaryDark: '#4D192C', gold: '#846120', goldSoft: '#F3E8D1',
   bg: '#FAF7F2', card: '#FFFEFC', ink: '#2C2024', mute: '#75656B', faint: '#7C6C72',

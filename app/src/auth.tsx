@@ -20,7 +20,7 @@ const ROLE_OPTIONS: ['couple' | 'vendor', IconName, string, string][] = [
   ['vendor', 'store', 'I’m a wedding vendor', 'List your services, get enquiries and manage bookings'],
 ];
 
-export default function Login({ onDone, onBrowse, lang, setLang }: { onDone: (s: SignedIn) => void; onBrowse: () => void; lang: string; setLang: (l: string) => void }) {
+export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: SignedIn) => void; onClose?: () => void; lang: string; setLang: (l: string) => void }) {
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState(''); const [otp, setOtp] = useState(''); const [step, setStep] = useState<0 | 1 | 2>(0);
   const [role, setRole] = useState<'couple' | 'vendor' | null>(null); const [name, setName] = useState(''); const [server, setServer] = useState(getBase()); const [busy, setBusy] = useState(false);
@@ -69,7 +69,8 @@ export default function Login({ onDone, onBrowse, lang, setLang }: { onDone: (s:
       <View style={{ backgroundColor: C.primary, paddingTop: insets.top + 16, paddingHorizontal: 24, paddingBottom: 24, overflow: 'hidden' }}>
         <View pointerEvents="none" style={{ position: 'absolute', right: -32, bottom: -48, opacity: 0.3 }}><FloralArch size={150} color={C.goldSoft} /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Logo size={44} radius={10} /><Text style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft }}>Shaadi OS</Text></View>
+          {onClose ? <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={{ minHeight: 36, justifyContent: 'center' }}><Text style={{ color: C.goldSoft, fontSize: 15 }}>{tr('Not now')}</Text></Pressable>
+            : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Logo size={44} radius={10} /><Text style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft }}>Shaadi OS</Text></View>}
           <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Language')}: ${current}`} onPress={() => setShowLangs(!showLangs)} hitSlop={8}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(243,232,209,0.5)' }}>
             <Icon name="globe" size={16} color={C.goldSoft} /><Text style={{ color: C.goldSoft, fontSize: 13 }}>{current}</Text>
@@ -112,9 +113,6 @@ export default function Login({ onDone, onBrowse, lang, setLang }: { onDone: (s:
           {step === 1 ? <Btn kind="quiet" title={wait > 0 ? `${tr('Resend code in')} ${wait}s` : tr('Resend code')} onPress={resend} disabled={busy || wait > 0} /> : null}
         </Rise>
 
-        {step === 0 ? <Pressable accessibilityRole="button" onPress={onBrowse} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, marginTop: 8 }}>
-          <Icon name="search" size={18} color={C.primary} /><Text style={{ color: C.primary, fontSize: 15, fontWeight: '500' }}>{tr('Browse vendors without signing in')}</Text>
-        </Pressable> : null}
 
         <View style={{ flexGrow: 1 }} />
         <M style={{ marginTop: 32, fontSize: 12, textAlign: 'center' }}>{tr('Demo build: OTP and payments are simulated. Demo vendor: 9000000001.')}</M>

@@ -1,11 +1,11 @@
 import { Overview, TaskManager, BudgetManager, WeddingSettings } from './planner';
 import { tr } from './i18n';
 import { Events, Family, ShortlistTab, InviteTab } from './more';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { FlatList, ScrollView, Text, View, RefreshControl, Linking, KeyboardAvoidingView, Platform, Pressable, Share } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, getBase } from './api';
-import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO } from './ui';
+import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO, GuestCtx } from './ui';
 import { Icon, CAT_ICON, IconName } from './icons';
 import { Marketplace } from './marketplace';
 import { CategoryCover, FloralArch } from './visuals';
@@ -27,15 +27,19 @@ const CatMark = ({ c, size = 46 }: { c: string; size?: number }) => (
   <View style={{ width: size, height: size, borderRadius: size / 2.6, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Icon name={CAT_ICON[c] || 'store'} size={size * 0.5} color={C.primary} /></View>);
 
 // Discover and Plan open with their own heading, so the tab hides the nav bar and these take the top safe area.
-export function Discover({ navigation, route }: any) {
-  const insets = useSafeAreaInsets(); const [me] = useLoad<any>('/me', null);
+export function Discover(props: any) {
+  return useContext(GuestCtx) ? <DiscoverView {...props} /> : <DiscoverSignedIn {...props} />;
+}
+function DiscoverSignedIn(props: any) { const [me] = useLoad<any>('/me', null); return <DiscoverView {...props} me={me} />; }
+function DiscoverView({ navigation, route, me }: any) {
+  const insets = useSafeAreaInsets();
   return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: C.bg }}><Marketplace openVendor={id => navigation.navigate('Vendor', { id })} preset={route?.params} weddingDate={me?.wedding?.date} /></View>;
 }
 
 export function VendorScreen({ route, navigation }: any) {
-  const [v] = useLoad<any>('/vendors/' + route.params.id, null); const t = useT(); const [saved, setSaved] = useState(false); const insets = useSafeAreaInsets();
+  const [v] = useLoad<any>('/vendors/' + route.params.id, null); const t = useT(); const [saved, setSaved] = useState(false); const insets = useSafeAreaInsets(); const guest = useContext(GuestCtx);
   if (!v) return <Loading what={tr('vendor')} />;
-  const shortlist = () => api('/shortlist', 'POST', { vendor_id: v.id }).then(() => setSaved(true)).catch(err);
+  const shortlist = () => guest ? navigation.navigate('SignIn') : api('/shortlist', 'POST', { vendor_id: v.id }).then(() => setSaved(true)).catch(err);
   // Price and the booking action stay pinned at the bottom so they're reachable from anywhere in a long profile.
   return (<View style={{ flex: 1, backgroundColor: C.bg }}>
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
@@ -67,7 +71,7 @@ export function VendorScreen({ route, navigation }: any) {
         <Icon name={saved ? 'heartFill' : 'heart'} size={20} color={C.primary} /></Pressable>
       <View style={{ flex: 1 }}>{v.unclaimed
         ? (v.website ? <Btn kind="ghost" title={tr('Visit website')} onPress={() => Linking.openURL(v.website).catch(err)} /> : null)
-        : <Btn title={t('book')} onPress={() => navigation.navigate('EnquiryForm', { vendor: v })} />}</View>
+        : <Btn title={guest ? tr('Sign in to enquire') : t('book')} onPress={() => guest ? navigation.navigate('SignIn') : navigation.navigate('EnquiryForm', { vendor: v })} />}</View>
     </View>
   </View>);
 }
