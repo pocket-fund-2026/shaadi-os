@@ -399,6 +399,24 @@ test('profile: edit name and language; marketing choice is remembered', async ()
   await request('/api/consent', user, 'POST', { purpose: 'marketing', granted: false });
   assert.equal((await request('/api/consent', user)).data.marketing, false, 'the latest choice wins');
 });
+test('deals follow one vendor relationship from enquiry to completed, for both sides', async () => {
+  const c = await login('9812300211'); const v = await login('9000000003');
+  await request('/api/wedding', c, 'POST', { title: 'D & L', date: '2027-09-01', city: 'Pune', budget_paise: 100000000 });
+  const vendorId = (await request('/api/me', v)).data.vendor.id;
+  const e = (await request('/api/enquiries', c, 'POST', { vendor_id: vendorId, event_date: '2027-09-01', guests: 200, budget_paise: 5000000, note: 'Haldi, Wedding' })).data;
+  const stage = async (tok: string) => (await request('/api/deals', tok)).data.find((d: any) => d.id === e.id).stage;
+  assert.equal(await stage(c), 'new'); assert.equal(await stage(v), 'new', 'the vendor sees the same relationship');
+  await request(`/api/enquiries/${e.id}/quotes`, v, 'POST', { items: [{ label: 'Mehndi for bride', amount_paise: 2000000 }, { label: 'Family members (10)', amount_paise: 1000000 }] });
+  assert.equal(await stage(c), 'quoted');
+  const deal = (await request('/api/deals', c)).data.find((d: any) => d.id === e.id); assert.equal(deal.quote.total_paise, 3000000);
+  await request(`/api/quotes/${deal.quote.id}/accept`, c, 'POST');
+  assert.equal(await stage(c), 'booked');
+  const ms = (await request('/api/deals', c)).data.find((d: any) => d.id === e.id).booking.milestones;
+  await request(`/api/milestones/${ms[0].id}/pay`, c, 'POST'); assert.equal(await stage(c), 'paying');
+  for (const m of ms) { if (m.id !== ms[0].id) await request(`/api/milestones/${m.id}/pay`, c, 'POST'); await request(`/api/milestones/${m.id}/release`, c, 'POST'); }
+  assert.equal(await stage(c), 'completed'); assert.equal(await stage(v), 'completed');
+  assert.ok(!(await request('/api/deals', outsider)).data.some((d: any) => d.id === e.id), 'other people never see it');
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

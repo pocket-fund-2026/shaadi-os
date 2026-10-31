@@ -72,90 +72,52 @@ export function VendorScreen({ route, navigation }: any) {
   </View>);
 }
 
+// Pre-filled from the couple's own plan (date, guests, budget for this service) so an enquiry takes seconds.
 export function EnquiryForm({ route, navigation }: any) {
-  const v = route.params.vendor; const [date, setDate] = useState(''); const [guests, setGuests] = useState('200'); const [budget, setBudget] = useState(String(Math.round(v.start_paise / 100))); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
+  const v = route.params.vendor;
+  const [date, setDate] = useState(''); const [guests, setGuests] = useState(''); const [budget, setBudget] = useState(String(Math.round((v.start_paise || 0) / 100) || ''));
+  const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [events, setEvents] = useState<any[]>([]); const [picked, setPicked] = useState<string[]>([]); const [prefilled, setPrefilled] = useState(false);
+  useEffect(() => {
+    api<any>('/me').then(async me => {
+      const w = me.wedding; if (!w) return;
+      if (w.date >= todayISO()) setDate(w.date); setGuests(String(w.guests_est || ''));
+      const [b, ev] = await Promise.all([api<any>('/budget').catch(() => null), api<any[]>('/events').catch(() => [])]);
+      const alloc = b?.rows?.find((r: any) => r.category === v.category)?.allocated_paise; if (alloc) setBudget(String(Math.round(alloc / 100)));
+      setEvents(ev || []); setPrefilled(true);
+    }).catch(() => {});
+  }, [v.category]);
   const send = async () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err(new Error(tr('Choose the event date.')));
+    setError('');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError(tr('Choose the event date.'));
+    if (!(+guests > 0)) return setError(tr('Enter roughly how many guests.'));
+    if (!(+budget > 0)) return setError(tr('Enter your budget for this service.'));
     setBusy(true);
-    try { const av = await api(`/vendors/${v.id}/availability?date=${date}`); if (!av.available && !(await confirm(tr('Date not available'), tr('This vendor is busy on that date. Send anyway?'), tr('Send')))) return; const r = await api('/enquiries', 'POST', { vendor_id: v.id, event_date: date, guests: +guests, budget_paise: +budget * 100, note }); navigation.replace('Chat', { id: r.id, title: v.name }); } catch (e) { err(e); } finally { setBusy(false); }
+    try {
+      const av = await api(`/vendors/${v.id}/availability?date=${date}`);
+      if (!av.available && !(await confirm(tr('Date not available'), tr('This vendor is busy on that date. Send anyway?'), tr('Send')))) return;
+      const fullNote = [picked.length ? `${tr('Ceremonies')}: ${picked.join(', ')}` : '', note.trim()].filter(Boolean).join('\n');
+      const r = await api('/enquiries', 'POST', { vendor_id: v.id, event_date: date, guests: +guests, budget_paise: Math.round(+budget * 100), note: fullNote });
+      navigation.replace('Chat', { id: r.id, title: v.name });
+    } catch (e: any) { setError(e?.message || String(e)); } finally { setBusy(false); }
   };
-  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}><CatMark c={v.category} size={40} /><H style={{ marginLeft: 12, flex: 1 }}>{v.name}</H></View>
+  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40, width: '100%', maxWidth: 640, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><CatMark c={v.category} size={44} />
+      <View style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{v.name}</Text><M>{catLabel(v.category)}{v.start_paise ? ` · ${tr('from')} ${inr(v.start_paise)}` : ''}</M></View></Card>
+    {prefilled ? <M style={{ marginBottom: 12 }}>{tr('Filled in from your wedding plan. Change anything that’s different for this vendor.')}</M> : null}
     <DateField label={tr('Event date')} value={date} onChange={setDate} min={todayISO()} />
-    <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Guests')} value={guests} onChangeText={setGuests} keyboardType="number-pad" /></View>
-      <View style={{ flex: 1 }}><Input label={tr('Budget (₹)')} value={budget} onChangeText={setBudget} keyboardType="number-pad" /></View></View>
-    <Input label={tr('Note')} value={note} onChangeText={setNote} multiline placeholder={tr('Ceremonies, timings, anything the vendor should know')} style={{ minHeight: 88, textAlignVertical: 'top' }} />
+    <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Guests')} value={guests} onChangeText={t => setGuests(t.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="250" /></View>
+      <View style={{ flex: 1 }}><Input label={tr('Your budget (₹)')} value={budget} onChangeText={t => setBudget(t.replace(/\D/g, ''))} keyboardType="number-pad" />{+budget > 0 ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+budget * 100)}</M> : null}</View></View>
+    {events.length ? <><Text style={s.label}>{tr('Which ceremonies?')}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 }}>{events.map(e => { const on = picked.includes(e.name); return <Chip key={e.id} icon={on ? 'check' : undefined} label={e.name} on={on} onPress={() => setPicked(on ? picked.filter(x => x !== e.name) : [...picked, e.name])} />; })}</View></> : null}
+    <Input label={tr('Anything else?')} value={note} onChangeText={setNote} multiline placeholder={tr('Timings, style you like, questions for the vendor')} style={{ minHeight: 88, textAlignVertical: 'top' }} maxLength={400} />
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}><Icon name="lock" size={16} color={C.mute} /><M style={{ marginLeft: 8, flex: 1 }}>{tr('Your phone number stays hidden until you book.')}</M></View>
+    {error ? <Text accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, marginBottom: 8 }}>{error}</Text> : null}
     <Btn icon="send" title={busy ? tr('Sending…') : tr('Send enquiry')} disabled={busy} onPress={send} /></ScrollView>);
 }
 
-export function Enquiries({ navigation, vendor }: any) {
-  const [list, load, busy] = useLoad<any[]>('/enquiries', []);
-  return (<FlatList style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }} data={list} keyExtractor={e => String(e.id)} refreshControl={refresh(busy, load)}
-    ListEmptyComponent={busy ? null : vendor
-      ? <Empty icon="inbox" title={tr('No leads yet')} text={tr('Couples who enquire about your services appear here. A complete storefront with a clear starting price gets found more often.')} action={tr('Edit storefront')} onAction={() => navigation.navigate('Store')} />
-      : <Empty icon="chat" title={tr('No enquiries yet')} text={tr('Pick a vendor in Discover and send an enquiry. Their reply and quote will show up here.')} action={tr('Browse vendors')} onAction={() => navigation.navigate('Discover')} />}
-    renderItem={({ item: e, index }) => (<Rise i={index}><Card onPress={() => navigation.navigate('Chat', { id: e.id, title: e.vendor_name || e.couple_name, vendor })}>
-      <View style={s.row}><Text style={{ fontWeight: '500', color: C.ink, fontSize: 17, flex: 1 }}>{e.vendor_name || e.couple_name}</Text>
-        {e.status === 'booked' ? <Tag tone="ok" icon="check" label={tr('Booked')} /> : e.quote_status === 'sent' ? <Tag tone="gold" label={tr('Quote received')} /> : <Tag label={tr('Open')} />}</View>
-      <M style={{ marginTop: 4 }}>{dateIN(e.event_date)} · {e.guests} {tr('guests')} · {tr('budget')} {inr(e.budget_paise)}</M></Card></Rise>)} />);
-}
 
-export function Chat({ route, navigation }: any) {
-  const { id, vendor } = route.params; const [d, load] = useLoad<any>('/enquiries/' + id, null); const [msg, setMsg] = useState('');
-  const [qLabel, setQLabel] = useState(''); const [qAmt, setQAmt] = useState(''); const [showQ, setShowQ] = useState(false);
-  useEffect(() => { const i = setInterval(load, 6000); return () => clearInterval(i); }, [load]);
-  if (!d) return <Loading what={tr('conversation')} />;
-  const send = async () => { if (!msg.trim()) return; try { await api(`/enquiries/${id}/messages`, 'POST', { body: msg }); setMsg(''); load(); } catch (e) { err(e); } };
-  const sendQuote = async () => { try { await api(`/enquiries/${id}/quotes`, 'POST', { items: [{ label: qLabel || 'Service', amount_paise: Math.round(+qAmt * 100) }] }); setShowQ(false); setQLabel(''); setQAmt(''); load(); } catch (e) { err(e); } };
-  const accept = async (qid: number) => { try { await api(`/quotes/${qid}/accept`, 'POST'); navigation.navigate('Home', { screen: 'Bookings' }); } catch (e) { err(e); } };
-  return (<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90} style={{ flex: 1, backgroundColor: C.bg }}>
-    <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-      {d.booked && <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.okSoft, borderRadius: 10, padding: 12, marginBottom: 12 }}><Icon name="shield" size={18} color={C.ok} /><Text style={{ color: C.ok, fontWeight: '500', marginLeft: 8 }}>{tr('Booked. Booking Protection is active.')}</Text></View>}
-      {d.quotes.map((qt: any) => (<Rise key={qt.id}><Card style={qt.status === 'sent' ? { borderColor: C.gold } : undefined}>
-        <View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{tr('Quote')} v{qt.version}</Text><Tag tone={qt.status === 'accepted' ? 'ok' : qt.status === 'sent' ? 'gold' : 'mute'} label={tr(qt.status[0].toUpperCase() + qt.status.slice(1))} /></View>
-        <Text style={{ fontFamily: F.display, fontSize: 24, color: C.primary, marginVertical: 4 }}>{inr(qt.total_paise)}</Text>
-        {qt.items.map((i: any, k: number) => <View key={k} style={s.row}><M>{i.label}</M><M>{inr(i.amount_paise)}</M></View>)}
-        <M style={{ marginTop: 8 }}>{tr('Paid in milestones')}: {qt.milestones.map((m: any) => `${m.label} ${m.pct}%`).join(' · ')}</M>
-        {!vendor && qt.status === 'sent' && <Btn icon="shield" title={tr('Accept & book')} onPress={() => accept(qt.id)} />}</Card></Rise>))}
-      {!d.messages.length && <M style={{ textAlign: 'center', marginVertical: 16 }}>{vendor ? tr('Reply to start the conversation. Phone numbers stay hidden until the couple books.') : tr('Your enquiry was sent. The vendor usually replies here with questions or a quote.')}</M>}
-      {d.messages.map((m: any) => { const mine = vendor ? m.sender_id !== d.enquiry.couple_id : m.sender_id === d.enquiry.couple_id; return (
-        <Rise key={m.id} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
-          <View style={{ backgroundColor: mine ? C.primary : '#fff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderBottomRightRadius: mine ? 4 : 16, borderBottomLeftRadius: mine ? 16 : 4, marginBottom: 8, borderWidth: mine ? 0 : 1, borderColor: C.line }}>
-            <Text style={{ color: mine ? '#fff' : C.ink, fontSize: 15, lineHeight: 20 }}>{m.body}</Text></View></Rise>); })}
-      {vendor && !d.booked && <Btn kind="quiet" icon="receipt" title={showQ ? tr('Cancel quote') : tr('Send a quote')} onPress={() => setShowQ(!showQ)} />}
-      {showQ && <Rise><Card><Input label={tr('Item')} value={qLabel} onChangeText={setQLabel} placeholder={tr('What you will deliver')} /><Input label={tr('Amount (₹)')} value={qAmt} onChangeText={setQAmt} keyboardType="number-pad" />
-        <M>{tr('Paid as 20% token, 50% one week before, 30% after the event.')}</M><Btn title={tr('Send quote')} onPress={sendQuote} /></Card></Rise>}
-    </ScrollView>
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line }}>
-      <View style={{ flex: 1 }}><Input value={msg} onChangeText={setMsg} placeholder={tr('Message…')} onSubmitEditing={send} returnKeyType="send" style={{ marginBottom: -12 }} /></View>
-      <Pressable accessibilityRole="button" accessibilityLabel={tr('Send')} onPress={send} style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 24, marginLeft: 8, backgroundColor: msg.trim() ? C.primary : C.chipBg, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.8 : 1 })}>
-        <Icon name="send" size={20} color={msg.trim() ? '#fff' : C.mute} /></Pressable></View></KeyboardAvoidingView>);
-}
 
-const MS: Record<string, { tone: 'ok' | 'gold' | 'mute'; label: string }> = { released: { tone: 'ok', label: 'Released' }, held: { tone: 'gold', label: 'Held in escrow' }, pending: { tone: 'mute', label: 'Due' } };
-export function Bookings({ vendor }: any) {
-  const [list, load, busy] = useLoad<any[]>('/bookings', []); const [rate, setRate] = useState<Record<number, number>>({});
-  const act = async (path: string) => { try { await api(path, 'POST'); load(); } catch (e) { err(e); } };
-  const review = async (id: number) => { try { await api(`/bookings/${id}/review`, 'POST', { rating: rate[id] || 5, text: '' }); load(); } catch (e) { err(e); } };
-  const dispute = async (id: number) => { if (await confirm(tr('Raise a dispute?'), tr('Support will review this booking and any money still in escrow stays held until it is resolved.'), tr('Raise dispute'), true)) api(`/bookings/${id}/dispute`, 'POST', { reason: 'Issue with service, needs review by support' }).then(load).catch(err); };
-  return (<FlatList style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }} data={list} keyExtractor={b => String(b.id)} refreshControl={refresh(busy, load)}
-    ListEmptyComponent={busy ? null : <Empty icon="ledger" title={tr('No bookings yet')} text={vendor ? tr('A booking is created when a couple accepts your quote in chat.') : tr('A booking is created when you accept a vendor’s quote in chat. Payments then run milestone by milestone.')} />}
-    renderItem={({ item: b, index }) => { const paid = b.milestones.filter((m: any) => m.status !== 'pending').reduce((a: number, m: any) => a + m.amount_paise, 0); return (<Rise i={index}><Card>
-      <View style={s.row}><Text style={{ fontWeight: '500', fontSize: 17, color: C.ink, flex: 1 }}>{vendor ? b.couple_name : b.vendor_name}</Text><Tag tone={b.status === 'completed' ? 'ok' : 'mute'} label={tr(b.status[0].toUpperCase() + b.status.slice(1))} /></View>
-      <View style={[s.row, { marginTop: 8 }]}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{inr(b.total_paise)}</Text><M>{inr(paid)} {tr('paid')}</M></View>
-      <View style={{ marginTop: 8, marginBottom: 4 }}><Bar pct={b.total_paise ? Math.round(paid / b.total_paise * 100) : 0} color={C.ok} /></View>
-      {b.milestones.map((m: any) => (<View key={m.id} style={[s.row, { marginTop: 12 }]}><View style={{ flex: 1, paddingRight: 8 }}><Text style={{ color: C.ink, fontWeight: '500' }}>{m.label}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}><Tag tone={MS[m.status]?.tone || 'mute'} label={tr(MS[m.status]?.label || m.status)} /><M> {inr(m.amount_paise)}</M></View></View>
-        {!vendor && m.status === 'pending' && <Btn small kind={m.id === b.milestones.find((x: any) => x.status === 'pending')?.id ? 'primary' : 'quiet'} title={tr('Pay (demo)')} onPress={() => act(`/milestones/${m.id}/pay`)} />}
-        {!vendor && m.status === 'held' && <Btn small kind="ok" title={tr('Release')} onPress={() => act(`/milestones/${m.id}/release`)} />}</View>))}
-      <M style={{ marginTop: 12 }}>{tr('Platform fee')} {b.commission_bps / 100}% · {tr('paid by the vendor')}</M>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}><Chip icon="flag" label={tr('Raise dispute')} onPress={() => dispute(b.id)} />
-        {vendor && <Chip icon="receipt" label={tr('GST invoice')} onPress={() => api(`/bookings/${b.id}/invoice`).then((i: any) => notify(i.invoice_no, `${tr('Commission')} ${inr(i.commission_paise)} + GST ${inr(i.gst_paise)} = ${inr(i.total_paise)}\n${i.note}`)).catch(err)} />}</View>
-      {!vendor && !b.reviewed && b.milestones.some((m: any) => m.status !== 'pending') && (<View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.line }}><Text style={{ fontWeight: '500', color: C.ink }}>{tr('Rate this vendor')}</Text>
-        <View style={{ flexDirection: 'row', marginVertical: 8 }}>{[1, 2, 3, 4, 5].map(n => <Pressable key={n} accessibilityRole="button" accessibilityLabel={`${n} stars`} accessibilityState={{ selected: n <= (rate[b.id] || 0) }} hitSlop={6} onPress={() => setRate({ ...rate, [b.id]: n })} style={{ padding: 4 }}><Icon name="star" size={28} color={n <= (rate[b.id] || 0) ? C.gold : C.line} /></Pressable>)}</View>
-        <Btn small kind="ghost" title={tr('Submit review')} disabled={!rate[b.id]} onPress={() => review(b.id)} /></View>)}</Card></Rise>); }} />);
-}
 
 const longDate = (d: string) => { const x = new Date(d + 'T00:00:00Z'); return isNaN(+x) ? d : x.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); };
 const PLAN_BAR = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family'], ['tools', 'Tools', 'store']] as const;

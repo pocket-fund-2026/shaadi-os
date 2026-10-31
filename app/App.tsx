@@ -11,7 +11,8 @@ import { api, restore, setToken } from './src/api';
 import { LangCtx, useT, LANGS, setCur, tr } from './src/i18n';
 import Login from './src/auth';
 import { PublicExplore } from './src/marketplace';
-import { Discover, VendorScreen, EnquiryForm, Enquiries, Chat, Bookings, Plan } from './src/couple';
+import { Discover, VendorScreen, EnquiryForm, Plan } from './src/couple';
+import { DealScreen, DealsList } from './src/deals';
 import { Payouts } from './src/vendor';
 import { Business } from './src/more';
 import { ProfileScreen } from './src/profile';
@@ -53,16 +54,14 @@ const CoupleTabs = (me: any, logout: () => void, landing?: string) => function T
   const t = useT();
   return (<Tab.Navigator screenOptions={tabs} initialRouteName={landing}>
     <Tab.Screen name="Discover" options={{ title: t('discover'), tabBarIcon: ti('search'), headerShown: false }} component={Discover} />
-    <Tab.Screen name="Enquiries" options={{ title: t('enquiries'), tabBarIcon: ti('chat') }} component={Enquiries} />
-    <Tab.Screen name="Bookings" options={{ title: t('bookings'), tabBarIcon: ti('ledger') }}>{() => <Bookings />}</Tab.Screen>
+    <Tab.Screen name="Vendors" options={{ title: tr('My vendors'), tabBarIcon: ti('chat') }}>{(p: any) => <DealsList {...p} />}</Tab.Screen>
     <Tab.Screen name="Plan" options={{ title: t('plan'), tabBarIcon: ti('partnership'), headerShown: false }} component={Plan} />
     <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <ProfileScreen onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
 };
 const VendorTabs = (me: any, logout: () => void, landing?: string) => function T() {
   const t = useT();
   return (<Tab.Navigator screenOptions={tabs} initialRouteName={landing}>
-    <Tab.Screen name="Leads" options={{ title: t('leads'), tabBarIcon: ti('inbox') }}>{(p: any) => <Enquiries {...p} vendor />}</Tab.Screen>
-    <Tab.Screen name="Bookings" options={{ title: t('bookings'), tabBarIcon: ti('ledger') }}>{() => <Bookings vendor />}</Tab.Screen>
+    <Tab.Screen name="Clients" options={{ title: tr('Clients'), tabBarIcon: ti('inbox') }}>{(p: any) => <DealsList {...p} vendor />}</Tab.Screen>
     <Tab.Screen name="Payouts" options={{ title: t('payouts'), tabBarIcon: ti('wallet') }} component={Payouts} />
     <Tab.Screen name="Store" options={{ title: tr('Business'), tabBarIcon: ti('store') }}>{() => <Business />}</Tab.Screen>
     <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <ProfileScreen onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
@@ -85,5 +84,5 @@ export default function App() {
   return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang} initialState={navState.current} onStateChange={state => { navState.current = state; }}>
     <Stack.Navigator screenOptions={{ ...hdr, animation: 'slide_from_right' }}><Stack.Screen name="Home" component={Tabs} options={{ title: 'Shaadi OS', headerShown: false }} />
       <Stack.Screen name="Vendor" component={VendorScreen} options={{ title: '' }} /><Stack.Screen name="EnquiryForm" component={EnquiryForm} options={{ title: tr('Enquiry'), animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="Chat" component={Chat} options={({ route }: any) => ({ title: route.params?.title || 'Chat' })} /></Stack.Navigator></NavigationContainer></ErrorBoundary></SafeAreaProvider></LangCtx.Provider>);
+      <Stack.Screen name="Chat" component={DealScreen} options={({ route }: any) => ({ title: route.params?.title || 'Chat' })} /></Stack.Navigator></NavigationContainer></ErrorBoundary></SafeAreaProvider></LangCtx.Provider>);
 }

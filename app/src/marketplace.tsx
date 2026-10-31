@@ -102,8 +102,8 @@ export function Marketplace({ openVendor, onSignIn, preset, weddingDate }: { ope
     refreshControl={<RefreshControl refreshing={busy} onRefresh={() => setRefreshKey(k => k + 1)} tintColor={C.primary} />}
     ListHeaderComponent={<>
       {onSignIn && <View style={[s.row, { marginBottom: 20 }]}><View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Logo size={28} /><Text style={{ fontFamily: F.display, color: C.primary, fontSize: 20 }}>Shaadi OS</Text></View><Btn small kind="quiet" title={tr('Sign in')} onPress={onSignIn} /></View>}
-      <Text accessibilityRole="header" style={{ fontFamily: F.display, color: C.ink, fontSize: 28, lineHeight: 34 }}>{tr('Find wedding vendors')}</Text>
-      <M style={{ marginTop: 4, marginBottom: 16 }}>{tr('Venues, caterers, photographers, mehndi artists and pandits in Mumbai, Pune, Nashik and Nagpur.')}</M>
+      <Text accessibilityRole="header" style={{ fontFamily: F.display, color: C.ink, fontSize: 28, lineHeight: 34, textAlign: 'center' }}>{tr('Find wedding vendors')}</Text>
+      <M style={{ marginTop: 4, marginBottom: 16, textAlign: 'center', alignSelf: 'center', maxWidth: 320 }}>{tr('Venues, caterers, photographers, mehndi artists and pandits in Mumbai, Pune, Nashik and Nagpur.')}</M>
       <Input icon="search" accessibilityLabel={tr('Search vendors')} placeholder={tr('Search vendors')} value={query} onChangeText={setQuery} returnKeyType="search" />
       {/* All eight services visible at once, as a 4 x 2 grid. */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
