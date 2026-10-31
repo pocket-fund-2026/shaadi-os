@@ -8,9 +8,9 @@ const page = (title: string, description: string, body: string) => `<!doctype ht
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<link rel="icon" type="image/png" href="/brand-icon-v2.png"><link rel="apple-touch-icon" href="/brand-icon-v2.png">
+<link rel="icon" type="image/png" href="/brand-icon-v3.png"><link rel="apple-touch-icon" href="/brand-icon-v3.png">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}">
-<meta property="og:image" content="${SITE}/brand-icon-v2.png"><meta name="twitter:card" content="summary">
+<meta property="og:image" content="${SITE}/brand-icon-v3.png"><meta name="twitter:card" content="summary">
 <style>*{box-sizing:border-box}body{margin:0;font-family:Georgia,serif;background:#FAF7F2;color:#2C2024}a{color:#74263F}
 .wrap{max-width:1020px;margin:0 auto;padding:24px 20px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:36px}.brand{display:inline-flex;gap:12px;align-items:center;text-decoration:none;color:#74263F;font-size:26px;font-weight:700;white-space:nowrap}.brand img{width:48px;height:48px;border-radius:11px}.nav{display:flex;gap:22px;flex-wrap:wrap;font:600 14px system-ui,sans-serif}.nav a{text-decoration:none}.nav a:hover{text-decoration:underline}
 .hero{border-radius:24px;padding:42px 32px;background:#4D192C;color:#FFF9F0}.hero h1{font-size:clamp(34px,6vw,54px);line-height:1.1;max-width:560px;margin:0 0 22px}.hero p{font-family:system-ui,sans-serif;line-height:1.7;max-width:520px;color:#F3E8D1}.hero .cta{background:#F3E8D1;color:#4D192C}
@@ -21,7 +21,7 @@ const page = (title: string, description: string, body: string) => `<!doctype ht
 @media(max-width:760px){.grid,.detail-list{grid-template-columns:repeat(2,minmax(0,1fr))}.filters,.planning-form{grid-template-columns:repeat(2,minmax(0,1fr))}.filters button{grid-column:span 2}}
 @media(max-width:600px){.features,.grid,.timeline,.detail-list{grid-template-columns:1fr;gap:10px}.hero{padding:28px 24px}.topbar{align-items:flex-start;flex-direction:column;margin-bottom:24px}.nav{gap:15px}}
 @media(prefers-reduced-motion:reduce){.cta,button{transition:none}.cta:hover,.cta:active,button:hover,button:active{transform:none}}</style></head>
-<body><div class="wrap"><header class="topbar"><a class="brand" href="/" aria-label="Shaadi OS home"><img src="/brand-icon-v2.png" alt="" width="48" height="48">Shaadi OS</a><nav class="nav" aria-label="Main navigation"><a href="/vendors">Vendors</a><a href="/planning">Planning guide</a><a href="/app?browse=1">Open app</a></nav></header>${body}<footer>© ${new Date().getFullYear()} Shaadi OS · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer></div></body></html>`;
+<body><div class="wrap"><header class="topbar"><a class="brand" href="/" aria-label="Shaadi OS home"><img src="/brand-icon-v3.png" alt="" width="48" height="48">Shaadi OS</a><nav class="nav" aria-label="Main navigation"><a href="/vendors">Vendors</a><a href="/planning">Planning guide</a><a href="/app?browse=1">Open app</a></nav></header>${body}<footer>© ${new Date().getFullYear()} Shaadi OS · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer></div></body></html>`;
 
 // very small in-memory IP rate limiter for public forms (no login), resets per window
 const hits = new Map<string, number[]>();

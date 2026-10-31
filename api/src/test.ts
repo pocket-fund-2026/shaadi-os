@@ -88,7 +88,7 @@ test('customer budget filtering returns matching starting prices and rejects inv
 test('website presents the new brand and links to customer browsing', async () => {
   const page = await transport('/', '', 'GET', undefined, true);
   assert.equal(page.status, 200);
-  assert.ok(page.data.includes('/brand-icon-v2.png'));
+  assert.ok(page.data.includes('/brand-icon-v3.png'));
   assert.ok(page.data.includes('href="/app?browse=1"'));
   assert.ok(page.data.includes('prefers-reduced-motion'));
   assert.ok(page.data.includes('payments are simulated'));

@@ -73,7 +73,7 @@ export function Icon({ name, size = 22, color = '#241019', strokeWidth = 1.5 }: 
 
 // Brand mark: a mandap arch over the sacred fire. Same geometry as brand/mark.svg and the app icon.
 export function Logo({ size = 56, tile = '#7A1F3D', gold = '#E8C877', radius }: { size?: number; tile?: string; gold?: string; radius?: number }) {
-  return <Image source={require('../assets/brand-icon-v2.png')} accessibilityLabel="Shaadi OS" style={{ width: size, height: size, borderRadius: radius ?? size * 0.22 }} />;
+  return <Image source={require('../assets/brand-icon-v3.png')} accessibilityLabel="Shaadi OS" style={{ width: size, height: size, borderRadius: radius ?? size * 0.22 }} />;
 }
 
 // Retained vector version of the first mark for reference and alternate contexts.
