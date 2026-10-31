@@ -22,7 +22,7 @@ export function useReducedMotion() {
   }, []);
   return { reduced: reduced !== false, ready: reduced !== null };
 }
-export const MOTION = { control: 160, reveal: 220, progress: 320, easing: Easing.out(Easing.cubic) };
+export const MOTION = { control: 160, reveal: 300, progress: 320, easing: Easing.bezier(0.22, 1, 0.36, 1) };
 
 export function TabIcon({ name, focused, color }: { name: IconName; focused: boolean; color: string }) {
   const { reduced } = useReducedMotion();
@@ -58,7 +58,7 @@ export function Rise({ i = 0, children, style }: { i?: number; children: React.R
     if (entered.current) return;
     entered.current = true;
     v.setValue(0);
-    const animation = Animated.timing(v, { toValue: 1, duration: MOTION.reveal, delay: Math.min(i, 3) * 30, easing: MOTION.easing, useNativeDriver: ND });
+    const animation = Animated.timing(v, { toValue: 1, duration: MOTION.reveal, delay: Math.min(i, 5) * 40, easing: MOTION.easing, useNativeDriver: ND });
     animation.start(); return () => { animation.stop(); v.setValue(1); };
   }, [ready, reduced, i, v]);
   return <Animated.View style={[style, { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }]}>{children}</Animated.View>;
@@ -76,10 +76,14 @@ export const Btn = ({ title, onPress, kind = 'primary', disabled, icon, small }:
       </AnimatedPressable>);
 };
 
-export const Input = (p: TextInputProps & { label?: string }) => {
+export const Input = ({ icon, ...p }: TextInputProps & { label?: string; icon?: IconName }) => {
   const [focus, setFocus] = useState(false);
+  // The leading icon sits over the field; left padding is shifted 1 unit on focus to offset the thicker border.
   return (<View style={{ marginBottom: 12 }}>{p.label ? <Text style={s.label}>{p.label}</Text> : null}
-    <TextInput accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 13, paddingVertical: 13 }, p.style]} /></View>);
+    <View>
+      <TextInput accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 13, paddingVertical: 13 }, icon && { paddingLeft: focus ? 43 : 44 }, p.style]} />
+      {icon ? <View pointerEvents="none" style={{ position: 'absolute', left: 15, top: 0, bottom: 0, justifyContent: 'center' }}><Icon name={icon} size={19} color={focus ? C.primary : C.mute} /></View> : null}
+    </View></View>);
 };
 
 export const Card = ({ children, onPress, style }: { children: React.ReactNode; onPress?: () => void; style?: any }) => {
@@ -152,15 +156,15 @@ export const s = StyleSheet.create({
   btn: { flexDirection: 'row', backgroundColor: C.primary, minHeight: 52, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnSmall: { minHeight: 44, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   // Only the primary action lifts off the page; everything else sits flat.
-  btnLift: { shadowColor: C.primaryDark, shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  btnLift: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1.3, borderColor: C.primary },
   btnQuiet: { backgroundColor: C.tint },
-  btnT: { fontWeight: '700', fontSize: 15 },
+  btnT: { fontWeight: '600', fontSize: 15 },
   // Web's default outline is replaced by the primary-colour border set on focus, so focus stays visible.
   input: { ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as any : null), borderWidth: 1, borderColor: C.line, backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, color: C.ink, minHeight: 52 },
   label: { fontSize: 13, fontWeight: '600', color: C.mute, marginBottom: 8 },
-  card: { backgroundColor: C.card, borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: C.line },
-  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, minHeight: 44, borderRadius: 10, backgroundColor: C.chipBg, marginRight: 8, marginBottom: 8 },
+  card: { backgroundColor: C.card, borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.line },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, minHeight: 44, borderRadius: 10, backgroundColor: C.chipBg, marginRight: 8, marginBottom: 8 },
   chipOn: { backgroundColor: C.primary },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 });

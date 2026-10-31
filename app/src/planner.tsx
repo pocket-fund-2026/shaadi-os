@@ -5,6 +5,7 @@ import { tr } from './i18n';
 import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err, inr, s } from './ui';
 import { FloralArch } from './visuals';
 import { Icon } from './icons';
+import { categoryLabel } from './marketplace';
 
 function usePlanner<T>(path: string) {
   const [data, setData] = useState<T | null>(null);
@@ -42,7 +43,7 @@ export function Overview({ open }: { open: (tab: string) => void }) {
         <Text style={{ fontFamily: F.display, fontSize: 36, color: '#fff', marginVertical: 8 }}>{d.days_left > 0 ? `${d.days_left} ${tr('days to go')}` : d.days_left === 0 ? tr('Today is the day') : tr('Just married')}</Text>
         <M style={{ color: '#F4DDE5' }}>{dateLabel(d.wedding.date)} · {d.wedding.city} · {d.wedding.guests_est} {tr('guests')}</M>
         <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: '#A66B7E', paddingTop: 16 }}>
-          <View style={s.row}><M style={{ color: '#F4DDE5' }}>{tr('Your planning progress')}</M><Text style={{ color: '#fff', fontWeight: '700' }}>{d.tasks.total ? Math.round(d.tasks.done / d.tasks.total * 100) : 0}%</Text></View>
+          <View style={s.row}><M style={{ color: '#F4DDE5' }}>{tr('Your planning progress')}</M><Text style={{ color: '#fff', fontWeight: '600' }}>{d.tasks.total ? Math.round(d.tasks.done / d.tasks.total * 100) : 0}%</Text></View>
           <View style={{ marginTop: 10 }}><Bar pct={d.tasks.total ? d.tasks.done / d.tasks.total * 100 : 0} color={C.goldSoft} /></View>
         </View>
       </Card>
@@ -57,7 +58,7 @@ export function Overview({ open }: { open: (tab: string) => void }) {
         <View style={s.row}><M>{tr('Booked')} {inr(d.budget.booked_paise)}</M><M>{tr('Paid')} {inr(d.budget.paid_paise)}</M></View>
       </Card>
       <View style={[s.row, { marginTop: 10 }]}><H>{tr('Next steps')}</H><Tag tone={d.tasks.overdue ? 'warn' : 'ok'} label={d.tasks.overdue ? `${d.tasks.overdue} ${tr('Overdue')}` : tr('On track')} /></View>
-      {d.tasks.upcoming.length ? d.tasks.upcoming.slice(0, 3).map((task: any, index: number) => <Rise key={task.id} i={index}><Card onPress={() => open('checklist')} style={{ paddingVertical: 14 }}><View style={{ flexDirection: 'row', alignItems: 'center' }}><View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}><Icon name="checklist" size={18} color={C.primary} /></View><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontWeight: '600', fontSize: 15 }}>{task.title}</Text><M>{dateLabel(task.due)}</M></View><Icon name="chevron" size={16} color={C.faint} /></View></Card></Rise>) : <M>{tr('All tasks complete. Enjoy your celebration!')}</M>}
+      {d.tasks.upcoming.length ? d.tasks.upcoming.slice(0, 3).map((task: any, index: number) => <Rise key={task.id} i={index}><Card onPress={() => open('checklist')} style={{ paddingVertical: 14 }}><View style={{ flexDirection: 'row', alignItems: 'center' }}><View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}><Icon name="checklist" size={18} color={C.primary} /></View><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontWeight: '600', fontSize: 15 }}>{task.title}</Text><M>{dateLabel(task.due)}</M></View><Icon name="chevron" size={16} color={C.faint} /></View></Card></Rise>) : <M>{tr('All tasks complete. Enjoy your celebration.')}</M>}
       <Btn kind="quiet" title={tr('Open planning checklist')} icon="checklist" onPress={() => open('checklist')} />
       <H>{tr('Upcoming ceremonies')}</H>
       {d.events.length ? d.events.map((event: any) => <Card key={event.id} onPress={() => open('events')}><Text style={{ fontWeight: '600', color: C.ink }}>{event.name}</Text><M>{event.date}{event.venue ? ` · ${event.venue}` : ''}</M></Card>) : <Btn kind="quiet" title={tr('Plan your ceremonies')} onPress={() => open('events')} />}
@@ -88,7 +89,7 @@ export function TaskManager() {
   return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
     <Failure error={error} retry={load} />
     <Card style={{ backgroundColor: C.primaryDark, borderColor: C.primaryDark, padding: 22 }}>
-      <M style={{ color: '#F4DDE5', letterSpacing: 1, textTransform: 'uppercase' }}>{tr('OUR PLAN')}</M>
+      <M style={{ color: '#F4DDE5', fontWeight: '500' }}>{tr('Our plan')}</M>
       <Text style={{ fontFamily: F.display, color: '#fff', fontSize: 29, marginTop: 6 }}>{tr('One step at a time')}</Text>
       <M style={{ color: '#F4DDE5', marginTop: 6 }}>{tr('A shared checklist for your celebration, on your schedule.')}</M>
       <View style={{ marginTop: 22 }}><View style={s.row}><M style={{ color: '#fff' }}>{done} {tr('of')} {tasks.length} {tr('done')}</M><M style={{ color: '#fff' }}>{tasks.length ? Math.round(done / tasks.length * 100) : 0}%</M></View><View style={{ marginTop: 8 }}><Bar pct={tasks.length ? done / tasks.length * 100 : 0} color={C.goldSoft} /></View></View>
@@ -108,7 +109,7 @@ export function TaskManager() {
       <H style={{ marginBottom: 2 }}>{tr('Planning ideas')}</H><M style={{ marginBottom: 14 }}>{tr('Suggested timing follows your wedding date. Choose only what suits you.')}</M>
       <Failure error={guideError} retry={loadGuide} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{phases.map(key => <Chip key={key} label={tr(key)} on={phase === key} onPress={() => setPhase(key)} />)}</ScrollView>
-      {suggestions.length ? suggestions.map((item, index) => <Rise key={item.key} i={index}><Card style={{ borderLeftWidth: 3, borderLeftColor: C.gold, paddingVertical: 14 }}><M style={{ color: C.gold, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.7 }}>{tr(item.phase)}</M><Text style={{ color: C.ink, fontWeight: '600', fontSize: 16, marginTop: 5 }}>{tr(item.title)}</Text><View style={[s.row, { marginTop: 10 }]}><M>{item.is_catch_up ? tr('Start now') : `${tr('Suggested by')} ${dateLabel(item.due)}`}</M><View style={{ minWidth: 88 }}><Btn small kind="quiet" icon="plus" title={tr('Add')} disabled={saving} onPress={() => addIdea(item.key)} /></View></View></Card></Rise>) : <Empty icon="checklist" title={tr('All ideas added')} text={tr('Your checklist has every suggestion in this section.')} />}
+      {suggestions.length ? suggestions.map((item, index) => <Rise key={item.key} i={index}><Card style={{ borderLeftWidth: 3, borderLeftColor: C.gold, paddingVertical: 14 }}><M style={{ color: C.gold, fontWeight: '600' }}>{tr(item.phase)}</M><Text style={{ color: C.ink, fontWeight: '600', fontSize: 16, marginTop: 5 }}>{tr(item.title)}</Text><View style={[s.row, { marginTop: 10 }]}><M>{item.is_catch_up ? tr('Start now') : `${tr('Suggested by')} ${dateLabel(item.due)}`}</M><View style={{ minWidth: 88 }}><Btn small kind="quiet" icon="plus" title={tr('Add')} disabled={saving} onPress={() => addIdea(item.key)} /></View></View></Card></Rise>) : <Empty icon="checklist" title={tr('All ideas added')} text={tr('Your checklist has every suggestion in this section.')} />}
       <M style={{ marginTop: 4 }}>{tr('Inspired by the Brides wedding-planning timeline; adapted for flexible, multi-event celebrations.')}</M>
     </>}
   </ScrollView>;
@@ -132,7 +133,7 @@ export function BudgetManager() {
         {!editing && <Btn kind="quiet" title={tr('Edit allocations')} onPress={edit} />}
       </Card>
       {editing && <Input label={tr('Total budget (₹)')} value={total} onChangeText={setTotal} keyboardType="decimal-pad" />}
-      {b.rows.map((r: any) => <Card key={r.category}><View style={s.row}><Text style={{ color: C.ink, fontWeight: '700' }}>{tr(r.category)}</Text><M>{inr(r.allocated_paise)}</M></View>
+      {b.rows.map((r: any) => <Card key={r.category}><View style={s.row}><Text style={{ color: C.ink, fontWeight: '600' }}>{categoryLabel(r.category)}</Text><M>{inr(r.allocated_paise)}</M></View>
         {editing ? <Input label={tr('Allocation (₹)')} value={amounts[r.category]} onChangeText={value => setAmounts({ ...amounts, [r.category]: value })} keyboardType="decimal-pad" /> : <>
           <View style={{ marginVertical: 12 }}><Bar pct={r.allocated_paise ? Math.min(100, r.booked_paise / r.allocated_paise * 100) : r.booked_paise ? 100 : 0} color={r.booked_paise > r.allocated_paise ? C.warn : C.primary} /></View>
           <View style={s.row}><M>{tr('Booked')} {inr(r.booked_paise)}</M><M>{tr('Due')} {inr(r.due_paise)}</M></View>

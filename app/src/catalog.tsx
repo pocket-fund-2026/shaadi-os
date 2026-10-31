@@ -14,10 +14,10 @@ export function PortfolioPhoto({ uri, caption = '', height = 180 }: { uri: strin
 export function VendorCatalog({ vendor }: { vendor: any }) {
   const photos = vendor.photos || []; const packages = vendor.packages || [];
   return <>
-    <H>{tr('Portfolio')}</H>
+    <H style={{ marginTop: 28 }}>{tr('Portfolio')}</H>
     {photos.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 12 }}>{photos.map((photo: any) => <View key={photo.id} style={{ width: 260 }}><View style={{ overflow: 'hidden', borderRadius: 12 }}><PortfolioPhoto uri={photo.url} caption={photo.caption} /></View>{photo.caption ? <M style={{ marginTop: 8 }}>{photo.caption}</M> : null}</View>)}</ScrollView> : <M>{tr('This vendor has not added portfolio photos yet.')}</M>}
-    <H>{tr('Packages')}</H>
-    {packages.length ? packages.map((item: any) => <Card key={item.id}><Text style={{ fontWeight: '700', fontSize: 17, color: C.ink }}>{item.title}</Text><H style={{ color: C.primary }}>{inr(item.price_paise)}</H><M>{item.description}</M><M style={{ marginTop: 10 }}>{tr('Confirm dates and inclusions with the vendor before booking.')}</M></Card>) : <M>{tr('Enquire with the vendor for a package tailored to your wedding.')}</M>}
+    <H style={{ marginTop: 28 }}>{tr('Packages')}</H>
+    {packages.length ? packages.map((item: any) => <Card key={item.id}><Text style={{ fontWeight: '600', fontSize: 17, color: C.ink }}>{item.title}</Text><H style={{ color: C.primary }}>{inr(item.price_paise)}</H><M>{item.description}</M><M style={{ marginTop: 10 }}>{tr('Confirm dates and inclusions with the vendor before booking.')}</M></Card>) : <M>{tr('Enquire with the vendor for a package tailored to your wedding.')}</M>}
   </>;
 }
 export function CatalogEditor() {

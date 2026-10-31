@@ -17,7 +17,7 @@ export function Payouts() {
         <M style={{ maxWidth: '50%', textAlign: 'right' }}>{tr('Paid out as each couple releases a milestone')}</M></View></Card></Rise>
     <H style={{ fontSize: 18, marginTop: 12 }}>{tr('Payout history')}</H>
     {p.rows.length ? p.rows.map((r: any, i: number) => <Rise key={r.id} i={i}><Card><View style={s.row}>
-      <View><Text style={{ fontWeight: '700', color: C.ok, fontSize: 15 }}>+{inr(r.amount_paise)}</Text><M>{tr('Booking')} #{r.booking_id}</M></View><M>{String(r.created_at).slice(0, 10)}</M></View></Card></Rise>)
+      <View><Text style={{ fontWeight: '600', color: C.ok, fontSize: 15 }}>+{inr(r.amount_paise)}</Text><M>{tr('Booking')} #{r.booking_id}</M></View><M>{String(r.created_at).slice(0, 10)}</M></View></Card></Rise>)
       : busy ? null : <Empty icon="wallet" title={tr('No payouts yet')} text={tr('When a couple releases a milestone, the amount minus the platform fee lands here.')} />}</ScrollView>);
 }
 

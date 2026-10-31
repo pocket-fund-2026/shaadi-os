@@ -20,7 +20,7 @@ window.runUiChecks = async () => {
   const button = container.querySelector('[role="button"]');
   check(button === container.firstElementChild, 'Clickable card must own its layout without an extra flex wrapper');
   check(getComputedStyle(button).flexGrow === '1', 'Card flex must be applied to the clickable root');
-  check(getComputedStyle(button).paddingTop === '18px', 'Card content padding must be retained');
+  check(getComputedStyle(button).paddingTop === '20px', 'Card content padding must be retained');
   flushSync(() => root.render(<View style={{ flexDirection: 'row', flexWrap: 'wrap' }}><Chip label="Photography" /><Chip label="Wedding details" /></View>));
   check(container.firstElementChild.children.length === 2, 'Filter row must contain two direct chips');
   check([...container.firstElementChild.children].every(el => el.getAttribute('role') === 'button'), 'Chips must own margins and dimensions in wrapping rows');
@@ -38,7 +38,7 @@ window.runUiChecks = async () => {
   check(container.textContent.includes('Fixture photographer'), 'Directory must render a vendor from the API');
   check(!!container.querySelector('input'), 'Search field must render');
   check(container.querySelectorAll('svg').length >= 8, 'Service icons must render as SVG');
-  const compare = [...container.querySelectorAll('[role="button"]')].find(el => el.textContent === 'Add to comparison');
+  const compare = [...container.querySelectorAll('[role="checkbox"]')].find(el => el.textContent === 'Compare');
   check(!!compare, 'Vendor card must expose comparison control');
   flushSync(() => compare.click());
   const showComparison = [...container.querySelectorAll('[role="button"]')].find(el => el.textContent === 'Show comparison');

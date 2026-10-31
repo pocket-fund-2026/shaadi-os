@@ -11,6 +11,7 @@ import { Marketplace } from './marketplace';
 import { CategoryCover } from './visuals';
 import { VendorCatalog } from './catalog';
 import { useT } from './i18n';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export const useLoad = <T,>(path: string, init: T) => {
   const [d, setD] = useState<T>(init); const [busy, setBusy] = useState(false);
   const load = useCallback(async () => { setBusy(true); try { setD(await api(path)); } catch (e) { err(e); } finally { setBusy(false); } }, [path]);
@@ -28,32 +29,37 @@ export function Discover({ navigation }: any) {
 }
 
 export function VendorScreen({ route, navigation }: any) {
-  const [v] = useLoad<any>('/vendors/' + route.params.id, null); const t = useT(); const [saved, setSaved] = useState(false);
+  const [v] = useLoad<any>('/vendors/' + route.params.id, null); const t = useT(); const [saved, setSaved] = useState(false); const insets = useSafeAreaInsets();
   if (!v) return <Loading what={tr('vendor')} />;
   const shortlist = () => api('/shortlist', 'POST', { vendor_id: v.id }).then(() => setSaved(true)).catch(err);
-  return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-    <View style={{ borderRadius: 18, overflow: 'hidden', marginBottom: 20 }}><CategoryCover category={v.category} label={catLabel(v.category)} large /></View>
-    <Rise i={0}><View style={{ flexDirection: 'row', alignItems: 'center' }}><CatMark c={v.category} size={64} />
-      <View style={{ flex: 1, marginLeft: 14 }}><H style={{ marginVertical: 0, fontSize: 24 }}>{v.name}</H>
-        <M style={{ marginTop: 2 }}>{catLabel(v.category)} · {v.locality ? v.locality + ', ' : ''}{v.city}</M></View></View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-        {v.verified ? <View style={{ marginRight: 8 }}><Tag tone="ok" icon="seal" label={tr('Verified')} /></View> : null}
-        {v.rating ? <View style={{ flexDirection: 'row', alignItems: 'center' }}><Stars n={Math.round(v.rating)} /><M> {v.rating} · {v.reviews} {tr('reviews')}</M></View> : <M>{tr('No reviews yet')}</M>}</View>
-      {v.description ? <Text style={{ marginTop: 12, color: C.ink, fontSize: 15, lineHeight: 22 }}>{v.description}</Text> : null}</Rise>
-    <Rise i={1}><Card style={{ marginTop: 16 }}>
-      <Text style={{ color: C.mute, fontSize: 13 }}>{tr('Starting price')}</Text>
-      <Text style={{ fontFamily: F.display, fontSize: 26, color: C.primary, marginVertical: 2 }}>{inr(v.start_paise)}</Text>
-      <View style={{ flexDirection: 'row', marginTop: 8 }}><Icon name="shield" size={18} color={C.ok} /><M style={{ flex: 1, marginLeft: 8 }}>{tr('Booking Protection: you pay in milestones and each one is held until you release it.')}</M></View>
-    </Card>
-      <Btn icon="send" title={t('book')} onPress={() => navigation.navigate('EnquiryForm', { vendor: v })} />
-      <Btn kind="ghost" icon={saved ? 'heartFill' : 'heart'} title={saved ? tr('Shortlisted') : tr('Shortlist')} disabled={saved} onPress={shortlist} /></Rise>
-    <VendorCatalog vendor={v} />
-    <H style={{ marginTop: 20 }}>{tr('Reviews')}</H>
-    {v.reviewList.length ? v.reviewList.map((r: any, i: number) => <Rise key={i} i={i}><Card>
-      <View style={s.row}><Text style={{ fontWeight: '600', color: C.ink }}>{r.name}</Text><Stars n={r.rating} /></View>
-      {r.text ? <M style={{ marginTop: 4 }}>{r.text}</M> : null}</Card></Rise>)
-      : <Empty icon="star" title={tr('No reviews yet')} text={tr('Only couples who booked and paid through Shaadi OS can review, so every review here is from a real booking.')} />}
-  </ScrollView>);
+  // Price and the booking action stay pinned at the bottom so they're reachable from anywhere in a long profile.
+  return (<View style={{ flex: 1, backgroundColor: C.bg }}>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <View style={{ borderRadius: 18, overflow: 'hidden', marginBottom: 18 }}><CategoryCover category={v.category} label={catLabel(v.category)} large /></View>
+      <Rise i={0}>
+        <H style={{ marginVertical: 0, fontSize: 28, lineHeight: 34 }}>{v.name}</H>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ marginLeft: 5, flex: 1 }}>{catLabel(v.category)} · {v.locality ? v.locality + ', ' : ''}{v.city}</M></View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
+          {v.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
+          {v.rating ? <View style={{ flexDirection: 'row', alignItems: 'center' }}><Stars n={Math.round(v.rating)} /><M> {v.rating} · {v.reviews} {tr('reviews')}</M></View> : <M>{tr('No reviews yet')}</M>}</View>
+        {v.description ? <Text style={{ marginTop: 14, color: C.ink, fontSize: 15, lineHeight: 23 }}>{v.description}</Text> : null}
+        <View style={{ flexDirection: 'row', backgroundColor: C.okSoft, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="shield" size={18} color={C.ok} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('Booking Protection: you pay in milestones and each one is held until you release it.')}</M></View>
+      </Rise>
+      <VendorCatalog vendor={v} />
+      <H style={{ marginTop: 28 }}>{tr('Reviews')}</H>
+      {v.reviewList.length ? v.reviewList.map((r: any, i: number) => <Rise key={i} i={i}><Card>
+        <View style={s.row}><Text style={{ fontWeight: '600', color: C.ink }}>{r.name}</Text><Stars n={r.rating} /></View>
+        {r.text ? <M style={{ marginTop: 4 }}>{r.text}</M> : null}</Card></Rise>)
+        : <Empty icon="star" title={tr('No reviews yet')} text={tr('Only couples who booked and paid through Shaadi OS can review, so every review here is from a real booking.')} />}
+    </ScrollView>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.line }}>
+      <View><M style={{ fontSize: 11 }}>{tr('Starting price')}</M><Text style={{ fontFamily: F.display, fontSize: 21, color: C.primary }}>{inr(v.start_paise)}</Text></View>
+      <Pressable accessibilityRole="button" accessibilityLabel={saved ? tr('Shortlisted') : tr('Shortlist')} accessibilityState={{ selected: saved, disabled: saved }} disabled={saved} onPress={shortlist}
+        style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 12, borderWidth: 1.3, borderColor: C.primary, backgroundColor: saved ? C.tint : 'transparent', alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.75 : 1 })}>
+        <Icon name={saved ? 'heartFill' : 'heart'} size={20} color={C.primary} /></Pressable>
+      <View style={{ flex: 1 }}><Btn title={t('book')} onPress={() => navigation.navigate('EnquiryForm', { vendor: v })} /></View>
+    </View>
+  </View>);
 }
 
 export function EnquiryForm({ route, navigation }: any) {
@@ -80,7 +86,7 @@ export function Enquiries({ navigation, vendor }: any) {
       ? <Empty icon="inbox" title={tr('No leads yet')} text={tr('Couples who enquire about your services appear here. A complete storefront with a clear starting price gets found more often.')} action={tr('Edit storefront')} onAction={() => navigation.navigate('Store')} />
       : <Empty icon="chat" title={tr('No enquiries yet')} text={tr('Pick a vendor in Discover and send an enquiry. Their reply and quote will show up here.')} action={tr('Browse vendors')} onAction={() => navigation.navigate('Discover')} />}
     renderItem={({ item: e, index }) => (<Rise i={index}><Card onPress={() => navigation.navigate('Chat', { id: e.id, title: e.vendor_name || e.couple_name, vendor })}>
-      <View style={s.row}><Text style={{ fontWeight: '700', color: C.ink, fontSize: 16, flex: 1 }}>{e.vendor_name || e.couple_name}</Text>
+      <View style={s.row}><Text style={{ fontWeight: '600', color: C.ink, fontSize: 16, flex: 1 }}>{e.vendor_name || e.couple_name}</Text>
         {e.status === 'booked' ? <Tag tone="ok" icon="check" label={tr('Booked')} /> : e.quote_status === 'sent' ? <Tag tone="gold" label={tr('Quote received')} /> : <Tag label={tr('Open')} />}</View>
       <M style={{ marginTop: 4 }}>{e.event_date} · {e.guests} {tr('guests')} · {tr('budget')} {inr(e.budget_paise)}</M></Card></Rise>)} />);
 }
@@ -97,7 +103,7 @@ export function Chat({ route, navigation }: any) {
     <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
       {d.booked && <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.okSoft, borderRadius: 10, padding: 10, marginBottom: 12 }}><Icon name="shield" size={18} color={C.ok} /><Text style={{ color: C.ok, fontWeight: '600', marginLeft: 8 }}>{tr('Booked. Booking Protection is active.')}</Text></View>}
       {d.quotes.map((qt: any) => (<Rise key={qt.id}><Card style={qt.status === 'sent' ? { borderColor: C.gold } : undefined}>
-        <View style={s.row}><Text style={{ fontWeight: '700', color: C.ink }}>{tr('Quote')} v{qt.version}</Text><Tag tone={qt.status === 'accepted' ? 'ok' : qt.status === 'sent' ? 'gold' : 'mute'} label={tr(qt.status[0].toUpperCase() + qt.status.slice(1))} /></View>
+        <View style={s.row}><Text style={{ fontWeight: '600', color: C.ink }}>{tr('Quote')} v{qt.version}</Text><Tag tone={qt.status === 'accepted' ? 'ok' : qt.status === 'sent' ? 'gold' : 'mute'} label={tr(qt.status[0].toUpperCase() + qt.status.slice(1))} /></View>
         <Text style={{ fontFamily: F.display, fontSize: 24, color: C.primary, marginVertical: 4 }}>{inr(qt.total_paise)}</Text>
         {qt.items.map((i: any, k: number) => <View key={k} style={s.row}><M>{i.label}</M><M>{inr(i.amount_paise)}</M></View>)}
         <M style={{ marginTop: 6 }}>{tr('Paid in milestones')}: {qt.milestones.map((m: any) => `${m.label} ${m.pct}%`).join(' · ')}</M>
@@ -126,7 +132,7 @@ export function Bookings({ vendor }: any) {
   return (<FlatList style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }} data={list} keyExtractor={b => String(b.id)} refreshControl={refresh(busy, load)}
     ListEmptyComponent={busy ? null : <Empty icon="ledger" title={tr('No bookings yet')} text={vendor ? tr('A booking is created when a couple accepts your quote in chat.') : tr('A booking is created when you accept a vendor’s quote in chat. Payments then run milestone by milestone.')} />}
     renderItem={({ item: b, index }) => { const paid = b.milestones.filter((m: any) => m.status !== 'pending').reduce((a: number, m: any) => a + m.amount_paise, 0); return (<Rise i={index}><Card>
-      <View style={s.row}><Text style={{ fontWeight: '700', fontSize: 16, color: C.ink, flex: 1 }}>{vendor ? b.couple_name : b.vendor_name}</Text><Tag tone={b.status === 'completed' ? 'ok' : 'mute'} label={tr(b.status[0].toUpperCase() + b.status.slice(1))} /></View>
+      <View style={s.row}><Text style={{ fontWeight: '600', fontSize: 16, color: C.ink, flex: 1 }}>{vendor ? b.couple_name : b.vendor_name}</Text><Tag tone={b.status === 'completed' ? 'ok' : 'mute'} label={tr(b.status[0].toUpperCase() + b.status.slice(1))} /></View>
       <View style={[s.row, { marginTop: 8 }]}><Text style={{ fontFamily: F.display, fontSize: 22, color: C.ink }}>{inr(b.total_paise)}</Text><M>{inr(paid)} {tr('paid')}</M></View>
       <View style={{ marginTop: 6, marginBottom: 4 }}><Bar pct={b.total_paise ? Math.round(paid / b.total_paise * 100) : 0} color={C.ok} /></View>
       {b.milestones.map((m: any) => (<View key={m.id} style={[s.row, { marginTop: 10 }]}><View style={{ flex: 1, paddingRight: 8 }}><Text style={{ color: C.ink, fontWeight: '500' }}>{m.label}</Text>
@@ -141,6 +147,7 @@ export function Bookings({ vendor }: any) {
         <Btn small kind="ghost" title={tr('Submit review')} disabled={!rate[b.id]} onPress={() => review(b.id)} /></View>)}</Card></Rise>); }} />);
 }
 
+const longDate = (d: string) => { const x = new Date(d + 'T00:00:00Z'); return isNaN(+x) ? d : x.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); };
 const PLAN_TABS: [string, string][] = [['overview', 'Overview'], ['checklist', 'Checklist'], ['events', 'Events'], ['budget', 'Budget'], ['guests', 'Guests'], ['shortlist', 'Shortlist'], ['family', 'Family'], ['invite', 'Invite'], ['settings', 'Wedding details']];
 const PLAN_MAIN = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family']] as const;
 export function Plan({ navigation: nav }: any) {
@@ -148,7 +155,7 @@ export function Plan({ navigation: nav }: any) {
   if (!me) return <Loading what={tr('your wedding')} />;
   if (!me.wedding) return <Setup onDone={reload} />;
   return (<View style={{ flex: 1, backgroundColor: C.bg }}>
-    <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, maxWidth: 700, width: '100%', alignSelf: 'center' }}><M style={{ color: C.gold, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>{tr('THE WEDDING PLAN')}</M><Text style={{ fontFamily: F.display, fontSize: 27, color: C.ink, marginTop: 2 }}>{me.wedding.title}</Text><M>{me.wedding.date} · {me.wedding.city}</M></View>
+    <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, maxWidth: 700, width: '100%', alignSelf: 'center' }}><M style={{ color: C.gold, fontWeight: '600' }}>{tr('The wedding plan')}</M><Text style={{ fontFamily: F.display, fontSize: 27, color: C.ink, marginTop: 2 }}>{me.wedding.title}</Text><M>{longDate(me.wedding.date)} · {me.wedding.city}</M></View>
     <View style={{ maxWidth: 700, width: '100%', alignSelf: 'center' }}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12 }}>{PLAN_MAIN.map(([k, n, icon]) => <Chip key={k} icon={icon} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}<Chip icon="plus" label={tr('More')} on={showMore || !PLAN_MAIN.some(([k]) => k === tab)} onPress={() => setShowMore(!showMore)} /></ScrollView>
       {showMore && <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 4 }}>{PLAN_TABS.filter(([k]) => !PLAN_MAIN.some(([main]) => main === k)).map(([k, n]) => <Chip key={k} label={tr(n)} on={tab === k} onPress={() => { setTab(k); setShowMore(false); }} />)}</View>}
       {!showMore && !PLAN_MAIN.some(([k]) => k === tab) && <M style={{ paddingHorizontal: 16, paddingBottom: 3 }}>{tr(PLAN_TABS.find(([k]) => k === tab)?.[1] || '')}</M>}</View>
