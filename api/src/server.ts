@@ -23,12 +23,13 @@ const otpTries = new Map<string, number[]>();
 app.post('/api/auth/otp', wrap((req: any, res: any) => {
   const { phone } = z.object({ phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number') }).parse(req.body);
   const now = Date.now(); const t = (otpTries.get(phone) || []).filter(x => now - x < 600000);
-  if (t.length >= 5) throw fail(429, 'Too many OTP requests. Try later.'); otpTries.set(phone, [...t, now]);
+  if (t.length >= 5) { const mins = Math.max(1, Math.ceil((600000 - (now - t[0])) / 60000)); throw fail(429, `Too many codes requested for this number. Try again in ${mins} minute${mins === 1 ? '' : 's'}.`); }
+  otpTries.set(phone, [...t, now]);
   res.json({ ok: true, mock: true, hint: 'Demo OTP is 123456' });
 }));
 app.post('/api/auth/verify', wrap((req: any, res: any) => {
-  const b = z.object({ phone: z.string().regex(/^[6-9]\d{9}$/), otp: z.string(), role: z.enum(['couple', 'vendor']).optional(), name: z.string().min(1).max(80).optional() }).parse(req.body);
-  if (b.otp !== MOCK_OTP) throw fail(401, 'Wrong OTP');
+  const b = z.object({ phone: z.string().regex(/^[6-9]\d{9}$/), otp: z.string(), role: z.enum(['couple', 'vendor']).optional(), name: z.string().trim().min(2, 'Enter your name').max(80).optional() }).parse(req.body);
+  if (b.otp !== MOCK_OTP) throw fail(401, 'That code is not right. Check the 6 digits and try again.');
   let u = one('SELECT * FROM users WHERE phone=?', b.phone);
   if (!u) {
     if (!b.role) return res.json({ needsProfile: true });

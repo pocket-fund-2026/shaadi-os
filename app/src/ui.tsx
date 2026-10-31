@@ -80,12 +80,13 @@ export const Btn = ({ title, onPress, kind = 'primary', disabled, icon, small }:
       </AnimatedPressable>);
 };
 
-export const Input = ({ icon, ...p }: TextInputProps & { label?: string; icon?: IconName }) => {
+export const Input = ({ icon, prefix, ...p }: TextInputProps & { label?: string; icon?: IconName; prefix?: string }) => {
   const [focus, setFocus] = useState(false);
   // The leading icon sits over the field; left padding is shifted 1 unit on focus to offset the thicker border.
   return (<View style={{ marginBottom: 12 }}>{p.label ? <Text style={s.label}>{p.label}</Text> : null}
     <View>
-      <TextInput accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 14, paddingVertical: 12 }, icon && { paddingLeft: focus ? 42 : 43 }, p.style]} />
+      <TextInput accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 14, paddingVertical: 12 }, icon && { paddingLeft: focus ? 42 : 43 }, prefix && { paddingLeft: focus ? 51 : 52 }, p.style]} />
+      {prefix ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><Text style={{ fontSize: 15, color: C.ink }}>{prefix}</Text></View> : null}
       {icon ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><Icon name={icon} size={19} color={focus ? C.primary : C.mute} /></View> : null}
     </View></View>);
 };

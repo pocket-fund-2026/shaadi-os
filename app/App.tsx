@@ -78,18 +78,18 @@ function Profile({ me, onLogout }: any) {
     <Card style={{ backgroundColor: C.goldSoft, borderColor: C.goldSoft }}><M style={{ color: C.ink }}>{tr('Demo build: payments, OTP and WhatsApp are simulated. Booking Protection and escrow do not move real money.')}</M></Card>
     <Btn kind="ghost" icon="logout" title={tr('Log out')} onPress={onLogout} /></ScrollView>);
 }
-const CoupleTabs = (me: any, logout: () => void) => function T() {
+const CoupleTabs = (me: any, logout: () => void, landing?: string) => function T() {
   const t = useT();
-  return (<Tab.Navigator screenOptions={tabs}>
+  return (<Tab.Navigator screenOptions={tabs} initialRouteName={landing}>
     <Tab.Screen name="Discover" options={{ title: t('discover'), tabBarIcon: ti('search'), headerShown: false }} component={Discover} />
     <Tab.Screen name="Enquiries" options={{ title: t('enquiries'), tabBarIcon: ti('chat') }} component={Enquiries} />
     <Tab.Screen name="Bookings" options={{ title: t('bookings'), tabBarIcon: ti('ledger') }}>{() => <Bookings />}</Tab.Screen>
     <Tab.Screen name="Plan" options={{ title: t('plan'), tabBarIcon: ti('partnership'), headerShown: false }} component={Plan} />
     <Tab.Screen name="Profile" options={{ title: t('profile'), tabBarIcon: ti('person') }}>{() => <Profile me={me} onLogout={logout} />}</Tab.Screen></Tab.Navigator>);
 };
-const VendorTabs = (me: any, logout: () => void) => function T() {
+const VendorTabs = (me: any, logout: () => void, landing?: string) => function T() {
   const t = useT();
-  return (<Tab.Navigator screenOptions={tabs}>
+  return (<Tab.Navigator screenOptions={tabs} initialRouteName={landing}>
     <Tab.Screen name="Leads" options={{ title: t('leads'), tabBarIcon: ti('inbox') }}>{(p: any) => <Enquiries {...p} vendor />}</Tab.Screen>
     <Tab.Screen name="Bookings" options={{ title: t('bookings'), tabBarIcon: ti('ledger') }}>{() => <Bookings vendor />}</Tab.Screen>
     <Tab.Screen name="Payouts" options={{ title: t('payouts'), tabBarIcon: ti('wallet') }} component={Payouts} />
@@ -101,14 +101,16 @@ export default function App() {
   const [fonts] = useFonts({ Fraunces_600SemiBold, Fraunces_700Bold });
   // Language changes remount navigation so every title re-renders; this keeps the user on the screen they were on.
   const navState = React.useRef<any>(undefined);
+  // New accounts open where they can start: couples on Plan (wedding setup), vendors on their storefront.
+  const landing = React.useRef<string | undefined>(undefined);
   const [state, setState] = useState<'boot' | 'out' | 'in'>('boot'); const [me, setMe] = useState<any>(null); const [lang, setLangS] = useState('en');
   const setLang = (l: string) => { setCur(l); setLangS(l); AsyncStorage.setItem('lang', l).catch(() => {}); };
   const boot = async () => { try { const has = await restore(); { const l = (await AsyncStorage.getItem('lang')) || 'en'; setCur(l); setLangS(l); } if (!has) return setState('out'); setMe(await api('/me')); setState('in'); syncReminders().catch(() => {}); } catch { setState('out'); } };
   useEffect(() => { boot(); }, []);
   const logout = async () => { await setToken(''); navState.current = undefined; setState('out'); };
   if (state === 'boot' || !fonts) return <BootScreen fontsReady={!!fonts} />;
-  if (state === 'out') return <SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary>{exploring ? <PublicExplore onSignIn={() => setExploring(false)} onBack={() => setExploring(false)} /> : <Login onDone={boot} onBrowse={() => setExploring(true)} lang={lang} setLang={setLang} />}</ErrorBoundary></SafeAreaProvider>;
-  const vendor = me.user.role === 'vendor'; const Tabs = vendor ? VendorTabs(me, logout) : CoupleTabs(me, logout);
+  if (state === 'out') return <SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary>{exploring ? <PublicExplore onSignIn={() => setExploring(false)} onBack={() => setExploring(false)} /> : <Login onDone={signedIn => { landing.current = signedIn.isNew ? (signedIn.role === 'vendor' ? 'Store' : 'Plan') : undefined; navState.current = undefined; boot(); }} onBrowse={() => setExploring(true)} lang={lang} setLang={setLang} />}</ErrorBoundary></SafeAreaProvider>;
+  const vendor = me.user.role === 'vendor'; const Tabs = vendor ? VendorTabs(me, logout, landing.current) : CoupleTabs(me, logout, landing.current);
   return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang} initialState={navState.current} onStateChange={state => { navState.current = state; }}>
     <Stack.Navigator screenOptions={{ ...hdr, animation: 'slide_from_right' }}><Stack.Screen name="Home" component={Tabs} options={{ title: 'Shaadi OS', headerShown: false }} />
       <Stack.Screen name="Vendor" component={VendorScreen} options={{ title: '' }} /><Stack.Screen name="EnquiryForm" component={EnquiryForm} options={{ title: tr('Enquiry'), animation: 'slide_from_bottom' }} />
