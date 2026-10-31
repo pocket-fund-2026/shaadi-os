@@ -2,6 +2,7 @@ import { mountPlanner, dateSchema } from './planner.ts';
 import { instalmentDue } from './organiser.ts';
 import { readRuntimeConfig } from './config.ts';
 import { mountCatalog, vendorCatalog } from './catalog.ts';
+import { addAfterTasks } from './traditions.ts';
 import express from 'express'; import cors from 'cors'; import jwt from 'jsonwebtoken'; import { z } from 'zod'; import { randomBytes } from 'node:crypto';
 import { db, q, one, run } from './db.ts'; import { mountExtras, TEMPLATES } from './extras.ts'; import { seed } from './seed.ts'; import { mountSite, mountSiteEarly, spamGuard } from './site.ts';
 const config = readRuntimeConfig();
@@ -10,7 +11,7 @@ const MOCK_OTP = '123456'; // MOCK: replace with SMS/WhatsApp provider (see prov
 if (config.seedDemoData) seed();
 export const app = express(); mountSiteEarly(app); app.use(cors()); // Photo uploads arrive as base64 JSON, so only that route accepts a larger body.
 const jsonSmall = express.json({ limit: '1mb' }); const jsonUpload = express.json({ limit: '12mb' });
-app.use((req, res, next) => (req.path === '/api/vendor/photos/upload' ? jsonUpload : jsonSmall)(req, res, next));
+app.use((req, res, next) => (req.path === '/api/vendor/photos/upload' || req.path === '/api/ideas' ? jsonUpload : jsonSmall)(req, res, next));
 const wrap = (f: any) => (req: any, res: any) => { const report = (e: any) => res.status(e instanceof z.ZodError ? 400 : e.status || 500).json({ error: e instanceof z.ZodError ? e.issues[0].message : e.message }); try { return Promise.resolve(f(req, res)).catch(report); } catch (e) { return report(e); } };
 const fail = (status: number, message: string) => Object.assign(new Error(message), { status });
 const auth = (req: any, _r: any, next: any) => { try { req.user = jwt.verify((req.headers.authorization || '').slice(7), SECRET); next(); } catch { next(fail(401, 'Login required')); } };
@@ -97,6 +98,7 @@ app.post('/api/wedding', auth, wrap((req: any, res: any) => {
   const d = new Date(b.date);
   // Creating the workspace sets the date and budget, so that starter task begins done.
   for (const [t, due] of starterDates(b.date, new Date())) run('INSERT INTO tasks(wedding_id,title,due,done) VALUES(?,?,?,?)', id, t, due, t === 'Set wedding date & budget' ? 1 : 0);
+  addAfterTasks(id, b.date);
   for (const [c, p] of Object.entries(SPLIT)) run('INSERT INTO budget_items(wedding_id,category,allocated_paise) VALUES(?,?,?)', id, c, Math.round(b.budget_paise * p / 100));
   res.json(one('SELECT * FROM weddings WHERE id=?', id));
 }));
@@ -117,14 +119,14 @@ app.get('/api/budget', auth, wrap((req: any, res: any) => {
     const booked = bk.reduce((s, x) => s + x.total_paise, 0);
     const paid = bk.reduce((s, x) => s + (one("SELECT COALESCE(SUM(amount_paise),0) s FROM milestones WHERE booking_id=? AND status IN ('held','released')", x.id).s), 0);
     const out = one("SELECT COALESCE(SUM(amount_paise),0) committed, COALESCE(SUM(CASE WHEN paid=1 THEN amount_paise ELSE 0 END),0) paid FROM expenses WHERE wedding_id=? AND category=?", w.id, i.category);
-    return { category: i.category, allocated_paise: i.allocated_paise, booked_paise: booked + out.committed, paid_paise: paid + out.paid, due_paise: booked + out.committed - paid - out.paid, outside_paise: out.committed };
+    return { category: i.category, paid_by: i.paid_by || 'shared', allocated_paise: i.allocated_paise, booked_paise: booked + out.committed, paid_paise: paid + out.paid, due_paise: booked + out.committed - paid - out.paid, outside_paise: out.committed };
   });
   res.json({ total_paise: w.budget_paise, rows });
 }));
 app.get('/api/guests', auth, wrap((req: any, res: any) => res.json(q('SELECT * FROM guests WHERE wedding_id=? ORDER BY id DESC', W(req).id))));
 app.post('/api/guests', auth, wrap((req: any, res: any) => {
-  const b = z.object({ name: z.string().min(1), phone: z.string().optional(), side: z.enum(['bride', 'groom']).default('bride') }).parse(req.body);
-  run('INSERT INTO guests(wedding_id,name,phone,side,token) VALUES(?,?,?,?,?)', W(req).id, b.name, b.phone || '', b.side, randomBytes(6).toString('hex')); res.json({ ok: true });
+  const b = z.object({ name: z.string().trim().min(1).max(120), phone: z.string().optional(), side: z.enum(['bride', 'groom']).default('bride'), party: z.number().int().min(1).max(50).default(1), meal: z.enum(['Veg', 'Jain', 'Non-veg', 'Vegan']).nullable().optional() }).parse(req.body);
+  const id = Number(run('INSERT INTO guests(wedding_id,name,phone,side,token,party,meal) VALUES(?,?,?,?,?,?,?)', W(req).id, b.name, b.phone || '', b.side, randomBytes(6).toString('hex'), b.party, b.meal ?? null).lastInsertRowid); res.json({ ok: true, id });
 }));
 // public RSVP page (no login needed, opened from WhatsApp link)
 const esc = (s: string) => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
@@ -135,8 +137,10 @@ const rsvpPage = (title: string, body: string) => `<!doctype html><html lang="en
 app.get('/rsvp/:token', wrap((req: any, res: any) => {
   const g = one('SELECT g.*,w.title,w.date,w.city FROM guests g JOIN weddings w ON w.id=g.wedding_id WHERE token=?', req.params.token); if (!g) return res.status(404).send(rsvpPage('Invalid link', '<h1>This invitation link is not valid</h1><p class="muted">Ask the couple to send it again.</p>'));
   const events = q("SELECT e.id,e.name,e.date,e.venue,ge.rsvp FROM guest_events ge JOIN events e ON e.id=ge.event_id WHERE ge.guest_id=? ORDER BY COALESCE(e.date,'9999-12-31'), e.sort, e.id", g.id);
-  const meal = `<div class="row"><label for="meal">Meal</label><select id="meal" name="meal">${['Veg', 'Non-veg', 'Jain'].map(m => `<option${g.meal === m ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
-    <div class="row"><label for="plus">Others coming with you</label><input id="plus" type="number" name="plus" min="0" max="5" value="${Number(g.plus_ones) || 0}"></div>`;
+  // A household invite asks how many of the family are coming; a single invite asks about anyone they bring.
+  const party = Math.max(1, Number(g.party) || 1); const others = g.rsvp === 'pending' ? party - 1 : Number(g.plus_ones) || 0;
+  const meal = `<div class="row"><label for="meal">Food</label><select id="meal" name="meal">${['Veg', 'Jain', 'Non-veg', 'Vegan'].map(m => `<option${(g.meal || 'Veg') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></div>
+    <div class="row"><label for="plus">${party > 1 ? `Others from your family coming (invited: ${party})` : 'Others coming with you'}</label><input id="plus" type="number" name="plus" min="0" max="${Math.max(5, party - 1)}" value="${others}"></div>`;
   // Guests invited to specific ceremonies answer for each; others give one reply for the wedding.
   const form = events.length
     ? `${events.map((e: any) => `<fieldset><legend>${esc(e.name)}</legend><p class="muted" style="margin:0">${[dateText(e.date), e.venue].filter(Boolean).map(esc).join(' · ') || 'Date to be announced'}</p>
@@ -149,7 +153,7 @@ app.get('/rsvp/:token', wrap((req: any, res: any) => {
     <p class="muted" style="margin-top:40px">Planning your own wedding? <a href="/">Shaadi OS</a></p>`));
 }));
 app.post('/rsvp/:token', express.urlencoded({ extended: false }), spamGuard(), wrap((req: any, res: any) => {
-  const b = z.object({ rsvp: z.enum(['yes', 'no', 'events']), meal: z.enum(['Veg', 'Non-veg', 'Jain']).default('Veg'), plus: z.coerce.number().int().min(0).max(5).default(0) }).safeParse(req.body);
+  const b = z.object({ rsvp: z.enum(['yes', 'no', 'events']), meal: z.enum(['Veg', 'Jain', 'Non-veg', 'Vegan']).default('Veg'), plus: z.coerce.number().int().min(0).max(49).default(0) }).safeParse(req.body);
   const g = one('SELECT id FROM guests WHERE token=?', req.params.token);
   if (!b.success || !g) return res.status(400).send(rsvpPage('Try again', "<h1>That reply didn't go through</h1><p>Please go back and try again.</p>"));
   let rsvp = b.data.rsvp;

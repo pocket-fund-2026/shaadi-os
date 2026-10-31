@@ -13,7 +13,7 @@ export const UPLOAD_DIR = process.env.UPLOAD_DIR || new URL('../uploads', import
 mkdirSync(UPLOAD_DIR, { recursive: true });
 const MAX_UPLOAD = 8 * 1024 * 1024;
 // Trust the bytes, not the file name: only JPEG, PNG and WebP that browsers and phones can all display.
-const imageType = (b: Buffer) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? 'jpg'
+export const imageType = (b: Buffer) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? 'jpg'
   : b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ? 'png'
   : b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP' ? 'webp' : null;
 const uploadSchema = z.object({

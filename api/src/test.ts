@@ -147,13 +147,13 @@ test('wedding rejects impossible dates and invalid guest counts without partial 
 });
 test('wedding seeds tasks and budget, overview reflects guest plus ones', async () => {
   assert.equal((await request('/api/wedding', couple, 'POST', { title: 'A & B', date: '2027-02-20', city: 'Pune', budget_paise: 150000000, guests_est: 200 })).status, 200);
-  assert.equal((await request('/api/tasks', couple)).data.length, 10);
+  assert.equal((await request('/api/tasks', couple)).data.length, 16, '10 planning tasks and 6 after the wedding');
   await request('/api/guests', couple, 'POST', { name: 'Guest', side: 'bride' });
   const guest = (await request('/api/guests', couple)).data[0];
   const response = await transport('/rsvp/' + guest.token, '', 'POST', 'rsvp=yes&meal=Veg&plus=2', true);
   assert.equal(response.status, 200);
   const overview = await request('/api/planner/overview', couple);
-  assert.equal(overview.data.guests.attending, 3); assert.equal(overview.data.tasks.total, 10);
+  assert.equal(overview.data.guests.attending, 3); assert.equal(overview.data.tasks.total, 16);
   assert.equal((await request('/api/planner/overview', outsider)).status, 400);
   assert.equal((await request('/api/planner/overview')).status, 401);
 });
@@ -285,7 +285,7 @@ test('guests reply per ceremony and headcounts follow', async () => {
   await transport('/rsvp/' + guest.token, '', 'POST', `rsvp=events&e${h}=yes&e${s}=no&meal=Jain&plus=1`, true);
   const counts = (await request('/api/events/headcount', couple)).data;
   const hc = counts.find((e: any) => e.id === h), sc = counts.find((e: any) => e.id === s);
-  assert.deepEqual([hc.invited, hc.coming, hc.jain, hc.waiting], [1, 2, 1, 0]);
+  assert.deepEqual([hc.invited, hc.coming, hc.jain, hc.waiting], [1, 2, 2, 0], 'Jain counts everyone in the party who is coming');
   assert.deepEqual([sc.invited, sc.coming, sc.declined], [1, 0, 1]);
   assert.equal((await request('/api/guests', couple)).data.find((g: any) => g.id === guest.id).rsvp, 'yes');
 });
@@ -465,4 +465,64 @@ test('wedding details save only for the current owner', async () => {
   assert.equal((await request('/api/planner/guide', couple)).data.find((item: any) => item.key === 'seating').due, '2027-03-21');
   assert.equal((await request('/api/tasks', couple)).data.find((item: any) => item.id === before.id).due, null);
   assert.equal((await request('/api/me', outsider)).data.wedding.title, 'C & D');
+});
+
+test('households, cards, muhurat, transport, gifts, menu, family budget split, practice and ideas', async () => {
+  const owner = await login('9811100001'); const other = await login('9811100002');
+  await request('/api/wedding', owner, 'POST', { title: 'K & L', date: '2027-03-10', city: 'Nashik', budget_paise: 100000000, guests_est: 150 });
+  await request('/api/wedding', other, 'POST', { title: 'M & N', date: '2027-03-11', city: 'Pune', budget_paise: 100000000, guests_est: 150 });
+  const tasks = (await request('/api/tasks', owner)).data; const reg = tasks.find((t: any) => t.title === 'Register the marriage');
+  assert.equal(reg.due, '2027-04-09', 'after-wedding tasks are dated from the wedding');
+  // A household of 4 that eats Jain food; the RSVP defaults to the whole family.
+  const g = (await request('/api/guests', owner, 'POST', { name: 'Sharma family', side: 'groom', party: 4, meal: 'Jain' })).data;
+  const ev = (await request('/api/events', owner, 'POST', { name: 'Reception', date: '2027-03-11' })).data;
+  await request(`/api/guests/${g.id}/events/${ev.id}`, owner, 'PUT', { invited: true });
+  let hc = (await request('/api/events/headcount', owner)).data.find((e: any) => e.id === ev.id);
+  assert.deepEqual([hc.households, hc.invited, hc.waiting], [1, 4, 4]);
+  const token = (await request('/api/guests', owner)).data.find((x: any) => x.id === g.id).token;
+  assert.ok(String((await transport('/rsvp/' + token, '', 'GET', undefined, true)).data).includes('value="3"'), 'household RSVP starts with the rest of the family');
+  await transport('/rsvp/' + token, '', 'POST', `rsvp=events&e${ev.id}=yes&meal=Jain&plus=3`, true);
+  hc = (await request('/api/events/headcount', owner)).data.find((e: any) => e.id === ev.id);
+  assert.deepEqual([hc.coming, hc.jain], [4, 4]);
+  // Invitation card handed over by someone in the family.
+  const card = (await request(`/api/guests/${g.id}`, owner, 'PATCH', { card_given: true, card_by: 'Papa' })).data;
+  assert.equal(card.card_given, 1); assert.equal(card.card_by, 'Papa'); assert.ok(card.card_on);
+  assert.equal((await request(`/api/guests/${g.id}`, other, 'PATCH', { card_given: false })).status, 404, 'another wedding cannot edit');
+  assert.equal((await request(`/api/guests/${g.id}`, owner, 'PATCH', { party: 0 })).status, 400);
+  // Muhurat: a shortlisted vendor busy on one option is flagged; choosing an option moves the wedding date.
+  const vendorRow = one("SELECT id FROM vendors WHERE sample=1 LIMIT 1");
+  await request('/api/shortlist', owner, 'POST', { vendor_id: vendorRow.id });
+  db.prepare('INSERT OR REPLACE INTO blocked_dates(vendor_id,date,note) VALUES(?,?,?)').run(vendorRow.id, '2027-02-20', 'busy');
+  const m1 = (await request('/api/muhurats', owner, 'POST', { date: '2027-02-20', time: '7:15 pm', source: 'Pandit ji' })).data;
+  await request('/api/muhurats', owner, 'POST', { date: '2027-02-24' });
+  const opts = (await request('/api/muhurats', owner)).data.options;
+  assert.equal(opts.find((o: any) => o.id === m1.id).busy.length, 1); assert.equal(opts.find((o: any) => o.date === '2027-02-24').busy.length, 0);
+  assert.equal((await request(`/api/muhurats/${m1.id}/choose`, other, 'POST', {})).status, 404);
+  await request(`/api/muhurats/${m1.id}/choose`, owner, 'POST', {});
+  assert.equal((await request('/api/planner/overview', owner)).data.wedding.date, '2027-02-20');
+  // Transport, gifts given, menu and tasting, practice.
+  assert.equal((await request('/api/vehicles', owner, 'POST', { label: 'Baraat bus', kind: 'bus', seats: 40, event_id: ev.id, driver_phone: '12345' })).status, 400, 'driver number is validated');
+  assert.equal((await request('/api/vehicles', owner, 'POST', { label: 'Baraat bus', kind: 'bus', seats: 40, event_id: ev.id, driver: 'Ramu', driver_phone: '9822012345', passengers: 'Chacha ji, cousins' })).status, 201);
+  assert.equal((await request('/api/vehicles', owner)).data[0].seats, 40);
+  const gift = (await request('/api/gifts-out', owner, 'POST', { recipient: 'All guests', occasion: 'return_gift', item: 'Silver coin', qty: 150, cost_paise: 150000 })).data;
+  await request(`/api/gifts-out/${gift.id}`, owner, 'PATCH', { ready: true });
+  const out = (await request('/api/gifts-out', owner)).data; assert.equal(out.items[0].ready, 1); assert.equal(out.households, 1);
+  assert.equal((await request('/api/menu/items', owner, 'POST', { event_id: ev.id, course: 'main', dish: 'Paneer lababdar', diet: 'Jain' })).status, 201);
+  assert.equal((await request('/api/menu/tastings', owner, 'POST', { caterer: 'Annapurna Caterers', date: '2027-01-15' })).status, 201);
+  const menu = (await request('/api/menu', owner)).data; assert.equal(menu.items.length, 1); assert.equal(menu.tastings.length, 1);
+  assert.equal((await request('/api/practices', owner, 'POST', { date: '2027-02-10', item: 'Family dance: London Thumakda', people: 'Cousins' })).status, 201);
+  // Who pays: the groom's family takes the DJ.
+  assert.equal((await request('/api/budget/paid-by', owner, 'PATCH', { category: 'dj', paid_by: 'groom' })).status, 200);
+  assert.equal((await request('/api/budget', owner)).data.rows.find((r: any) => r.category === 'dj').paid_by, 'groom');
+  // Ideas: a link or an uploaded photo; non-images are refused.
+  assert.equal((await request('/api/ideas', owner, 'POST', { kind: 'decor', url: 'https://example.com/mandap.jpg', note: 'Marigold mandap' })).status, 201);
+  assert.equal((await request('/api/ideas', owner, 'POST', { kind: 'decor', data: Buffer.from('not an image at all').toString('base64') })).status, 400);
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  assert.equal((await request('/api/ideas', owner, 'POST', { kind: 'outfit', data: png })).status, 201);
+  assert.ok((await request('/api/ideas', owner)).data.some((i: any) => /^\/uploads\/[0-9a-f]{24}\.png$/.test(i.url)));
+  // DPDP export carries all of it, and deletion clears it.
+  const mine = (await request('/api/my-data', owner)).data;
+  for (const k of ['muhurats', 'vehicles', 'gifts_out', 'menu_items', 'tastings', 'practices', 'ideas']) assert.ok(mine[k].length >= 1, k);
+  assert.equal((await request('/api/my-data', owner, 'DELETE')).status, 200);
+  assert.equal(one('SELECT COUNT(*) n FROM ideas').n + one('SELECT COUNT(*) n FROM vehicles').n, 0);
 });

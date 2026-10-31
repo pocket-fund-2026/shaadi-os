@@ -12,6 +12,7 @@ import { CategoryCover, FloralArch } from './visuals';
 import { VendorCatalog } from './catalog';
 import { Gifts, RunSheet, Stays } from './hospitality';
 import { DayContacts, Documents, Seating, Shopping } from './organiser';
+import { GiftsToGive, Guests, Ideas, Menu, Muhurat, Practice, Transport } from './traditions';
 import { useT } from './i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export const useLoad = <T,>(path: string, init: T) => {
@@ -153,11 +154,14 @@ export function EnquiryForm({ route, navigation }: any) {
 const longDate = (d: string) => { const x = new Date(d + 'T00:00:00Z'); return isNaN(+x) ? d : x.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); };
 const PLAN_BAR = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family'], ['tools', 'Tools', 'store']] as const;
 const PLAN_TOOLS: [string, string, IconName, string][] = [
-  ['events', 'Ceremonies', 'marigold', 'Dates, venues and dress codes'], ['run', 'Run sheet', 'flag', 'Timings for each ceremony'],
-  ['shortlist', 'Shortlist', 'heart', 'Vendors you’re considering, with family votes'], ['family', 'Family', 'family', 'Who can see and edit the plan'],
-  ['shagun', 'Shagun', 'rupee', 'Gifts received and thank-you notes'], ['stays', 'Guest stays', 'pin', 'Hotels, arrivals and pickups'],
-  ['shopping', 'Shopping', 'receipt', 'Outfits, jewellery and family gifts'], ['contacts', 'Day contacts', 'phone', 'Everyone to call on the day'],
-  ['documents', 'Documents', 'seal', 'Marriage registration papers'], ['seating', 'Seating', 'ledger', 'Tables for each ceremony'],
+  ['muhurat', 'Muhurat', 'diya', 'Auspicious dates, checked with your vendors'], ['events', 'Ceremonies', 'marigold', 'Dates, venues and dress codes'],
+  ['menu', 'Menu & tasting', 'cloche', 'Dishes for each ceremony and tastings'], ['transport', 'Transport', 'car', 'Baraat, cars, buses and drivers'],
+  ['run', 'Run sheet', 'flag', 'Timings for each ceremony'], ['practice', 'Sangeet practice', 'headphones', 'Rehearsals, songs and who comes'],
+  ['shortlist', 'Shortlist', 'heart', 'Vendors you’re considering, with family votes'], ['ideas', 'Ideas', 'camera', 'Photos for decor, outfits and mehendi'],
+  ['giving', 'Gifts to give', 'gift', 'Milni, vidaai and return gifts'], ['shagun', 'Shagun', 'rupee', 'Gifts received and thank-you notes'],
+  ['shopping', 'Shopping', 'receipt', 'Outfits, jewellery and trousseau'], ['stays', 'Guest stays', 'pin', 'Hotels, arrivals and pickups'],
+  ['seating', 'Seating', 'ledger', 'Tables for each ceremony'], ['contacts', 'Day contacts', 'phone', 'Everyone to call on the day'],
+  ['family', 'Family', 'family', 'Who can see and edit the plan'], ['documents', 'Documents', 'seal', 'Marriage registration papers'],
   ['invite', 'Wedding website', 'globe', 'A page to share with guests'], ['settings', 'Wedding details', 'ring', 'Names, date, city and budget'],
 ];
 // Every planning tool beyond the four main sections, as a grid of labelled tiles.
@@ -174,7 +178,6 @@ function ToolsHub({ open }: { open: (tab: string) => void }) {
     </View>
   </ScrollView>;
 }
-const PLAN_TABS: [string, string][] = [['overview', 'Overview'], ['checklist', 'Checklist'], ['events', 'Events'], ['budget', 'Budget'], ['guests', 'Guests'], ['shortlist', 'Shortlist'], ['family', 'Family'], ['shagun', 'Shagun'], ['stays', 'Guest stays'], ['run', 'Run sheet'], ['shopping', 'Shopping'], ['contacts', 'Day contacts'], ['documents', 'Documents'], ['seating', 'Seating'], ['invite', 'Invite'], ['settings', 'Wedding details']];
 const PLAN_MAIN = [['overview', 'Overview', 'partnership'], ['checklist', 'Checklist', 'checklist'], ['budget', 'Budget', 'wallet'], ['guests', 'Guests', 'family']] as const;
 export function Plan(props: any) {
   const insets = useSafeAreaInsets();
@@ -205,7 +208,7 @@ function PlanBody({ navigation: nav, route }: any) {
         <Text style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{tr('All tools')}</Text><Text style={{ color: C.mute, fontSize: 13 }}> · {tr(tool[1])}</Text>
       </Pressable> : null}
     </View>
-    <Rise key={tab} style={{ flex: 1 }}>{tab === 'tools' ? <ToolsHub open={setTab} /> : tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'run' ? <RunSheet /> : tab === 'shopping' ? <Shopping /> : tab === 'contacts' ? <DayContacts /> : tab === 'documents' ? <Documents /> : tab === 'seating' ? <Seating /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : <Guests />}</Rise></View>);
+    <Rise key={tab} style={{ flex: 1 }}>{tab === 'tools' ? <ToolsHub open={setTab} /> : tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'run' ? <RunSheet /> : tab === 'shopping' ? <Shopping /> : tab === 'contacts' ? <DayContacts /> : tab === 'documents' ? <Documents /> : tab === 'seating' ? <Seating /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : tab === 'muhurat' ? <Muhurat onDateChange={reload} /> : tab === 'menu' ? <Menu /> : tab === 'transport' ? <Transport /> : tab === 'practice' ? <Practice /> : tab === 'ideas' ? <Ideas /> : tab === 'giving' ? <GiftsToGive /> : <Guests />}</Rise></View>);
 }
 const COMMUNITIES = ['North Indian Hindu', 'South Indian', 'Bengali', 'Gujarati', 'Marathi', 'Punjabi/Sikh', 'Muslim', 'Christian', 'Jain', 'Inter-faith'];
 const SETUP_CITIES = ['Mumbai', 'Pune', 'Nashik', 'Nagpur'];
@@ -273,47 +276,4 @@ function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
       <Btn title={busy ? tr('Creating your plan…') : tr('Create our wedding plan')} onPress={go} disabled={busy} />
     </View>
   </ScrollView>);
-}
-function Guests() {
-  const [list, load] = useLoad<any[]>('/guests', []); const [events] = useLoad<any[]>('/events', []);
-  const [invites, loadInvites] = useLoad<any[]>('/guest-events', []); const [counts, loadCounts] = useLoad<any[]>('/events/headcount', []);
-  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [side, setSide] = useState('bride'); const [busy, setBusy] = useState(false); const [adding, setAdding] = useState(false);
-  const add = async () => {
-    if (!name.trim()) return; if (phone && !/^[6-9]\d{9}$/.test(phone)) return err(new Error(tr('Enter a 10-digit mobile number, or leave it empty.')));
-    try { await api('/guests', 'POST', { name: name.trim(), phone, side }); setName(''); setPhone(''); setAdding(false); load(); } catch (e) { err(e); }
-  };
-  const share = (g: any) => Linking.openURL(`https://wa.me/91${g.phone}?text=${encodeURIComponent(`Namaste ${g.name}, you're invited. Please reply here: ${getBase()}/rsvp/${g.token}`)}`).catch(err);
-  // Tapping a ceremony chip invites or uninvites the guest for that ceremony.
-  const invite = async (guestId: number, eventId: number, invited: boolean) => {
-    if (busy) return; setBusy(true);
-    try { await api(`/guests/${guestId}/events/${eventId}`, 'PUT', { invited }); await Promise.all([loadInvites(), loadCounts()]); } catch (e) { err(e); } finally { setBusy(false); }
-  };
-  const replyFor = (guestId: number, eventId: number) => invites.find(x => x.guest_id === guestId && x.event_id === eventId)?.rsvp;
-  // Plain-text headcount the couple can forward to a caterer or venue.
-  const shareHeadcount = () => Share.share({ message: counts.filter(c => c.invited).map(c => `${c.name}${c.date ? ` (${dateIN(c.date)})` : ''}: ${c.coming} ${tr('coming')}, ${c.waiting} ${tr('yet to reply')}${c.jain ? `, ${c.jain} Jain` : ''}${c.nonveg ? `, ${c.nonveg} non-veg` : ''}`).join('\n') }).catch(() => {});
-  const yes = list.filter(g => g.rsvp === 'yes').length; const no = list.filter(g => g.rsvp === 'no').length;
-  return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Card><View style={{ flexDirection: 'row' }}>{[[list.length, tr('Invited'), C.ink], [yes, tr('Coming'), C.ok], [no, tr('Declined'), C.warn], [list.length - yes - no, tr('Waiting'), C.mute]].map(([n, l, c], i) => (
-      <View key={i} style={{ flex: 1, alignItems: 'center' }}><Text style={{ fontFamily: F.display, fontSize: 24, color: c as string, fontVariant: ['tabular-nums'] }}>{n as number}</Text><M>{l as string}</M></View>))}</View></Card>
-    {counts.some(c => c.invited) ? <Card>
-      <View style={s.row}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Headcount by ceremony')}</Text><Btn small kind="quiet" icon="share" title={tr('Share')} onPress={shareHeadcount} /></View>
-      {counts.filter(c => c.invited).map((c, i) => <View key={c.id} style={[s.row, { paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }]}>
-        <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{c.name}</Text><M>{c.date ? dateIN(c.date) + ' · ' : ''}{c.invited} {tr('invited')}{c.jain ? ` · ${c.jain} Jain` : ''}{c.nonveg ? ` · ${c.nonveg} ${tr('non-veg')}` : ''}</M></View>
-        <View style={{ alignItems: 'flex-end' }}><Text style={{ color: C.ok, fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{c.coming}</Text><M>{c.waiting} {tr('waiting')}</M></View>
-      </View>)}
-    </Card> : null}
-    {adding || !list.length ? <Card><Input label={tr('Guest name')} placeholder={tr('e.g. Meera Iyer')} value={name} onChangeText={setName} autoFocus={adding} /><Input label={tr('WhatsApp number (optional)')} placeholder="10-digit mobile" value={phone} onChangeText={setPhone} keyboardType="number-pad" maxLength={10} />
-    <View style={{ flexDirection: 'row' }}><Chip label={tr('Bride side')} on={side === 'bride'} onPress={() => setSide('bride')} /><Chip label={tr('Groom side')} on={side === 'groom'} onPress={() => setSide('groom')} /></View><Btn icon="plus" title={tr('Add guest')} onPress={add} />{list.length ? <Btn kind="ghost" title={tr('Done')} onPress={() => setAdding(false)} /> : null}</Card>
-      : <Btn kind="quiet" icon="plus" title={tr('Add a guest')} onPress={() => setAdding(true)} />}
-    {list.length && !events.length ? <M style={{ marginVertical: 8 }}>{tr('Add your ceremonies under More, then Events, to invite guests to each one separately.')}</M> : null}
-    {!list.length && <Empty icon="family" title={tr('No guests yet')} text={tr('Add guests with a WhatsApp number and send each one a personal RSVP link.')} />}
-    {list.map((g, i) => (<Rise key={g.id} i={i}><Card><View style={s.row}><View style={{ flex: 1 }}><Text style={{ fontWeight: '500', color: C.ink }}>{g.name}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}><Tag tone={g.rsvp === 'yes' ? 'ok' : g.rsvp === 'no' ? 'warn' : 'mute'} label={g.rsvp === 'yes' ? tr('Coming') : g.rsvp === 'no' ? tr('Declined') : tr('Waiting')} />
-        <M> {g.side === 'bride' ? tr('Bride side') : tr('Groom side')}{g.meal ? ' · ' + g.meal : ''}{g.plus_ones ? ` · +${g.plus_ones}` : ''}</M></View></View>
-      {g.phone ? <Btn small kind="quiet" icon="send" title="WhatsApp" onPress={() => share(g)} /> : null}</View>
-      {events.length ? <View style={{ marginTop: 12 }}><M style={{ marginBottom: 4 }}>{tr('Invited to')}</M><ScrollView horizontal showsHorizontalScrollIndicator={false}>{events.map(e => {
-        const reply = replyFor(g.id, e.id);
-        return <Chip key={e.id} label={e.name} on={!!reply} icon={reply === 'yes' ? 'check' : reply === 'no' ? 'close' : undefined} onPress={() => invite(g.id, e.id, !reply)} />;
-      })}</ScrollView></View> : null}
-    </Card></Rise>))}</ScrollView>);
 }

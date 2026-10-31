@@ -190,6 +190,7 @@ export function TaskManager() {
   </ScrollView>;
 }
 
+const PAYERS: [string, string][] = [['shared', 'Shared'], ['bride', 'Bride’s family'], ['groom', 'Groom’s family']];
 export function BudgetManager() {
   const { data: b, busy, error, load } = usePlanner<any>('/budget');
   const [editing, setEditing] = useState(false); const [total, setTotal] = useState(''); const [amounts, setAmounts] = useState<Record<string, string>>({}); const [saving, setSaving] = useState(false);
@@ -198,6 +199,9 @@ export function BudgetManager() {
   const booked = b?.rows.reduce((sum: number, r: any) => sum + r.booked_paise, 0) || 0;
   const paid = b?.rows.reduce((sum: number, r: any) => sum + r.paid_paise, 0) || 0;
   const allocated = b?.rows.reduce((sum: number, r: any) => sum + r.allocated_paise, 0) || 0;
+  // Which family pays for each service; the split shows each side's share of the planned budget.
+  const payer = async (category: string, paid_by: string) => { try { await api('/budget/paid-by', 'PATCH', { category, paid_by }); await load(); } catch (e) { err(e); } };
+  const share = (side: string) => b?.rows.filter((r: any) => (r.paid_by || 'shared') === side).reduce((sum: number, r: any) => sum + Math.max(r.allocated_paise, r.booked_paise), 0) || 0;
   return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}>
     <Failure error={error} retry={load} />
     {!b ? <M>{tr('Loading your budget…')}</M> : <>
@@ -207,11 +211,16 @@ export function BudgetManager() {
         <M>{tr('Unallocated buffer')}: {inr(b.total_paise - allocated)}</M>
         {!editing && <Btn kind="quiet" title={tr('Edit allocations')} onPress={edit} />}
       </Card>
+      {!editing && b.rows.some((r: any) => r.paid_by && r.paid_by !== 'shared') ? <Card><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginBottom: 8 }}>{tr('Who pays')}</Text>
+        <View style={{ flexDirection: 'row' }}>{PAYERS.map(([k, n]) => <View key={k} style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 18, color: C.ink, fontVariant: ['tabular-nums'] }}>{inr(share(k))}</Text><M>{tr(n)}</M></View>)}</View>
+      </Card> : null}
       {editing && <Input label={tr('Total budget (₹)')} value={total} onChangeText={setTotal} keyboardType="decimal-pad" />}
       <Card style={{ paddingVertical: 4 }}>{b.rows.map((r: any, i: number) => <View key={r.category} style={{ paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }}>
         <View style={s.row}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{categoryLabel(r.category)}</Text><M style={{ fontVariant: ['tabular-nums'] }}>{inr(r.booked_paise)} / {inr(r.allocated_paise)}</M></View>
         {editing ? <Input label={tr('Allocation (₹)')} value={amounts[r.category]} onChangeText={value => setAmounts({ ...amounts, [r.category]: value })} keyboardType="decimal-pad" /> : <>
           <View style={{ marginTop: 8 }}><Bar pct={r.allocated_paise ? Math.min(100, r.booked_paise / r.allocated_paise * 100) : r.booked_paise ? 100 : 0} color={r.booked_paise > r.allocated_paise ? C.warn : C.primary} /></View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{PAYERS.map(([k, n]) => { const on = (r.paid_by || 'shared') === k; return <Pressable key={k} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={`${categoryLabel(r.category)}: ${tr(n)}`} onPress={() => !on && payer(r.category, k)} hitSlop={4}
+            style={{ paddingHorizontal: 10, minHeight: 28, justifyContent: 'center', borderRadius: 14, borderWidth: 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.tint : 'transparent' }}><Text style={{ fontSize: 12, color: on ? C.primary : C.mute, fontWeight: on ? '600' : '400' }}>{tr(n)}</Text></Pressable>; })}</View>
           {r.booked_paise > r.allocated_paise ? <M style={{ color: C.warn, marginTop: 4 }}>{tr('Over budget')} {tr('by')} {inr(r.booked_paise - r.allocated_paise)}</M> : r.due_paise ? <M style={{ marginTop: 4 }}>{tr('Due')} {inr(r.due_paise)}{r.outside_paise ? ` · ${tr('Includes')} ${inr(r.outside_paise)} ${tr('paid outside the app')}` : ''}</M> : null}
         </>}
       </View>)}</Card>

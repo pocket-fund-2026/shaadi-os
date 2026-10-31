@@ -83,7 +83,7 @@ export default function App() {
   const landing = React.useRef<string | undefined>(undefined);
   const [state, setState] = useState<'boot' | 'out' | 'in'>('boot'); const [me, setMe] = useState<any>(null); const [lang, setLangS] = useState('en');
   const setLang = (l: string) => { setCur(l); setLangS(l); AsyncStorage.setItem('lang', l).catch(() => {}); };
-  const boot = async () => { try { const has = await restore(); { const l = (await AsyncStorage.getItem('lang')) || 'en'; setCur(l); setLangS(l); } if (!has) return setState('out'); setMe(await api('/me')); setState('in'); syncReminders().catch(() => {}); } catch { setState('out'); } };
+  const boot = async () => { try { const has = await restore(); setCur('en'); setLangS('en'); if (!has) return setState('out'); setMe(await api('/me')); setState('in'); syncReminders().catch(() => {}); } catch { setState('out'); } };
   useEffect(() => { boot(); }, []);
   const logout = async () => { await setToken(''); navState.current = undefined; setState('out'); };
   if (state === 'boot' || !fonts) return <BootScreen fontsReady={!!fonts} />;

@@ -3,6 +3,7 @@ import { db, q, one, run } from './db.ts';
 import { dateSchema } from './planner.ts';
 import { UPLOAD_DIR } from './catalog.ts';
 import { mountOrganiser, organiserDelete, organiserExport } from './organiser.ts';
+import { mountTraditions, traditionsDelete, traditionsExport } from './traditions.ts';
 import { unlinkSync } from 'node:fs';
 db.exec(`
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, wedding_id INT, name TEXT, date TEXT, venue TEXT, dress TEXT, sort INT DEFAULT 0);
@@ -69,6 +70,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
     if (!run('DELETE FROM gifts WHERE id=? AND wedding_id=?', req.params.id, w.id).changes) throw fail(404, 'Gift not found'); res.json({ ok: true }); }));
 
   mountOrganiser(app, auth, wrap, { W, canEdit, seesMoney, fail });
+  mountTraditions(app, auth, wrap, { W, canEdit, seesMoney, fail });
 
   // Outstation guests: where they stay, when they arrive and whether someone must pick them up.
   const stayBody = z.object({ guest_name: z.string().trim().min(1).max(120), people: z.number().int().min(1).max(50).default(1), hotel: z.string().trim().max(120).optional(), room: z.string().trim().max(40).optional(),
@@ -102,12 +104,14 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
     else run('DELETE FROM guest_events WHERE guest_id=? AND event_id=?', req.params.id, req.params.eventId);
     res.json({ ok: true }); }));
   app.get('/api/events/headcount', auth, wrap((req: any, res: any) => { const w = W(req);
-    res.json(q(`SELECT e.id, e.name, e.date, COUNT(ge.guest_id) invited,
+    // Households count every invited person; food counts cover everyone coming, using the guest's or household's preference.
+    res.json(q(`SELECT e.id, e.name, e.date, COUNT(ge.guest_id) households, COALESCE(SUM(COALESCE(g.party,1)),0) invited,
       COALESCE(SUM(CASE WHEN ge.rsvp='yes' THEN 1 + g.plus_ones ELSE 0 END),0) coming,
       COALESCE(SUM(CASE WHEN ge.rsvp='no' THEN 1 ELSE 0 END),0) declined,
-      COALESCE(SUM(CASE WHEN ge.rsvp='pending' THEN 1 ELSE 0 END),0) waiting,
-      COALESCE(SUM(CASE WHEN ge.rsvp='yes' AND g.meal='Jain' THEN 1 ELSE 0 END),0) jain,
-      COALESCE(SUM(CASE WHEN ge.rsvp='yes' AND g.meal='Non-veg' THEN 1 ELSE 0 END),0) nonveg
+      COALESCE(SUM(CASE WHEN ge.rsvp='pending' THEN COALESCE(g.party,1) ELSE 0 END),0) waiting,
+      COALESCE(SUM(CASE WHEN ge.rsvp='yes' AND g.meal='Jain' THEN 1 + g.plus_ones ELSE 0 END),0) jain,
+      COALESCE(SUM(CASE WHEN ge.rsvp='yes' AND g.meal='Non-veg' THEN 1 + g.plus_ones ELSE 0 END),0) nonveg,
+      COALESCE(SUM(CASE WHEN ge.rsvp='yes' AND g.meal='Vegan' THEN 1 + g.plus_ones ELSE 0 END),0) vegan
       FROM events e LEFT JOIN guest_events ge ON ge.event_id=e.id LEFT JOIN guests g ON g.id=ge.guest_id
       WHERE e.wedding_id=? GROUP BY e.id ORDER BY COALESCE(e.date,'9999-12-31'), e.sort, e.id`, w.id)); }));
   // family collaboration
@@ -154,7 +158,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
       tasks: q('SELECT * FROM tasks WHERE wedding_id=?', id), budget: q('SELECT * FROM budget_items WHERE wedding_id=?', id), events: q('SELECT * FROM events WHERE wedding_id=?', id),
       guests: q('SELECT * FROM guests WHERE wedding_id=?', id), guest_events: q('SELECT ge.* FROM guest_events ge JOIN guests g ON g.id=ge.guest_id WHERE g.wedding_id=?', id),
       family: q('SELECT * FROM members WHERE wedding_id=?', id), shortlist: q('SELECT * FROM shortlist WHERE wedding_id=?', id), invite: one('SELECT * FROM invites WHERE wedding_id=?', id) || null,
-      gifts: q('SELECT * FROM gifts WHERE wedding_id=?', id), stays: q('SELECT * FROM stays WHERE wedding_id=?', id), expenses: q('SELECT * FROM expenses WHERE wedding_id=?', id), run_sheet: q('SELECT * FROM run_items WHERE wedding_id=?', id), ...organiserExport(id),
+      gifts: q('SELECT * FROM gifts WHERE wedding_id=?', id), stays: q('SELECT * FROM stays WHERE wedding_id=?', id), expenses: q('SELECT * FROM expenses WHERE wedding_id=?', id), run_sheet: q('SELECT * FROM run_items WHERE wedding_id=?', id), ...organiserExport(id), ...traditionsExport(id),
       enquiries: q('SELECT * FROM enquiries WHERE couple_id=?', req.user.id), messages: q('SELECT * FROM messages WHERE sender_id=?', req.user.id),
       bookings: q('SELECT * FROM bookings WHERE couple_id=?', req.user.id), reviews: q('SELECT * FROM reviews WHERE user_id=?', req.user.id) });
   }));
@@ -171,7 +175,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
         run(`DELETE FROM enquiries WHERE wedding_id=? ${keep}`, w.id, ...open);
         run('DELETE FROM guest_events WHERE guest_id IN (SELECT id FROM guests WHERE wedding_id=?)', w.id);
         run('DELETE FROM votes WHERE shortlist_id IN (SELECT id FROM shortlist WHERE wedding_id=?)', w.id);
-        organiserDelete(w.id);
+        organiserDelete(w.id); traditionsDelete(w.id);
         for (const table of ['tasks', 'budget_items', 'guests', 'events', 'members', 'shortlist', 'invites', 'gifts', 'stays', 'expenses', 'run_items']) run(`DELETE FROM ${table} WHERE wedding_id=?`, w.id);
         if (open.length) run("UPDATE weddings SET title='Deleted wedding', city='', community='' WHERE id=?", w.id); else run('DELETE FROM weddings WHERE id=?', w.id);
       }

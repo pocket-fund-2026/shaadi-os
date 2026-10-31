@@ -1,4 +1,4 @@
-import { tr, LANGS } from './i18n';
+import { tr } from './i18n';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { api, setToken, setBase, getBase } from './api';
@@ -24,7 +24,7 @@ export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: 
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState(''); const [otp, setOtp] = useState(''); const [step, setStep] = useState<0 | 1 | 2>(0);
   const [role, setRole] = useState<'couple' | 'vendor' | null>(null); const [name, setName] = useState(''); const [server, setServer] = useState(getBase()); const [busy, setBusy] = useState(false);
-  const [showServer, setShowServer] = useState(false); const [showLangs, setShowLangs] = useState(false);
+  const [showServer, setShowServer] = useState(false);
   const [error, setError] = useState(''); const [wait, setWait] = useState(0);
   const submitted = useRef('');
   useEffect(() => { if (wait <= 0) return; const t = setTimeout(() => setWait(wait - 1), 1000); return () => clearTimeout(t); }, [wait]);
@@ -62,7 +62,6 @@ export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: 
     try { await setBase(server); await sendOtp(); } catch (e: any) { setError(e?.message || String(e)); } finally { setBusy(false); }
   };
   const changeNumber = () => { setStep(0); setOtp(''); setName(''); setRole(null); setError(''); setWait(0); submitted.current = ''; };
-  const current = LANGS.find(([k]) => k === lang)?.[1] || 'English';
 
   return (
     <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: insets.bottom + 32, flexGrow: 1 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
@@ -71,14 +70,9 @@ export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           {onClose ? <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={{ minHeight: 36, justifyContent: 'center' }}><Text style={{ color: C.goldSoft, fontSize: 15 }}>{tr('Not now')}</Text></Pressable>
             : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Logo size={44} radius={10} /><Text style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft }}>Shaadi OS</Text></View>}
-          <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Language')}: ${current}`} onPress={() => setShowLangs(!showLangs)} hitSlop={8}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(243,232,209,0.5)' }}>
-            <Icon name="globe" size={16} color={C.goldSoft} /><Text style={{ color: C.goldSoft, fontSize: 13 }}>{current}</Text>
-          </Pressable>
         </View>
         <Text style={{ color: '#F4DDE5', fontSize: 15, lineHeight: 22, marginTop: 16, maxWidth: 300 }}>{tr('Find vendors and plan your wedding with your family, in one app.')}</Text>
       </View>
-      {showLangs ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 24, paddingTop: 16 }}>{LANGS.map(([k, n]) => <Chip key={k} label={n} on={lang === k} onPress={() => { setLang(k); setShowLangs(false); }} />)}</View> : null}
 
       <View style={{ paddingHorizontal: 24, paddingTop: 24, width: '100%', maxWidth: 520, alignSelf: 'center', flexGrow: 1 }}>
         <Rise>

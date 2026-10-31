@@ -84,7 +84,7 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
     const tasks = q('SELECT * FROM tasks WHERE wedding_id=? ORDER BY COALESCE(due,\'9999-12-31\'),id', w.id);
     const totals = one("SELECT COALESCE(SUM(b.total_paise),0) booked FROM bookings b WHERE wedding_id=? AND status!='cancelled'", w.id);
     const paid = one("SELECT COALESCE(SUM(m.amount_paise),0) amount FROM milestones m JOIN bookings b ON b.id=m.booking_id WHERE b.wedding_id=? AND b.status!='cancelled' AND m.status IN ('held','released')", w.id).amount;
-    const guests = one("SELECT COUNT(*) invited,COALESCE(SUM(CASE WHEN rsvp='yes' THEN 1+plus_ones ELSE 0 END),0) attending,COALESCE(SUM(CASE WHEN rsvp='pending' THEN 1 ELSE 0 END),0) waiting FROM guests WHERE wedding_id=?", w.id);
+    const guests = one("SELECT COUNT(*) households,COALESCE(SUM(COALESCE(party,1)),0) invited,COALESCE(SUM(CASE WHEN rsvp='yes' THEN 1+plus_ones ELSE 0 END),0) attending,COALESCE(SUM(CASE WHEN rsvp='pending' THEN COALESCE(party,1) ELSE 0 END),0) waiting FROM guests WHERE wedding_id=?", w.id);
     const today = new Date().toISOString().slice(0, 10);
     res.json({ wedding: w, days_left: Math.ceil((new Date(w.date + 'T00:00:00Z').getTime() - new Date(today + 'T00:00:00Z').getTime()) / 864e5),
       tasks: { total: tasks.length, done: tasks.filter(t => t.done).length, overdue: tasks.filter(t => !t.done && t.due && t.due < today).length, upcoming: tasks.filter(t => !t.done).slice(0, 5) },

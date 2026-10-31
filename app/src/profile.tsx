@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { api } from './api';
-import { LANGS, LangCtx, tr } from './i18n';
+import { tr } from './i18n';
 import { Btn, C, Card, Chip, F, Input, M, Tag, confirm, dateIN, err, inr } from './ui';
 import { Icon, IconName } from './icons';
 import { categoryLabel } from './marketplace';
@@ -34,7 +34,6 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 
 export function ProfileScreen({ onLogout }: { onLogout: () => void }) {
   const nav = useNavigation<any>();
-  const { lang, setLang } = useContext(LangCtx);
   const [me, reload] = useLoad<any>('/me', null);
   const [overview, setOverview] = useState<any>(null); const [members, setMembers] = useState<any>(null);
   const [biz, setBiz] = useState<{ leads: number; bookings: number; rating: number | null; reviews: number } | null>(null);
@@ -63,7 +62,6 @@ export function ProfileScreen({ onLogout }: { onLogout: () => void }) {
     setSaving(true);
     try { await api('/me', 'PATCH', { name: name.trim() }); setEditing(false); reload(); } catch (e: any) { setNameError(e?.message || String(e)); } finally { setSaving(false); }
   };
-  const chooseLang = (k: string) => { setLang(k); api('/me', 'PATCH', { lang: k }).catch(() => {}); };
   const toggleReminders = async () => {
     setReminderNote('');
     try { if (reminders) { await disableReminders(); setReminders(false); } else { const n = await enableReminders(); setReminders(true); setReminderNote(`${n} ${tr('reminders scheduled')}`); } }
@@ -121,10 +119,7 @@ export function ProfileScreen({ onLogout }: { onLogout: () => void }) {
     </Pressable> : null}
 
     <Section title={tr('Settings')}>
-      <Row first icon="globe" label={tr('Language')} value={LANGS.find(([k]) => k === lang)?.[1]} open={openRow === 'lang'} onPress={() => toggle('lang')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{LANGS.map(([k, n]) => <Chip key={k} label={n} on={lang === k} onPress={() => chooseLang(k)} />)}</View>
-      </Row>
-      {!vendor ? <Row icon="calendar" label={tr('Phone reminders')} value={<Chip label={reminders ? tr('On') : tr('Off')} on={!!reminders} onPress={toggleReminders} />} /> : null}
+      {!vendor ? <Row first icon="calendar" label={tr('Phone reminders')} value={<Chip label={reminders ? tr('On') : tr('Off')} on={!!reminders} onPress={toggleReminders} />} /> : null}
       {!vendor && reminderNote ? <M style={{ marginBottom: 12 }}>{reminderNote}</M> : null}
       {!vendor && me.wedding ? <Row icon="family" label={tr('Family access')} value={members ? `${members.members.length} ${tr(members.members.length === 1 ? 'member' : 'members')}` : ''} onPress={() => openPlan('family')} /> : null}
       {!vendor && me.wedding ? <Row icon="ring" label={tr('Wedding details')} onPress={() => openPlan('settings')} /> : null}

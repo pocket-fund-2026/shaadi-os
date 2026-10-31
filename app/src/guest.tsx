@@ -1,7 +1,7 @@
 // Screens for people who haven't signed in yet: the app is open to explore, and planning starts with an account.
 import React, { useContext } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { LANGS, LangCtx, tr } from './i18n';
+import { tr } from './i18n';
 import { Btn, C, Card, Chip, F, M } from './ui';
 import { Icon, IconName } from './icons';
 import { FloralArch } from './visuals';
@@ -50,15 +50,12 @@ export function GuestVendors({ navigation }: any) {
 
 // Profile before sign-in: language, a way in, and what this build is.
 export function GuestProfile({ navigation }: any) {
-  const { lang, setLang } = useContext(LangCtx);
   return <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
     <Card>
       <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{tr('You’re not signed in')}</Text>
       <M style={{ marginTop: 4 }}>{tr('Sign in to plan your wedding, save vendors and send enquiries. Vendors sign in here too.')}</M>
       <Btn title={tr('Sign in or create an account')} onPress={() => navigation.navigate('SignIn')} />
     </Card>
-    <Text style={{ fontSize: 13, color: C.mute, fontWeight: '500', marginTop: 16, marginBottom: 8, marginLeft: 4 }}>{tr('Language')}</Text>
-    <Card><View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{LANGS.map(([k, n]) => <Chip key={k} label={n} on={lang === k} onPress={() => setLang(k)} />)}</View></Card>
-    <M style={{ marginTop: 8 }}>{tr('Demo build: payments, OTP and WhatsApp are simulated. Booking Protection and escrow do not move real money.')}</M>
+    <M style={{ marginTop: 16 }}>{tr('Demo build: payments, OTP and WhatsApp are simulated. Booking Protection and escrow do not move real money.')}</M>
   </ScrollView>;
 }
