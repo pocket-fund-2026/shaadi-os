@@ -62,13 +62,28 @@ app.get('/api/vendors/:id', wrap((req: any, res: any) => {
 
 // Wedding workspace
 const CHECK = [['Set wedding date & budget', -365], ['Book venue', -300], ['Book photographer', -240], ['Book makeup artist', -180], ['Finalise guest list', -120], ['Send save-the-dates', -90], ['Book decor & mehndi', -75], ['Send invites with RSVP link', -45], ['Final vendor payments', -7], ['Day-of run-of-show shared', -1]] as const;
+// Starter tasks are timed back from the wedding day. On a short engagement the ones whose ideal date has
+// already passed are spread a week apart from today, in order, instead of all starting out overdue.
+export function starterDates(weddingDate: string, now: Date): [string, string][] {
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const today = day(now.getTime()); const wedding = new Date(weddingDate + 'T00:00:00Z').getTime();
+  const lastUseful = day(Math.max(now.getTime(), wedding - 864e5));
+  let catchUp = 0;
+  return CHECK.map(([title, offset]) => {
+    const ideal = day(wedding + (offset as number) * 864e5);
+    if (ideal >= today || weddingDate < today) return [title as string, ideal];
+    const spread = day(now.getTime() + 7 * 864e5 * catchUp++);
+    return [title as string, spread < lastUseful ? spread : lastUseful];
+  });
+}
 const SPLIT: Record<string, number> = { venue: 30, caterer: 25, photographer: 10, decor: 12, makeup: 5, mehndi: 3, dj: 5, other: 10 };
 app.post('/api/wedding', auth, wrap((req: any, res: any) => {
   const b = z.object({ title: z.string().trim().min(2).max(120), date: dateSchema, city: z.string().trim().min(1).max(80), community: z.string().default('North Indian Hindu'), guests_est: z.number().int().positive().max(100000).default(200), budget_paise: z.number().int().positive() }).parse(req.body);
   const ex = myWedding(req.user.id); if (ex) return res.json(ex);
   const id = Number(run('INSERT INTO weddings(owner_id,title,date,city,community,guests_est,budget_paise) VALUES(?,?,?,?,?,?,?)', req.user.id, b.title, b.date, b.city, b.community, b.guests_est, b.budget_paise).lastInsertRowid);
   const d = new Date(b.date);
-  for (const [t, off] of CHECK) run('INSERT INTO tasks(wedding_id,title,due) VALUES(?,?,?)', id, t, new Date(d.getTime() + off * 864e5).toISOString().slice(0, 10));
+  // Creating the workspace sets the date and budget, so that starter task begins done.
+  for (const [t, due] of starterDates(b.date, new Date())) run('INSERT INTO tasks(wedding_id,title,due,done) VALUES(?,?,?,?)', id, t, due, t === 'Set wedding date & budget' ? 1 : 0);
   for (const [c, p] of Object.entries(SPLIT)) run('INSERT INTO budget_items(wedding_id,category,allocated_paise) VALUES(?,?,?)', id, c, Math.round(b.budget_paise * p / 100));
   res.json(one('SELECT * FROM weddings WHERE id=?', id));
 }));

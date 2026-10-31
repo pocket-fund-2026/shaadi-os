@@ -36,7 +36,29 @@ const STAGE: Record<string, { label: string; tone: 'ok' | 'gold' | 'mute'; icon:
   booked: { label: 'Booked', tone: 'ok', icon: 'check' }, enquired: { label: 'Enquired', tone: 'gold', icon: 'chat' },
   shortlisted: { label: 'Shortlisted', tone: 'mute', icon: 'heart' }, not_started: { label: 'Not started', tone: 'mute', icon: 'plus' },
 };
+// Words in a task title that tie it to a vendor service, so "Book venue" can offer the right next step.
+const TASK_SERVICE: [RegExp, string][] = [[/venue/i, 'venue'], [/cater/i, 'caterer'], [/photograph/i, 'photographer'], [/decor/i, 'decor'], [/makeup/i, 'makeup'], [/mehndi|mehendi/i, 'mehndi'], [/\bdj\b|music/i, 'dj'], [/pandit|priest/i, 'pandit']];
 const monthLabel = (ym: string) => new Date(ym + '-01T00:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+// The single most urgent open task (overdue first, then by date), with the action that moves it forward.
+function UpNext({ roadmap, open, nav }: { roadmap: any; open: (tab: string) => void; nav: any }) {
+  const tasks = roadmap.months.flatMap((m: any) => m.tasks).sort((a: any, b: any) => Number(!!b.overdue) - Number(!!a.overdue) || String(a.due).localeCompare(String(b.due)));
+  const task = tasks[0];
+  if (!task) return null;
+  const service = TASK_SERVICE.find(([re]) => re.test(task.title))?.[1];
+  const v = service ? roadmap.vendors.find((x: any) => x.category === service) : null;
+  const label = categoryLabel(service || '').toLowerCase();
+  const action = !v || v.stage === 'booked' ? { title: tr('Open checklist'), go: () => open('checklist') }
+    : v.stage === 'enquired' && v.enquiry_id ? { title: tr('Open chat'), go: () => nav.navigate('Chat', { id: v.enquiry_id, title: v.enquiry_vendor }) }
+    : v.stage === 'shortlisted' ? { title: `${tr('Compare')} ${v.shortlisted} ${tr('shortlisted')}`, go: () => open('shortlist') }
+    : { title: `${tr('Find')} ${label}`, go: () => nav.navigate('Discover', { category: service, at: Date.now() }) };
+  return <Card style={{ borderColor: task.overdue ? C.warn : C.line }}>
+    <View style={s.row}><M>{tr('Up next')}</M>{task.overdue ? <Tag tone="warn" label={`${tr('Overdue since')} ${dateLabel(task.due)}`} /> : <Tag label={dateLabel(task.due)} />}</View>
+    <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 4 }}>{task.title}</Text>
+    {v && v.stage !== 'booked' ? <M style={{ marginTop: 2 }}>{categoryLabel(service!)}: {tr(STAGE[v.stage].label).toLowerCase()}</M> : null}
+    <Btn title={action.title} onPress={action.go} />
+  </Card>;
+}
 
 // The whole wedding on one screen: where each vendor service stands, then a month-by-month timeline to the day.
 export function Overview({ open, nav }: { open: (tab: string) => void; nav: any }) {
@@ -64,6 +86,7 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
           </Card>)}
       </View>
 
+      {r ? <UpNext roadmap={r} open={open} nav={nav} /> : null}
       <View style={[s.row, { marginTop: 8 }]}><H style={{ marginVertical: 8 }}>{tr('Vendors')}</H>{r ? <M style={{ fontVariant: ['tabular-nums'] }}>{r.booked_count} {tr('of')} {r.vendors.length} {tr('booked')}</M> : null}</View>
       {r ? <Card style={{ paddingVertical: 4 }}>{r.vendors.map((v: any, i: number) => {
         const st = STAGE[v.stage];

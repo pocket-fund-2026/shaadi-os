@@ -55,7 +55,7 @@ function Profile({ me, onLogout }: any) {
       <View><H style={{ marginVertical: 0 }}>{me.user.name}</H><M>+91 {me.user.phone} · {me.user.role === 'vendor' ? tr('Vendor') : tr('Couple')}</M></View></View>
     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 }}><Icon name="globe" size={18} color={C.mute} /><Text style={{ marginLeft: 8, fontWeight: '500', color: C.ink }}>{tr('Language')}</Text></View>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{LANGS.map(([k, n]) => <Chip key={k} label={n} on={lang === k} onPress={() => setLang(k)} />)}</View>
-    <Privacy /><Admin />
+    <Privacy onDeleted={onLogout} /><Admin />
     <Card style={{ backgroundColor: C.goldSoft, borderColor: C.goldSoft }}><M style={{ color: C.ink }}>{tr('Demo build: payments, OTP and WhatsApp are simulated. Booking Protection and escrow do not move real money.')}</M></Card>
     <Btn kind="ghost" icon="logout" title={tr('Log out')} onPress={onLogout} /></ScrollView>);
 }
@@ -80,15 +80,17 @@ const VendorTabs = (me: any, logout: () => void) => function T() {
 export default function App() {
   const [exploring, setExploring] = useState(() => typeof window !== 'undefined' && !!window.location && new URLSearchParams(window.location.search).get('browse') === '1');
   const [fonts] = useFonts({ Fraunces_600SemiBold, Fraunces_700Bold });
+  // Language changes remount navigation so every title re-renders; this keeps the user on the screen they were on.
+  const navState = React.useRef<any>(undefined);
   const [state, setState] = useState<'boot' | 'out' | 'in'>('boot'); const [me, setMe] = useState<any>(null); const [lang, setLangS] = useState('en');
   const setLang = (l: string) => { setCur(l); setLangS(l); AsyncStorage.setItem('lang', l).catch(() => {}); };
   const boot = async () => { try { const has = await restore(); { const l = (await AsyncStorage.getItem('lang')) || 'en'; setCur(l); setLangS(l); } if (!has) return setState('out'); setMe(await api('/me')); setState('in'); } catch { setState('out'); } };
   useEffect(() => { boot(); }, []);
-  const logout = async () => { await setToken(''); setState('out'); };
+  const logout = async () => { await setToken(''); navState.current = undefined; setState('out'); };
   if (state === 'boot' || !fonts) return <BootScreen fontsReady={!!fonts} />;
   if (state === 'out') return <SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary>{exploring ? <PublicExplore onSignIn={() => setExploring(false)} onBack={() => setExploring(false)} /> : <Login onDone={boot} onBrowse={() => setExploring(true)} lang={lang} setLang={setLang} />}</ErrorBoundary></SafeAreaProvider>;
   const vendor = me.user.role === 'vendor'; const Tabs = vendor ? VendorTabs(me, logout) : CoupleTabs(me, logout);
-  return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang}>
+  return (<LangCtx.Provider value={{ lang, setLang }}><SafeAreaProvider><StatusBar style="dark" /><ErrorBoundary><NavigationContainer key={lang} initialState={navState.current} onStateChange={state => { navState.current = state; }}>
     <Stack.Navigator screenOptions={{ ...hdr, animation: 'slide_from_right' }}><Stack.Screen name="Home" component={Tabs} options={{ title: 'Shaadi OS', headerShown: false }} />
       <Stack.Screen name="Vendor" component={VendorScreen} options={{ title: '' }} /><Stack.Screen name="EnquiryForm" component={EnquiryForm} options={{ title: tr('Enquiry'), animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Chat" component={Chat} options={({ route }: any) => ({ title: route.params?.title || 'Chat' })} /></Stack.Navigator></NavigationContainer></ErrorBoundary></SafeAreaProvider></LangCtx.Provider>);

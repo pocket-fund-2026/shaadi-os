@@ -262,6 +262,15 @@ test('real businesses import as unclaimed listings that cannot take enquiries', 
   const r = await request('/api/enquiries', couple, 'POST', { vendor_id: listed.id, event_date: '2027-02-14', guests: 200, budget_paise: 100000 });
   assert.equal(r.status, 409);
 });
+test('starter tasks on a short engagement are spread from today instead of overdue', async () => {
+  const { starterDates } = await import('./server.ts');
+  const now = new Date('2026-10-31T09:00:00Z');
+  const dates = starterDates('2027-02-14', now).map(([, due]) => due);
+  assert.ok(dates.every(d => d >= '2026-10-31'), 'nothing starts overdue');
+  assert.deepEqual(dates.slice(0, 3), ['2026-10-31', '2026-11-07', '2026-11-14'], 'catch-up tasks a week apart, in order');
+  assert.ok(dates.every(d => d <= '2027-02-14'));
+  assert.equal(starterDates('2028-06-01', now)[0][1], '2027-06-02', 'a long engagement keeps the ideal dates');
+});
 test('wedding details save only for the current owner', async () => {
   const before = (await request('/api/tasks', couple)).data.find((item: any) => item.title === 'Our priorities');
   const r = await request('/api/wedding', couple, 'PATCH', { title: 'Updated couple', date: '2027-04-20', city: 'Nashik', guests_est: 300 });

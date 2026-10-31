@@ -38,7 +38,7 @@ export function Events() {
 const ROLES: [string, string, string][] = [['editor', 'Editor', 'Can change plans'], ['viewer', 'Viewer', 'Sees plans, no budget'], ['budget_viewer', 'Budget viewer', 'Sees plans and budget']];
 export function Family() {
   const [d, load] = useLoad<any>('/members', { role: '', members: [] }); const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [role, setRole] = useState('viewer');
-  const add = async () => { if (!name.trim() || !/^[6-9]\d{9}$/.test(phone)) return err(new Error(tr('Enter a name and a 10-digit mobile number.'))); await api('/members', 'POST', { name, phone, role }).catch(err); setName(''); setPhone(''); load(); };
+  const add = async () => { if (!name.trim() || !/^[6-9]\d{9}$/.test(phone)) return err(new Error(tr('Enter a name and a 10-digit mobile number.'))); try { await api('/members', 'POST', { name, phone, role }); setName(''); setPhone(''); load(); } catch (e) { err(e); } };
   const roleName = (r: string) => tr(ROLES.find(x => x[0] === r)?.[1] || r);
   return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <M style={{ marginBottom: 12 }}>{tr('Your access')}: {d.role === 'owner' ? tr('Owner') : roleName(d.role)}</M>
@@ -54,11 +54,11 @@ export function Family() {
 export function ShortlistTab({ navigation }: any) {
   const [l, load, busy] = useLoad<any[]>('/shortlist', []);
   const vote = async (id: number, v: number) => { await api(`/shortlist/${id}/vote`, 'POST', { vote: v }).catch(err); load(); };
-  const share = (v: any) => Share.share({ message: `What do you think of ${v.name} (${v.category}, ${v.city}) from ${inr(v.start_paise)}? Vote in Shaadi OS.` }).catch(() => {});
+  const share = (v: any) => Share.share({ message: `What do you think of ${v.name} (${categoryLabel(v.category)}, ${v.city})${v.start_paise ? ` from ${inr(v.start_paise)}` : ''}? Vote in Shaadi OS.` }).catch(() => {});
   return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
     {!l.length && !busy && <Empty icon="heart" title={tr('Nothing shortlisted')} text={tr('Tap Shortlist on any vendor’s page. Everyone in your family workspace can then vote here.')} />}
     {l.map((v, i) => <Rise key={v.id} i={i}><Card>
-      <Pressable accessibilityRole="button" accessibilityLabel={v.name} onPress={() => navigation.navigate('Vendor', { id: v.vendor_id })} style={s.row}><View style={{ flex: 1 }}><Text style={{ fontWeight: '500', color: C.ink, fontSize: 15 }}>{v.name}</Text><M>{categoryLabel(v.category)} · {v.city} · {tr('from')} {inr(v.start_paise)}</M></View><Icon name="chevron" size={16} color={C.faint} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={v.name} onPress={() => navigation.navigate('Vendor', { id: v.vendor_id })} style={s.row}><View style={{ flex: 1 }}><Text style={{ fontWeight: '500', color: C.ink, fontSize: 15 }}>{v.name}</Text><M>{categoryLabel(v.category)} · {v.city}{v.start_paise ? ` · ${tr('from')} ${inr(v.start_paise)}` : ''}</M></View><Icon name="chevron" size={16} color={C.faint} /></Pressable>
       <View style={{ flexDirection: 'row', marginTop: 12, flexWrap: 'wrap' }}><Chip icon="up" label={String(v.up)} onPress={() => vote(v.id, 1)} /><Chip icon="down" label={String(v.down)} onPress={() => vote(v.id, -1)} /><Chip icon="share" label={tr('Ask family')} onPress={() => share(v)} /></View></Card></Rise>)}</ScrollView>);
 }
 
@@ -95,7 +95,7 @@ export function Business() {
 function VCalendar() {
   const [d, load] = useLoad<any>('/vendor/calendar', { blocked: [], booked: [] }); const [date, setDate] = useState('');
   const block = async () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err(new Error(tr('Choose a date to block.'))); await api('/vendor/block', 'POST', { date, note: 'Blocked' }).catch(err); setDate(''); load(); };
-  const unblock = async (x: string) => { if (!(await confirm(tr('Unblock this date?'), x, tr('Unblock')))) return; await api('/vendor/block/' + x, 'DELETE').catch(err); load(); };
+  const unblock = async (x: string) => { if (!(await confirm(tr('Unblock this date?'), dateIN(x), tr('Unblock')))) return; await api('/vendor/block/' + x, 'DELETE').catch(err); load(); };
   return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <M style={{ marginBottom: 12 }}>{tr('Couples see you as unavailable on blocked and booked dates when they enquire.')}</M>
     <DateField label={tr('Block a date')} value={date} onChange={setDate} min={todayISO()} /><Btn icon="lock" title={tr('Block date')} onPress={block} />
@@ -121,11 +121,11 @@ function CRM() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>{STAGES.map(st => <Chip key={st} label={cap(st)} on={c.stage === st} onPress={() => mv(c.id, st)} />)}</ScrollView></Card></Rise>)}</ScrollView>);
 }
 
-export function Privacy() {
+export function Privacy({ onDeleted }: { onDeleted?: () => void }) {
   const [mkt, setMkt] = useState<boolean | null>(null);
   const exp = async () => { try { const d = await api('/my-data'); await Share.share({ message: JSON.stringify(d, null, 1) }); } catch (e) { err(e); } };
   const cons = async (g: boolean) => { await api('/consent', 'POST', { purpose: 'marketing', granted: g }).then(() => setMkt(g)).catch(err); };
-  const del = async () => { if (await confirm(tr('Delete your account data?'), tr('This removes your profile, wedding plans and messages. Bookings with money in escrow are kept until they settle. This cannot be undone.'), tr('Delete'), true)) api('/my-data', 'DELETE').catch(err); };
+  const del = async () => { if (await confirm(tr('Delete your account data?'), tr('This removes your profile, wedding plans and messages. Bookings with money in escrow are kept until they settle. This cannot be undone.'), tr('Delete'), true)) api('/my-data', 'DELETE').then(() => onDeleted?.()).catch(err); };
   return (<Card style={{ marginTop: 16 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center' }}><Icon name="lock" size={18} color={C.primary} /><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginLeft: 8 }}>{tr('Privacy')}</Text></View>
     <M style={{ marginTop: 4 }}>{tr('Under the DPDP Act you can export or delete your data. Every consent choice is logged.')}</M>
