@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
 import { api } from './api';
 import { tr } from './i18n';
-import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err, inr, s, dateIN, DateField, todayISO } from './ui';
+import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err, inr, notify, s, dateIN, DateField, todayISO } from './ui';
 import { FloralArch } from './visuals';
 import { Icon, IconName } from './icons';
 import { categoryLabel } from './marketplace';
@@ -263,11 +263,15 @@ function Expenses({ categories, onChange }: { categories: string[]; onChange: ()
 }
 
 export function WeddingSettings({ wedding, onSaved }: { wedding: any; onSaved: () => void }) {
-  const [title, setTitle] = useState(wedding.title); const [date, setDate] = useState(wedding.date); const [city, setCity] = useState(wedding.city); const [guests, setGuests] = useState(String(wedding.guests_est)); const [busy, setBusy] = useState(false);
-  const save = async () => { setBusy(true); try { await api('/wedding', 'PATCH', { title, date, city, guests_est: Number(guests) }); onSaved(); } catch (e) { err(e); } finally { setBusy(false); } };
+  const [title, setTitle] = useState(wedding.title); const [date, setDate] = useState(wedding.date); const [city, setCity] = useState(wedding.city); const [guests, setGuests] = useState(String(wedding.guests_est)); const [budget, setBudget] = useState(String(Math.round((wedding.budget_paise || 0) / 100))); const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (!(+guests > 0)) return err(new Error(tr('Enter roughly how many guests.'))); if (!(+budget > 0)) return err(new Error(tr('Enter a budget, even a rough one.')));
+    setBusy(true); try { await api('/wedding', 'PATCH', { title, date, city, guests_est: +guests, budget_paise: +budget * 100 }); onSaved(); notify(tr('Saved'), tr('Your wedding details are updated.')); } catch (e) { err(e); } finally { setBusy(false); } };
   return <ScrollView contentContainerStyle={content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets><H>{tr('Wedding details')}</H>
     <Input label={tr('Couple names')} value={title} onChangeText={setTitle} maxLength={120} /><DateField label={tr('Wedding date')} value={date} onChange={setDate} min={todayISO()} /><M style={{ marginBottom: 12 }}>{tr('Changing this date updates planning suggestions. Tasks already on your checklist keep their dates so you can adjust them yourself.')}</M><Input label={tr('City')} value={city} onChangeText={setCity} maxLength={80} />
-    <Input label={tr('Estimated guests')} value={guests} onChangeText={setGuests} keyboardType="number-pad" />
+    <Input label={tr('Estimated guests')} value={guests} onChangeText={v => setGuests(v.replace(/\D/g, '').slice(0, 5))} keyboardType="number-pad" />
+    <Input label={tr('Total budget')} prefix="₹" value={budget ? (+budget).toLocaleString('en-IN') : ''} onChangeText={v => setBudget(v.replace(/\D/g, '').slice(0, 11))} keyboardType="number-pad" />
+    {+budget > 0 ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+budget * 100)}{+budget * 100 !== wedding.budget_paise ? ` · ${tr('service allocations are adjusted to match')}` : ''}</M> : null}
     <Btn title={tr('Save details')} disabled={busy || !title.trim() || !city.trim()} onPress={save} />
   </ScrollView>;
 }

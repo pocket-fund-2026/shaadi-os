@@ -12,7 +12,7 @@ import { CategoryCover, FloralArch } from './visuals';
 import { VendorCatalog } from './catalog';
 import { Gifts, RunSheet, Stays } from './hospitality';
 import { DayContacts, Documents, Seating, Shopping } from './organiser';
-import { GiftsToGive, Guests, Ideas, Menu, Muhurat, Practice, Transport } from './traditions';
+import { ChooseVendor, GiftsToGive, Guests, Ideas, Menu, Muhurat, Practice, Transport } from './traditions';
 import { useT } from './i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export const useLoad = <T,>(path: string, init: T) => {
@@ -63,6 +63,7 @@ export function VendorScreen({ route, navigation }: any) {
           </View>
           : <View style={{ flexDirection: 'row', backgroundColor: C.okSoft, borderRadius: 12, padding: 12, marginTop: 16 }}><Icon name="shield" size={18} color={C.ok} /><M style={{ flex: 1, marginLeft: 8, color: C.ink }}>{tr('Booking Protection: you pay in milestones and each one is held until you release it.')}</M></View>}
       </Rise>
+      {!guest ? <ChooseVendor vendor={v} /> : null}
       {v.unclaimed ? null : <>
       <VendorCatalog vendor={v} />
       <H style={{ marginTop: 28 }}>{tr('Reviews')}</H>
@@ -237,6 +238,7 @@ function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
     if (!f.date) return setError(tr('Choose your wedding date. You can change it later.'));
     if (!city) return setError(tr('Enter your wedding city.'));
     if (!(+f.budget > 0)) return setError(tr('Enter a budget, even a rough one.'));
+    if (!(+f.guests > 0)) return setError(tr('Enter roughly how many guests.'));
     setBusy(true);
     try { await api('/wedding', 'POST', { title: `${f.me.trim()} & ${f.partner.trim()}`, date: f.date, city, community: f.community, budget_paise: +f.budget * 100, guests_est: +f.guests || 250 }); onDone(); }
     catch (e: any) { setError(e?.message || String(e)); } finally { setBusy(false); }
@@ -262,12 +264,11 @@ function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
         {f.city === 'other' ? <Input label={tr('Your city')} value={f.otherCity} onChangeText={v => set('otherCity', v)} autoCapitalize="words" maxLength={60} /> : null}
       </SetupSection>
       <SetupSection n={3} title={tr('Budget and guests')} hint={tr('A rough number is fine. We split it across services for you.')}>
-        <Text style={s.label}>{tr('Total budget')}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{BUDGETS.map(b => <Chip key={b} label={inr(b * 100)} on={+f.budget === b} onPress={() => set('budget', String(b))} />)}</View>
-        <Input label={tr('Or enter an amount (₹)')} value={BUDGETS.includes(+f.budget) ? '' : f.budget} onChangeText={v => set('budget', v.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="e.g. 1800000" />
-        {+f.budget > 0 && !BUDGETS.includes(+f.budget) ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+f.budget * 100)}</M> : null}
-        <Text style={s.label}>{tr('About how many guests?')}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{GUEST_COUNTS.map(g => <Chip key={g} label={g === 1000 ? '1000+' : String(g)} on={+f.guests === g} onPress={() => set('guests', String(g))} />)}</View>
+        <Input label={tr('Total budget')} prefix="₹" value={f.budget ? (+f.budget).toLocaleString('en-IN') : ''} onChangeText={v => set('budget', v.replace(/\D/g, '').slice(0, 11))} keyboardType="number-pad" placeholder="15,00,000" />
+        {+f.budget > 0 ? <M style={{ marginTop: -8, marginBottom: 8 }}>{inr(+f.budget * 100)}</M> : null}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>{BUDGETS.map(b => <Chip key={b} label={inr(b * 100)} on={+f.budget === b} onPress={() => set('budget', String(b))} />)}</View>
+        <Input label={tr('About how many guests?')} value={f.guests} onChangeText={v => set('guests', v.replace(/\D/g, '').slice(0, 5))} keyboardType="number-pad" placeholder="250" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{GUEST_COUNTS.map(g => <Chip key={g} label={String(g)} on={+f.guests === g} onPress={() => set('guests', String(g))} />)}</View>
       </SetupSection>
       <SetupSection n={4} title={tr('Your traditions')} hint={tr('We suggest ceremonies to match. Keep only the ones your families want.')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{COMMUNITIES.map(c => <Chip key={c} label={tr(c)} on={f.community === c} onPress={() => set('community', c)} />)}</View>

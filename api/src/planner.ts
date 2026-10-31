@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { db, q, one, run } from './db.ts';
 import { GUIDE, guideForWedding } from './planning-guide.ts';
+import { shiftCeremonies } from './traditions.ts';
 
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD').refine(value => {
   const date = new Date(value + 'T00:00:00Z');
@@ -39,8 +40,9 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
     const shortlisted = q('SELECT v.category,COUNT(*) n FROM shortlist s JOIN vendors v ON v.id=s.vendor_id WHERE s.wedding_id=? GROUP BY v.category', w.id);
     // A service paid outside the app (cash to a local caterer, say) counts as booked too.
     const outside = q('SELECT category, payee, amount_paise FROM expenses WHERE wedding_id=? ORDER BY id', w.id);
+    const chosen = q('SELECT v.category, v.name, COALESCE(s.agreed_paise,0) total_paise FROM shortlist s JOIN vendors v ON v.id=s.vendor_id WHERE s.wedding_id=? AND s.chosen=1', w.id);
     const vendors = ROADMAP_CATEGORIES.map(category => {
-      const b = [...booked.filter((x: any) => x.category === category), ...outside.filter((x: any) => x.category === category).map((x: any) => ({ name: `${x.payee} (outside the app)`, total_paise: x.amount_paise }))]; const e = enquired.filter((x: any) => x.category === category);
+      const b = [...booked.filter((x: any) => x.category === category), ...chosen.filter((x: any) => x.category === category), ...outside.filter((x: any) => x.category === category).map((x: any) => ({ name: `${x.payee} (outside the app)`, total_paise: x.amount_paise }))]; const e = enquired.filter((x: any) => x.category === category);
       const sl = shortlisted.find((x: any) => x.category === category)?.n || 0;
       return { category, stage: b.length ? 'booked' : e.length ? 'enquired' : sl ? 'shortlisted' : 'not_started',
         allocated_paise: alloc[category] ?? null, booked_paise: b.reduce((sum: number, x: any) => sum + x.total_paise, 0), booked_vendor: b[0]?.name ?? null,
@@ -95,8 +97,15 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
   }));
   app.patch('/api/wedding', auth, wrap((req: any, res: any) => {
     const w = wedding(req);
-    const b = z.object({ title: z.string().trim().min(2).max(120), date: dateSchema.optional(), city: z.string().trim().min(1).max(80), guests_est: z.number().int().min(1).max(100000) }).parse(req.body);
+    const b = z.object({ title: z.string().trim().min(2).max(120), date: dateSchema.optional(), city: z.string().trim().min(1).max(80), guests_est: z.number().int().min(1).max(100000), budget_paise: money.positive().optional() }).parse(req.body);
     run('UPDATE weddings SET title=?,date=?,city=?,guests_est=? WHERE id=?', b.title, b.date || w.date, b.city, b.guests_est, w.id);
+    if (b.date && b.date !== w.date) shiftCeremonies(w.id, w.date, b.date);
+    // A new total budget rescales each service's share, so the split stays in proportion.
+    if (b.budget_paise && b.budget_paise !== w.budget_paise) {
+      const ratio = w.budget_paise > 0 ? b.budget_paise / w.budget_paise : 0;
+      for (const r of q('SELECT id, allocated_paise FROM budget_items WHERE wedding_id=?', w.id)) run('UPDATE budget_items SET allocated_paise=? WHERE id=?', Math.round(r.allocated_paise * ratio), r.id);
+      run('UPDATE weddings SET budget_paise=? WHERE id=?', b.budget_paise, w.id);
+    }
     res.json(myWedding(req.user.id));
   }));
   app.put('/api/budget', auth, wrap((req: any, res: any) => {

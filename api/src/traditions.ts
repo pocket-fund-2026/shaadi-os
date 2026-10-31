@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS gifts_out(id INTEGER PRIMARY KEY, wedding_id INT, rec
 CREATE TABLE IF NOT EXISTS menu_items(id INTEGER PRIMARY KEY, wedding_id INT, event_id INT, course TEXT, dish TEXT, diet TEXT);
 CREATE TABLE IF NOT EXISTS tastings(id INTEGER PRIMARY KEY, wedding_id INT, caterer TEXT, date TEXT, time TEXT, notes TEXT, done INT DEFAULT 0);
 CREATE TABLE IF NOT EXISTS practices(id INTEGER PRIMARY KEY, wedding_id INT, date TEXT, time TEXT, place TEXT, item TEXT, people TEXT);
+CREATE TABLE IF NOT EXISTS shortlist(id INTEGER PRIMARY KEY, wedding_id INT, vendor_id INT, UNIQUE(wedding_id,vendor_id));
+CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, wedding_id INT, name TEXT, date TEXT, venue TEXT, dress TEXT, sort INT DEFAULT 0);
 CREATE TABLE IF NOT EXISTS ideas(id INTEGER PRIMARY KEY, wedding_id INT, kind TEXT, url TEXT, note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 `);
 const addColumns = (table: string, cols: [string, string][]) => { const have = q(`PRAGMA table_info(${table})`).map((c: any) => c.name);
@@ -22,6 +24,28 @@ const addColumns = (table: string, cols: [string, string][]) => { const have = q
 addColumns('guests', [['party', 'INT DEFAULT 1'], ['card_given', 'INT DEFAULT 0'], ['card_by', 'TEXT'], ['card_on', 'TEXT']]);
 addColumns('budget_items', [['paid_by', "TEXT DEFAULT 'shared'"]]);
 addColumns('weddings', [['after_tasks', 'INT DEFAULT 0']]);
+// A shortlisted vendor the couple booked directly (by phone, outside the app), with the price they agreed.
+addColumns('shortlist', [['chosen', 'INT DEFAULT 0'], ['agreed_paise', 'INT']]);
+
+// Automation when a vendor is booked or chosen: tick the matching "Book …" task (a combined task waits for
+// every service it names) and, for a venue, fill it in on ceremonies that have no venue yet.
+const TASK_WORDS: Record<string, RegExp> = { venue: /venue/i, photographer: /photograph/i, makeup: /makeup/i, decor: /decor/i, mehndi: /mehndi|mehendi/i, caterer: /cater/i, dj: /\bdj\b|music/i, pandit: /pandit/i };
+const decided = (weddingId: number) => new Set(q(`SELECT v.category FROM bookings b JOIN vendors v ON v.id=b.vendor_id WHERE b.wedding_id=? AND b.status!='cancelled'
+  UNION SELECT v.category FROM shortlist s JOIN vendors v ON v.id=s.vendor_id WHERE s.wedding_id=? AND s.chosen=1`, weddingId, weddingId).map((r: any) => r.category));
+export function vendorDecided(weddingId: number, vendorId: number) {
+  const v = one('SELECT name, category FROM vendors WHERE id=?', vendorId); if (!v) return;
+  const done = decided(weddingId);
+  for (const t of q("SELECT id, title FROM tasks WHERE wedding_id=? AND done=0 AND title LIKE 'Book %'", weddingId)) {
+    const named = Object.entries(TASK_WORDS).filter(([, re]) => re.test(t.title)).map(([c]) => c);
+    if (named.includes(v.category) && named.every(c => done.has(c))) run('UPDATE tasks SET done=1 WHERE id=?', t.id);
+  }
+  if (v.category === 'venue') run("UPDATE events SET venue=? WHERE wedding_id=? AND (venue IS NULL OR venue='')", v.name, weddingId);
+}
+// When the wedding date moves, ceremonies keep their spacing around it.
+export function shiftCeremonies(weddingId: number, from: string, to: string) {
+  const days = Math.round((+new Date(to + 'T00:00:00Z') - +new Date(from + 'T00:00:00Z')) / 864e5); if (!days) return;
+  for (const e of q("SELECT id, date FROM events WHERE wedding_id=? AND date LIKE '____-__-__'", weddingId)) run('UPDATE events SET date=? WHERE id=?', day(e.date, days), e.id);
+}
 
 // Days after the wedding; added to every wedding once.
 export const AFTER_TASKS: [string, number][] = [['Return rented outfits and jewellery', 3], ['Send thank-you messages to family and guests', 10],
@@ -73,7 +97,21 @@ export function mountTraditions(app: any, auth: any, wrap: any, ctx: { W: (req: 
     const b = z.object({ date: dateSchema, time: text(40), source: text(80), note: text(300) }).parse(req.body);
     created(res, run('INSERT INTO muhurats(wedding_id,date,time,source,note) VALUES(?,?,?,?,?)', w.id, b.date, b.time || '', b.source || '', b.note || '')); }));
   app.post('/api/muhurats/:id/choose', auth, wrap((req: any, res: any) => { const w = editable(req); const m = owned('muhurats', req.params.id, w);
-    run('UPDATE weddings SET date=? WHERE id=?', m.date, w.id); res.json({ ok: true, date: m.date }); }));
+    run('UPDATE weddings SET date=? WHERE id=?', m.date, w.id); shiftCeremonies(w.id, w.date, m.date); res.json({ ok: true, date: m.date }); }));
+
+  // Mark a vendor as booked directly (common for venues and local businesses not on the app).
+  app.post('/api/shortlist/choose', auth, wrap((req: any, res: any) => { const w = editable(req);
+    const b = z.object({ vendor_id: z.number().int(), chosen: z.boolean(), agreed_paise: money.nullable().optional() }).parse(req.body);
+    if (!one('SELECT 1 x FROM vendors WHERE id=?', b.vendor_id)) throw fail(404, 'Vendor not found');
+    run('INSERT OR IGNORE INTO shortlist(wedding_id,vendor_id) VALUES(?,?)', w.id, b.vendor_id);
+    run('UPDATE shortlist SET chosen=?, agreed_paise=? WHERE wedding_id=? AND vendor_id=?', b.chosen ? 1 : 0, b.chosen ? b.agreed_paise ?? null : null, w.id, b.vendor_id);
+    if (b.chosen) vendorDecided(w.id, b.vendor_id);
+    res.json({ ok: true }); }));
+  // Every vendor the couple is working with, for pickers such as a ceremony's venue.
+  app.get('/api/my-vendors', auth, wrap((req: any, res: any) => { const w = W(req);
+    res.json(q(`SELECT v.id vendor_id, v.name, v.category, v.city, 'booked' status, b.total_paise amount_paise FROM bookings b JOIN vendors v ON v.id=b.vendor_id WHERE b.wedding_id=? AND b.status!='cancelled'
+      UNION ALL SELECT v.id, v.name, v.category, v.city, CASE WHEN s.chosen=1 THEN 'chosen' ELSE 'shortlisted' END, s.agreed_paise FROM shortlist s JOIN vendors v ON v.id=s.vendor_id
+        WHERE s.wedding_id=? AND v.id NOT IN (SELECT vendor_id FROM bookings WHERE wedding_id=? AND status!='cancelled') ORDER BY 5, 2`, w.id, w.id, w.id)); }));
 
   // Transport and baraat: cars and buses for each ceremony, with driver, timing, route and who rides in each.
   const vehicleBody = z.object({ event_id: z.number().int().nullable().optional(), label: z.string().trim().min(1).max(80), kind: z.enum(['car', 'bus', 'tempo', 'horse', 'other']).default('car'),

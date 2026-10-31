@@ -475,7 +475,7 @@ test('households, cards, muhurat, transport, gifts, menu, family budget split, p
   assert.equal(reg.due, '2027-04-09', 'after-wedding tasks are dated from the wedding');
   // A household of 4 that eats Jain food; the RSVP defaults to the whole family.
   const g = (await request('/api/guests', owner, 'POST', { name: 'Sharma family', side: 'groom', party: 4, meal: 'Jain' })).data;
-  const ev = (await request('/api/events', owner, 'POST', { name: 'Reception', date: '2027-03-11' })).data;
+  const ev = (await request('/api/events', owner, 'POST', { name: 'Family Dinner', date: '2027-03-11' })).data;
   await request(`/api/guests/${g.id}/events/${ev.id}`, owner, 'PUT', { invited: true });
   let hc = (await request('/api/events/headcount', owner)).data.find((e: any) => e.id === ev.id);
   assert.deepEqual([hc.households, hc.invited, hc.waiting], [1, 4, 4]);
@@ -525,4 +525,30 @@ test('households, cards, muhurat, transport, gifts, menu, family budget split, p
   for (const k of ['muhurats', 'vehicles', 'gifts_out', 'menu_items', 'tastings', 'practices', 'ideas']) assert.ok(mine[k].length >= 1, k);
   assert.equal((await request('/api/my-data', owner, 'DELETE')).status, 200);
   assert.equal(one('SELECT COUNT(*) n FROM ideas').n + one('SELECT COUNT(*) n FROM vehicles').n, 0);
+});
+test('changing the total budget in wedding details rescales service allocations', async () => {
+  const t = await login('9811100003');
+  await request('/api/wedding', t, 'POST', { title: 'P & Q', date: '2027-05-01', city: 'Pune', budget_paise: 100000000, guests_est: 200 });
+  const before = (await request('/api/budget', t)).data.rows.find((r: any) => r.category === 'venue').allocated_paise;
+  assert.equal((await request('/api/wedding', t, 'PATCH', { title: 'P & Q', city: 'Pune', guests_est: 350, budget_paise: 200000000 })).status, 200);
+  const after = (await request('/api/budget', t)).data;
+  assert.equal(after.total_paise, 200000000); assert.equal(after.rows.find((r: any) => r.category === 'venue').allocated_paise, before * 2);
+  assert.equal((await request('/api/wedding', t, 'PATCH', { title: 'P & Q', city: 'Pune', guests_est: 0 })).status, 400);
+});
+test('choosing a venue directly marks it booked, ticks the task and fills ceremony venues; date moves shift ceremonies', async () => {
+  const t = await login('9811100004');
+  await request('/api/wedding', t, 'POST', { title: 'R & S', date: '2027-06-10', city: 'Mumbai', budget_paise: 100000000, guests_est: 200, community: 'Marathi' });
+  const events = (await request('/api/events', t)).data; assert.ok(events.length >= 3, 'ceremonies start in the plan');
+  const venue = one("SELECT id, name FROM vendors WHERE category='venue' AND unclaimed=1 LIMIT 1") || one("SELECT id, name FROM vendors WHERE category='venue' LIMIT 1");
+  assert.equal((await request('/api/shortlist/choose', t, 'POST', { vendor_id: venue.id, chosen: true, agreed_paise: 50000000 })).status, 200);
+  assert.ok((await request('/api/tasks', t)).data.find((x: any) => x.title === 'Book venue').done, 'Book venue is ticked');
+  assert.ok((await request('/api/events', t)).data.every((e: any) => e.venue === venue.name), 'ceremonies get the venue');
+  const road = (await request('/api/planner/roadmap', t)).data.vendors.find((v: any) => v.category === 'venue');
+  assert.equal(road.stage, 'booked'); assert.equal(road.booked_paise, 50000000);
+  assert.ok((await request('/api/my-vendors', t)).data.some((v: any) => v.vendor_id === venue.id && v.status === 'chosen'));
+  const first = (await request('/api/events', t)).data[0].date;
+  await request('/api/wedding', t, 'PATCH', { title: 'R & S', city: 'Mumbai', guests_est: 200, date: '2027-06-17' });
+  const moved = (await request('/api/events', t)).data[0].date;
+  assert.equal((+new Date(moved) - +new Date(first)) / 864e5, 7, 'ceremonies move with the wedding date');
+  assert.equal((await request('/api/shortlist/choose', t, 'POST', { vendor_id: 999999, chosen: true })).status, 404);
 });

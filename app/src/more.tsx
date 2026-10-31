@@ -6,6 +6,7 @@ import { Icon } from './icons';
 import { tr } from './i18n';
 import { categoryLabel } from './marketplace';
 import { useLoad } from './couple';
+import { VenueOptions } from './traditions';
 
 export function Events() {
   const [ev, load, busy] = useLoad<any[]>('/events', []); const [edit, setEdit] = useState<any>(null);
@@ -29,6 +30,7 @@ export function Events() {
           <Input label={tr('Celebration name')} value={edit.name || ''} onChangeText={v => setEdit({ ...edit, name: v })} maxLength={100} />
           <DateField label={tr('Date')} value={edit.date || ''} onChange={v => setEdit({ ...edit, date: v })} optional />
           <Input label={tr('Venue')} value={edit.venue || ''} onChangeText={v => setEdit({ ...edit, venue: v })} placeholder={tr('Venue name')} />
+          <VenueOptions value={edit.venue || ''} onPick={v => setEdit({ ...edit, venue: v })} />
           <Input label={tr('Dress code')} value={edit.dress || ''} onChangeText={v => setEdit({ ...edit, dress: v })} placeholder={tr('Colours or attire')} />
           <Btn small title={tr('Save')} disabled={saving || !edit.name?.trim()} onPress={save} /><Btn small kind="ghost" title={tr('Remove celebration')} disabled={saving} onPress={() => remove(e.id)} /></Card></Rise>}</View></View></Rise>))}
     <Card style={{ marginTop: 8 }}><H style={{ fontSize: 20, marginTop: 0 }}>{tr('Add your own celebration')}</H><Input label={tr('Celebration name')} value={name} onChangeText={setName} placeholder={tr('e.g. family dinner')} maxLength={100} /><DateField label={tr('Date (optional)')} value={date} onChange={setDate} optional /><Btn icon="plus" title={tr('Add celebration')} disabled={saving || !name.trim()} onPress={add} /></Card>
@@ -54,12 +56,13 @@ export function Family() {
 export function ShortlistTab({ navigation }: any) {
   const [l, load, busy] = useLoad<any[]>('/shortlist', []);
   const vote = async (id: number, v: number) => { await api(`/shortlist/${id}/vote`, 'POST', { vote: v }).catch(err); load(); };
+  const choose = async (v: any) => { await api('/shortlist/choose', 'POST', { vendor_id: v.vendor_id, chosen: !v.chosen }).catch(err); load(); };
   const share = (v: any) => Share.share({ message: `What do you think of ${v.name} (${categoryLabel(v.category)}, ${v.city})${v.start_paise ? ` from ${inr(v.start_paise)}` : ''}? Vote in Shaadi OS.` }).catch(() => {});
   return (<ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
     {!l.length && !busy && <Empty icon="heart" title={tr('Nothing shortlisted')} text={tr('Tap Shortlist on any vendor’s page. Everyone in your family workspace can then vote here.')} />}
     {l.map((v, i) => <Rise key={v.id} i={i}><Card>
       <Pressable accessibilityRole="button" accessibilityLabel={v.name} onPress={() => navigation.navigate('Vendor', { id: v.vendor_id })} style={s.row}><View style={{ flex: 1 }}><Text style={{ fontWeight: '500', color: C.ink, fontSize: 15 }}>{v.name}</Text><M>{categoryLabel(v.category)} · {v.city}{v.start_paise ? ` · ${tr('from')} ${inr(v.start_paise)}` : ''}</M></View><Icon name="chevron" size={16} color={C.faint} /></Pressable>
-      <View style={{ flexDirection: 'row', marginTop: 12, flexWrap: 'wrap' }}><Chip icon="up" label={String(v.up)} onPress={() => vote(v.id, 1)} /><Chip icon="down" label={String(v.down)} onPress={() => vote(v.id, -1)} /><Chip icon="share" label={tr('Ask family')} onPress={() => share(v)} /></View></Card></Rise>)}</ScrollView>);
+      <View style={{ flexDirection: 'row', marginTop: 12, flexWrap: 'wrap' }}><Chip icon="up" label={String(v.up)} onPress={() => vote(v.id, 1)} /><Chip icon="down" label={String(v.down)} onPress={() => vote(v.id, -1)} /><Chip icon="share" label={tr('Ask family')} onPress={() => share(v)} /><Chip icon="check" on={!!v.chosen} label={v.chosen ? tr('Booked') : tr('We booked them')} onPress={() => choose(v)} /></View></Card></Rise>)}</ScrollView>);
 }
 
 const THEMES: [string, string, string][] = [['maroon', 'Maroon', '#7A1F3D'], ['emerald', 'Emerald', '#0B5D46'], ['royal', 'Royal', '#2B2A6F'], ['rose', 'Rose', '#B0475F']];

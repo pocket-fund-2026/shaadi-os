@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api, getBase } from './api';
@@ -345,4 +345,42 @@ export function Ideas() {
       </View>
     </View>)}</View>
   </ScrollView>;
+}
+
+// ---------- Choosing a vendor booked directly (phone call, visit) ----------
+// Most venues and local businesses are booked offline; marking them here ticks the task, fills ceremony venues and counts them on the plan.
+export function ChooseVendor({ vendor }: { vendor: any }) {
+  // Quiet load: vendors and couples without a wedding yet simply don't see this card.
+  const [mine, setMine] = useState<any[] | null>(null); const [amount, setAmount] = useState(''); const [busy, setBusy] = useState(false);
+  const load = async () => { try { setMine(await api('/my-vendors')); } catch { setMine(null); } };
+  useEffect(() => { load(); }, [vendor.id]);
+  const row = mine?.find(m => m.vendor_id === vendor.id); const label = categoryName(vendor.category);
+  if (!mine || row?.status === 'booked') return null;
+  const set = async (chosen: boolean) => {
+    setBusy(true);
+    try { await api('/shortlist/choose', 'POST', { vendor_id: vendor.id, chosen, agreed_paise: chosen ? rupees(amount) : null }); await load(); } catch (e) { err(e); } finally { setBusy(false); }
+  };
+  return <Card style={{ marginTop: 12, marginBottom: 12 }}>
+    {row?.status === 'chosen' ? <>
+      <View style={s.row}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{`${tr('Your')} ${label.toLowerCase()}`}</Text><Tag tone="ok" icon="check" label={tr('Booked')} /></View>
+      <M style={{ marginTop: 4 }}>{row.amount_paise ? `${tr('Agreed price')} ${inr(row.amount_paise)} · ` : ''}{tr('It’s on your plan and checklist.')}</M>
+      <Btn small kind="quiet" title={tr('Undo')} disabled={busy} onPress={() => set(false)} />
+    </> : <>
+      <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Booked them already?')}</Text>
+      <M style={{ marginTop: 4, marginBottom: 12 }}>{`${tr('Mark them as your')} ${label.toLowerCase()}. ${tr('We tick the task, add them to your plan and day contacts')}${vendor.category === 'venue' ? ` ${tr('and set the venue on your ceremonies')}` : ''}.`}</M>
+      <Input label={tr('Agreed price (₹, optional)')} value={amount} onChangeText={setAmount} keyboardType="number-pad" />
+      <Btn icon="check" title={busy ? tr('Saving…') : `${tr('Mark as our')} ${label.toLowerCase()}`} disabled={busy} onPress={() => set(true)} />
+    </>}
+  </Card>;
+}
+const CATEGORY_NAMES: Record<string, string> = { venue: 'Venue', caterer: 'Caterer', photographer: 'Photographer', decor: 'Decorator', makeup: 'Makeup artist', mehndi: 'Mehendi artist', dj: 'DJ', pandit: 'Pandit' };
+const categoryName = (c: string) => tr(CATEGORY_NAMES[c] || 'Vendor');
+
+// Venue picker for a ceremony: the couple's booked, chosen and shortlisted venues as one-tap options.
+export function VenueOptions({ value, onPick }: { value: string; onPick: (name: string) => void }) {
+  const [mine] = useLoad<any[]>('/my-vendors', []);
+  const venues = mine.filter(m => m.category === 'venue');
+  if (!venues.length) return <M style={{ marginTop: -8, marginBottom: 12 }}>{tr('Tip: shortlist or book venues in Discover to pick them here.')}</M>;
+  return <View style={{ marginTop: -8, marginBottom: 12 }}><M style={{ marginBottom: 4 }}>{tr('Your venues')}</M>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>{venues.map(v => <Chip key={v.vendor_id} label={v.name} icon={v.status !== 'shortlisted' ? 'check' : undefined} on={value === v.name} onPress={() => onPick(v.name)} />)}</ScrollView></View>;
 }

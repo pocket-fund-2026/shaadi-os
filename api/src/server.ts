@@ -2,7 +2,7 @@ import { mountPlanner, dateSchema } from './planner.ts';
 import { instalmentDue } from './organiser.ts';
 import { readRuntimeConfig } from './config.ts';
 import { mountCatalog, vendorCatalog } from './catalog.ts';
-import { addAfterTasks } from './traditions.ts';
+import { addAfterTasks, vendorDecided } from './traditions.ts';
 import express from 'express'; import cors from 'cors'; import jwt from 'jsonwebtoken'; import { z } from 'zod'; import { randomBytes } from 'node:crypto';
 import { db, q, one, run } from './db.ts'; import { mountExtras, TEMPLATES } from './extras.ts'; import { seed } from './seed.ts'; import { mountSite, mountSiteEarly, spamGuard } from './site.ts';
 const config = readRuntimeConfig();
@@ -99,6 +99,9 @@ app.post('/api/wedding', auth, wrap((req: any, res: any) => {
   // Creating the workspace sets the date and budget, so that starter task begins done.
   for (const [t, due] of starterDates(b.date, new Date())) run('INSERT INTO tasks(wedding_id,title,due,done) VALUES(?,?,?,?)', id, t, due, t === 'Set wedding date & budget' ? 1 : 0);
   addAfterTasks(id, b.date);
+  // Ceremonies for the couple's tradition start out in the plan, spread over the days before the wedding.
+  const names = TEMPLATES[b.community] || TEMPLATES['North Indian Hindu'];
+  names.forEach((n, i) => run('INSERT INTO events(wedding_id,name,date,sort) VALUES(?,?,?,?)', id, n, new Date(d.getTime() - (names.length - 1 - i) * 864e5).toISOString().slice(0, 10), i));
   for (const [c, p] of Object.entries(SPLIT)) run('INSERT INTO budget_items(wedding_id,category,allocated_paise) VALUES(?,?,?)', id, c, Math.round(b.budget_paise * p / 100));
   res.json(one('SELECT * FROM weddings WHERE id=?', id));
 }));
@@ -215,7 +218,7 @@ app.post('/api/quotes/:id/accept', auth, wrap((req: any, res: any) => {
     const bid = Number(run('INSERT INTO bookings(quote_id,enquiry_id,couple_id,vendor_id,wedding_id,total_paise,commission_bps) VALUES(?,?,?,?,?,?,?)', qt.id, e.id, e.couple_id, e.vendor_id, e.wedding_id, qt.total_paise, bps).lastInsertRowid);
     const milestones = JSON.parse(qt.milestones); let allocated = 0;
     milestones.forEach((m: any, index: number) => { const amount = index === milestones.length - 1 ? qt.total_paise - allocated : Math.floor(qt.total_paise * m.pct / 100); allocated += amount; run('INSERT INTO milestones(booking_id,label,pct,amount_paise) VALUES(?,?,?,?)', bid, m.label, m.pct, amount); });
-    run("UPDATE enquiries SET status='booked' WHERE id=?", e.id); db.exec('COMMIT'); res.json({ booking_id: bid });
+    run("UPDATE enquiries SET status='booked' WHERE id=?", e.id); vendorDecided(e.wedding_id, e.vendor_id); db.exec('COMMIT'); res.json({ booking_id: bid });
   } catch (x) { db.exec('ROLLBACK'); throw x; }
 }));
 const bookingView = (b: any) => ({ ...b, vendor_name: one('SELECT name FROM vendors WHERE id=?', b.vendor_id).name, couple_name: one('SELECT name FROM users WHERE id=?', b.couple_id).name, milestones: (() => { const ms = q('SELECT * FROM milestones WHERE booking_id=? ORDER BY id', b.id); const ev = one('SELECT event_date FROM enquiries WHERE id=?', b.enquiry_id)?.event_date; return ms.map((m: any, i: number) => ({ ...m, due_on: instalmentDue(i, ms.length, b.created_at, ev) })); })(), reviewed: !!one('SELECT 1 x FROM reviews WHERE booking_id=?', b.id) });

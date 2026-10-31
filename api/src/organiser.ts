@@ -70,6 +70,8 @@ export function mountOrganiser(app: any, auth: any, wrap: any, ctx: { W: (req: a
     const w = W(req);
     const booked = q("SELECT v.name, v.category role, u.phone FROM bookings b JOIN vendors v ON v.id=b.vendor_id LEFT JOIN users u ON u.id=v.user_id WHERE b.wedding_id=? AND b.status!='cancelled'", w.id)
       .map((x: any) => ({ ...x, source: 'booking', phone: /^[6-9]\d{9}$/.test(x.phone || '') ? x.phone : '' }));
+    for (const c of q("SELECT v.name, v.category role, v.contact_phone, v.contact_whatsapp FROM shortlist s JOIN vendors v ON v.id=s.vendor_id WHERE s.wedding_id=? AND s.chosen=1 AND v.unclaimed=1", w.id))
+      booked.push({ name: c.name, role: c.role, source: 'chosen', phone: c.contact_phone || c.contact_whatsapp || '' });
     const outside = q('SELECT DISTINCT payee name, category role FROM expenses WHERE wedding_id=?', w.id).map((x: any) => ({ ...x, phone: '', source: 'payment' }));
     res.json({ contacts: q('SELECT * FROM day_contacts WHERE wedding_id=? ORDER BY arrival, id', w.id), booked, outside });
   }));
