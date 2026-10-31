@@ -57,7 +57,7 @@ const I = {
 
 export type IconName = keyof typeof I;
 
-export function Icon({ name, size = 22, color = '#241019', strokeWidth = 1.6 }: { name: IconName; size?: number; color?: string; strokeWidth?: number }) {
+export function Icon({ name, size = 22, color = '#241019', strokeWidth = 1.5 }: { name: IconName; size?: number; color?: string; strokeWidth?: number }) {
   const els: El[] = I[name] || I.alert;
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

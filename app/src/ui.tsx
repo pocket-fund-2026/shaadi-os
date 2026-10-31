@@ -35,6 +35,9 @@ export function TabIcon({ name, focused, color }: { name: IconName; focused: boo
   return <Animated.View style={{ width: 38, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? C.tint : 'transparent', transform: [{ scale: value.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }}><Icon name={name} size={22} color={color} strokeWidth={focused ? 2 : 1.6} /></Animated.View>;
 }
 
+// Indian date format: 14 Feb 2027. Falls back to the raw value if it isn't an ISO date.
+export const dateIN = (iso?: string) => { if (!iso) return ''; const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); return isNaN(+d) ? String(iso) : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
+
 // Indian number format: ₹4.5 L, ₹1.2 Cr
 export const inr = (paise: number) => { const r = (paise || 0) / 100; if (r >= 1e7) return `₹${+(r / 1e7).toFixed(2)} Cr`; if (r >= 1e5) return `₹${+(r / 1e5).toFixed(2)} L`; return '₹' + r.toLocaleString('en-IN'); };
 
@@ -70,9 +73,9 @@ export const Btn = ({ title, onPress, kind = 'primary', disabled, icon, small }:
   const fg = kind === 'ghost' || kind === 'quiet' ? C.primary : '#fff';
   return (
       <AnimatedPressable accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} onPressIn={p.onPressIn} onPressOut={p.onPressOut}
-        style={[s.btn, { marginVertical: 5 }, small && s.btnSmall, kind === 'primary' && s.btnLift, kind === 'ghost' && s.btnGhost, kind === 'quiet' && s.btnQuiet, kind === 'ok' && { backgroundColor: C.ok }, disabled && { opacity: 0.45 }, p.style]}>
+        style={[s.btn, { marginVertical: 4 }, small && s.btnSmall, kind === 'primary' && s.btnLift, kind === 'ghost' && s.btnGhost, kind === 'quiet' && s.btnQuiet, kind === 'ok' && { backgroundColor: C.ok }, disabled && { opacity: 0.45 }, p.style]}>
         {icon ? <View style={{ marginRight: 8 }}><Icon name={icon} size={small ? 16 : 18} color={fg} /></View> : null}
-        <Text style={[s.btnT, small && { fontSize: 14 }, { color: fg, flexShrink: 1, textAlign: 'center' }]}>{title}</Text>
+        <Text style={[s.btnT, small && { fontSize: 15 }, { color: fg, flexShrink: 1, textAlign: 'center' }]}>{title}</Text>
       </AnimatedPressable>);
 };
 
@@ -81,8 +84,8 @@ export const Input = ({ icon, ...p }: TextInputProps & { label?: string; icon?: 
   // The leading icon sits over the field; left padding is shifted 1 unit on focus to offset the thicker border.
   return (<View style={{ marginBottom: 12 }}>{p.label ? <Text style={s.label}>{p.label}</Text> : null}
     <View>
-      <TextInput accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 13, paddingVertical: 13 }, icon && { paddingLeft: focus ? 43 : 44 }, p.style]} />
-      {icon ? <View pointerEvents="none" style={{ position: 'absolute', left: 15, top: 0, bottom: 0, justifyContent: 'center' }}><Icon name={icon} size={19} color={focus ? C.primary : C.mute} /></View> : null}
+      <TextInput accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 14, paddingVertical: 12 }, icon && { paddingLeft: focus ? 42 : 43 }, p.style]} />
+      {icon ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><Icon name={icon} size={19} color={focus ? C.primary : C.mute} /></View> : null}
     </View></View>);
 };
 
@@ -92,23 +95,23 @@ export const Card = ({ children, onPress, style }: { children: React.ReactNode; 
   return <AnimatedPressable accessibilityRole="button" onPress={onPress} onPressIn={p.onPressIn} onPressOut={p.onPressOut} style={[s.card, style, p.style]}>{children}</AnimatedPressable>;
 };
 
-export const H = ({ children, style }: { children: React.ReactNode; style?: any }) => <Text accessibilityRole="header" style={[{ fontFamily: F.display, fontSize: 24, color: C.ink, marginVertical: 10 }, style]}>{children}</Text>;
+export const H = ({ children, style }: { children: React.ReactNode; style?: any }) => <Text accessibilityRole="header" style={[{ fontFamily: F.display, fontSize: 24, color: C.ink, marginVertical: 12 }, style]}>{children}</Text>;
 export const M = ({ children, style }: any) => <Text style={[{ color: C.mute, fontSize: 13, lineHeight: 18 }, style]}>{children}</Text>;
 
 export const Chip = ({ label, on, onPress, icon }: { label: string; on?: boolean; onPress?: () => void; icon?: IconName }) => {
   const p = usePress(0.97);
   return (<AnimatedPressable accessibilityRole="button" accessibilityState={{ selected: !!on }} onPress={onPress} onPressIn={p.onPressIn} onPressOut={p.onPressOut} hitSlop={6} style={[s.chip, on && s.chipOn, p.style]}>
-    {icon ? <View style={{ marginRight: 5 }}><Icon name={icon} size={14} color={on ? '#fff' : C.ink} /></View> : null}
-    <Text style={{ color: on ? '#fff' : C.ink, fontSize: 13, fontWeight: on ? '600' : '500', flexShrink: 1 }}>{label}</Text></AnimatedPressable>);
+    {icon ? <View style={{ marginRight: 4 }}><Icon name={icon} size={16} color={on ? C.primary : C.mute} /></View> : null}
+    <Text style={{ color: on ? C.primary : C.ink, fontSize: 13, fontWeight: '500', flexShrink: 1 }}>{label}</Text></AnimatedPressable>);
 };
 
 // A status label that marks real state (verified, escrow, RSVP). Sentence case, no glow, no pulse.
 export const Tag = ({ label, tone = 'mute', icon }: { label: string; tone?: 'ok' | 'warn' | 'gold' | 'mute'; icon?: IconName }) => {
   const fg = tone === 'ok' ? C.ok : tone === 'warn' ? C.warn : tone === 'gold' ? C.gold : C.mute;
   const bg = tone === 'ok' ? C.okSoft : tone === 'warn' ? C.warnSoft : tone === 'gold' ? C.goldSoft : C.chipBg;
-  return (<View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: bg, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start' }}>
+  return (<View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: bg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start' }}>
     {icon ? <View style={{ marginRight: 4 }}><Icon name={icon} size={12} color={fg} strokeWidth={2} /></View> : null}
-    <Text style={{ color: fg, fontSize: 12, fontWeight: '600' }}>{label}</Text></View>);
+    <Text style={{ color: fg, fontSize: 12, fontWeight: '500' }}>{label}</Text></View>);
 };
 
 export const Stars = ({ n, size = 13 }: { n: number; size?: number }) => (
@@ -153,18 +156,18 @@ export const notify = (title: string, message: string) => Platform.OS === 'web' 
 export const err = (e: any) => Platform.OS === 'web' ? (globalThis as any).alert(e.message || String(e)) : Alert.alert('Something went wrong', e.message || String(e));
 
 export const s = StyleSheet.create({
-  btn: { flexDirection: 'row', backgroundColor: C.primary, minHeight: 52, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  btnSmall: { minHeight: 44, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  btn: { flexDirection: 'row', backgroundColor: C.primary, minHeight: 52, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  btnSmall: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
   // Only the primary action lifts off the page; everything else sits flat.
   btnLift: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1.3, borderColor: C.primary },
   btnQuiet: { backgroundColor: C.tint },
   btnT: { fontWeight: '600', fontSize: 15 },
   // Web's default outline is replaced by the primary-colour border set on focus, so focus stays visible.
-  input: { ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as any : null), borderWidth: 1, borderColor: C.line, backgroundColor: C.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, color: C.ink, minHeight: 52 },
-  label: { fontSize: 13, fontWeight: '600', color: C.mute, marginBottom: 8 },
+  input: { ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as any : null), borderWidth: 1, borderColor: C.line, backgroundColor: C.card, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 13, fontSize: 15, color: C.ink, minHeight: 52 },
+  label: { fontSize: 13, fontWeight: '500', color: C.mute, marginBottom: 8 },
   card: { backgroundColor: C.card, borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.line },
-  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, minHeight: 44, borderRadius: 10, backgroundColor: C.chipBg, marginRight: 8, marginBottom: 8 },
-  chipOn: { backgroundColor: C.primary },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, minHeight: 44, borderRadius: 10, backgroundColor: C.chipBg, borderWidth: 1, borderColor: C.chipBg, marginRight: 8, marginBottom: 8 },
+  chipOn: { backgroundColor: C.tint, borderColor: C.primary },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 });

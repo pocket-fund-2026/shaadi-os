@@ -53,13 +53,13 @@ export function CategoryCover({ category, label, large = false }: { category: st
     <View style={{ width: large ? 82 : 58, height: large ? 82 : 58, borderRadius: 50, backgroundColor: '#FFFFFF99', alignItems: 'center', justifyContent: 'center' }}>
       <Icon name={CAT_ICON[category] || 'store'} size={large ? 38 : 28} color={palette.ink} strokeWidth={1.4} />
     </View>
-    <Text style={{ fontSize: 13, fontWeight: '600', color: palette.ink, marginTop: 12, textAlign: 'center' }}>{label}</Text>
+    <Text style={{ fontSize: 13, fontWeight: '500', color: palette.ink, marginTop: 12, textAlign: 'center' }}>{label}</Text>
   </View>;
 }
 
 export function SectionTitle({ title, detail }: { title: string; detail?: string }) {
-  return <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 12, marginBottom: 14 }}>
-    <Text accessibilityRole="header" style={{ flexShrink: 1, fontFamily: F.display, fontSize: 25, color: C.ink }}>{tr(title)}</Text>
+  return <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginTop: 12, marginBottom: 16 }}>
+    <Text accessibilityRole="header" style={{ flexShrink: 1, fontFamily: F.display, fontSize: 24, color: C.ink }}>{tr(title)}</Text>
     {detail && <Text style={{ color: C.mute, fontSize: 12 }}>{detail}</Text>}
   </View>;
 }

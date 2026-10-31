@@ -10,27 +10,29 @@ import { PortfolioPhoto, VendorCatalog } from './catalog';
 
 const CATEGORIES: [string, string][] = [['photographer', 'Photography'], ['makeup', 'Makeup'], ['mehndi', 'Mehndi'], ['decor', 'Decor'], ['venue', 'Venues'], ['caterer', 'Catering'], ['dj', 'DJ & music'], ['pandit', 'Pandit']];
 const CITIES = ['Mumbai', 'Pune', 'Nashik', 'Nagpur'];
+// Couples budget in lakhs, so the common ceilings are one tap away.
+const BUDGET_PRESETS = [50000, 100000, 200000, 500000];
 // Unknown keys (e.g. budget lines like 'attire') are shown capitalised rather than as raw lowercase ids.
 export const categoryLabel = (category: string) => tr(CATEGORIES.find(([key]) => key === category)?.[1] || (category ? category[0].toUpperCase() + category.slice(1) : category));
 
 // Compare sits on the cover as a small toggle so it doesn't add a second full-width action under every card.
 export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress: () => void; compare?: { on: boolean; disabled: boolean; onToggle: () => void } }) {
-  return <Card onPress={onPress} style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>
+  return <Card onPress={onPress} style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
     {vendor.cover_url ? <PortfolioPhoto uri={vendor.cover_url} caption={vendor.name} height={180} /> : <CategoryCover category={vendor.category} label={categoryLabel(vendor.category)} />}
     {compare ? <Pressable accessibilityRole="checkbox" accessibilityLabel={`${tr('Compare')} ${vendor.name}`} accessibilityState={{ checked: compare.on, disabled: compare.disabled }} disabled={compare.disabled} onPress={compare.onToggle} hitSlop={8}
-      style={({ pressed }) => ({ position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: compare.on ? C.primary : '#FFFEFCEE', borderWidth: compare.on ? 0 : 1, borderColor: C.line, opacity: compare.disabled ? 0.5 : pressed ? 0.8 : 1 })}>
+      style={({ pressed }) => ({ position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: compare.on ? C.primary : '#FFFEFCEE', borderWidth: compare.on ? 0 : 1, borderColor: C.line, opacity: compare.disabled ? 0.5 : pressed ? 0.8 : 1 })}>
       <Icon name={compare.on ? 'check' : 'plus'} size={14} color={compare.on ? '#fff' : C.primary} strokeWidth={2} />
-      <Text style={{ fontSize: 12, fontWeight: '600', color: compare.on ? '#fff' : C.primary }}>{compare.on ? tr('Comparing') : tr('Compare')}</Text>
+      <Text style={{ fontSize: 12, fontWeight: '500', color: compare.on ? '#fff' : C.primary }}>{compare.on ? tr('Comparing') : tr('Compare')}</Text>
     </Pressable> : null}
     <View style={{ padding: 20 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-        <Text style={{ flex: 1, fontFamily: F.display, fontSize: 22, lineHeight: 28, color: C.ink }}>{vendor.name}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <Text style={{ flex: 1, fontFamily: F.display, fontSize: 20, lineHeight: 28, color: C.ink }}>{vendor.name}</Text>
         {vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ flex: 1 }}>{vendor.locality ? vendor.locality + ', ' : ''}{vendor.city}{vendor.travels ? ' · ' + tr('travels') : ''}</M></View>
-      <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, marginTop: 16, paddingTop: 14, gap: 8 }]}>
-        <View><M style={{ fontSize: 11 }}>{tr('Starting price')}</M><Text style={{ color: C.primary, fontWeight: '600', fontSize: 19, marginTop: 3 }}>{inr(vendor.start_paise)}</Text></View>
-        {vendor.rating ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="star" size={15} color={C.gold} /><Text style={{ color: C.ink, fontWeight: '600' }}>{vendor.rating}</Text><M>({vendor.reviews})</M></View> : <M>{tr('No reviews yet')}</M>}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ flex: 1 }}>{vendor.locality ? vendor.locality + ', ' : ''}{vendor.city}{vendor.travels ? ' · ' + tr('travels') : ''}</M></View>
+      <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, marginTop: 16, paddingTop: 16, gap: 8 }]}>
+        <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text style={{ color: C.ink, fontWeight: '500', fontSize: 20, marginTop: 4, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></View>
+        {vendor.rating ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="star" size={15} color={C.gold} /><Text style={{ color: C.ink, fontWeight: '500' }}>{vendor.rating}</Text><M>({vendor.reviews})</M></View> : <M>{tr('No reviews yet')}</M>}
       </View>
     </View>
   </Card>;
@@ -63,38 +65,39 @@ export function Marketplace({ openVendor, onSignIn }: { openVendor: (id: number)
   return <FlatList style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 36, width: '100%', maxWidth: 760, alignSelf: 'center' }} data={results} keyExtractor={v => String(v.id)} keyboardShouldPersistTaps="handled"
     refreshControl={<RefreshControl refreshing={busy} onRefresh={() => setRefreshKey(k => k + 1)} tintColor={C.primary} />}
     ListHeaderComponent={<>
-      {onSignIn && <View style={[s.row, { marginBottom: 18 }]}><View style={{ flexDirection: 'row', gap: 9, alignItems: 'center' }}><Logo size={28} /><Text style={{ fontFamily: F.display, color: C.primary, fontSize: 20 }}>Shaadi OS</Text></View><Btn small kind="quiet" title={tr('Sign in')} onPress={onSignIn} /></View>}
+      {onSignIn && <View style={[s.row, { marginBottom: 20 }]}><View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Logo size={28} /><Text style={{ fontFamily: F.display, color: C.primary, fontSize: 20 }}>Shaadi OS</Text></View><Btn small kind="quiet" title={tr('Sign in')} onPress={onSignIn} /></View>}
       <View style={{ backgroundColor: C.primaryDark, padding: 24, borderRadius: 18, marginBottom: 24, overflow: 'hidden' }}>
         <View style={{ position: 'absolute', right: -28, bottom: -55, opacity: 0.5 }}><FloralArch color="#DCC399" size={155} /></View>
         <Text accessibilityRole="header" style={{ fontFamily: F.display, color: '#FFF9F0', fontSize: 34, lineHeight: 40, maxWidth: '80%' }}>{tr('Your wedding,\nyour people')}</Text>
-        <Text style={{ fontSize: 14, lineHeight: 22, color: '#E8D9D5', marginTop: 12, maxWidth: '78%' }}>{tr('Find the vendors who fit your celebration.')}</Text>
+        <Text style={{ fontSize: 15, lineHeight: 22, color: '#E8D9D5', marginTop: 12, maxWidth: '78%' }}>{tr('Find the vendors who fit your celebration.')}</Text>
       </View>
       <Input icon="search" accessibilityLabel={tr('Search vendors')} placeholder={tr('Search vendors')} value={query} onChangeText={setQuery} returnKeyType="search" />
       <SectionTitle title="Choose a service" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 4 }}>
-        {CATEGORIES.map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={tr(label)} accessibilityState={{ selected: category === key }} onPress={() => setCategory(category === key ? '' : key)} style={({ pressed }) => ({ width: 94, paddingVertical: 14, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1, borderColor: category === key ? C.primary : C.line, backgroundColor: category === key ? C.tint : C.card, opacity: pressed ? 0.75 : 1, alignItems: 'center', gap: 10 })}>
-          <Icon name={CAT_ICON[key] || 'store'} size={26} color={category === key ? C.primary : C.ink} strokeWidth={1.5} /><Text style={{ fontSize: 11, color: C.ink, fontWeight: '600', textAlign: 'center' }}>{tr(label)}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 4 }}>
+        {CATEGORIES.map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={tr(label)} accessibilityState={{ selected: category === key }} onPress={() => setCategory(category === key ? '' : key)} style={({ pressed }) => ({ width: 94, paddingVertical: 16, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1, borderColor: category === key ? C.primary : C.line, backgroundColor: category === key ? C.tint : C.card, opacity: pressed ? 0.75 : 1, alignItems: 'center', gap: 12 })}>
+          <Icon name={CAT_ICON[key] || 'store'} size={26} color={category === key ? C.primary : C.ink} strokeWidth={1.5} /><Text style={{ fontSize: 12, color: C.ink, fontWeight: '500', textAlign: 'center' }}>{tr(label)}</Text>
         </Pressable>)}
       </ScrollView>
-      <M style={{ marginTop: 20, marginBottom: 9 }}>{tr('Wedding city')}</M>
+      <M style={{ marginTop: 20, marginBottom: 8 }}>{tr('Wedding city')}</M>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20 }}><Chip label={tr('All cities')} on={!city} onPress={() => setCity('')} />{CITIES.map(c => <Chip key={c} label={c} on={city === c} onPress={() => setCity(city === c ? '' : c)} />)}</ScrollView>
       {comparison.length > 0 && <Card><View style={s.row}><H style={{ fontSize: 20 }}>{tr('Compare vendors')} ({comparison.length}/3)</H><Btn small kind="ghost" title={tr('Clear')} onPress={() => { setComparison([]); setShowComparison(false); }} /></View>
         <M>{tr('Select up to three vendors to compare prices, location and ratings.')}</M><Btn kind="quiet" title={showComparison ? tr('Hide comparison') : tr('Show comparison')} onPress={() => setShowComparison(!showComparison)} />
-        {showComparison && <ScrollView horizontal contentContainerStyle={{ gap: 12 }}>{comparison.map(item => <View key={item.id} style={{ width: 220, padding: 14, backgroundColor: C.bg, borderRadius: 12 }}><H style={{ fontSize: 20 }}>{item.name}</H><M>{categoryLabel(item.category)} · {item.city}</M><H style={{ color: C.primary }}>{inr(item.start_paise)}</H><M>{item.rating ? `${item.rating}/5 · ${item.reviews} ${tr('reviews')}` : tr('No reviews yet')}</M>{item.verified ? <Tag tone="ok" label={tr('Verified')} /> : null}<Btn small title={tr('View profile')} onPress={() => openVendor(item.id)} /><Btn small kind="ghost" title={tr('Remove')} onPress={() => toggleCompare(item)} /></View>)}</ScrollView>}
+        {showComparison && <ScrollView horizontal contentContainerStyle={{ gap: 12 }}>{comparison.map(item => <View key={item.id} style={{ width: 220, padding: 16, backgroundColor: C.bg, borderRadius: 12 }}><H style={{ fontSize: 20 }}>{item.name}</H><M>{categoryLabel(item.category)} · {item.city}</M><H style={{ color: C.primary }}>{inr(item.start_paise)}</H><M>{item.rating ? `${item.rating}/5 · ${item.reviews} ${tr('reviews')}` : tr('No reviews yet')}</M>{item.verified ? <Tag tone="ok" label={tr('Verified')} /> : null}<Btn small title={tr('View profile')} onPress={() => openVendor(item.id)} /><Btn small kind="ghost" title={tr('Remove')} onPress={() => toggleCompare(item)} /></View>)}</ScrollView>}
       </Card>}
       <SectionTitle title={filtered ? 'Matching vendors' : 'Vendor directory'} detail={vendors ? `${results.length} ${tr('vendors')}` : undefined} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, marginBottom: 8, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 20 }}>
         <Chip icon="rupee" label={budget ? `${tr('Up to')} ${inr(Number(budget) * 100)}` : tr('Budget')} on={!!budget || showBudget} onPress={() => setShowBudget(!showBudget)} />
-        <View style={{ width: 1, height: 26, backgroundColor: C.line, marginRight: 8, marginTop: 9 }} />
+        <View style={{ width: 1, height: 26, backgroundColor: C.line, marginRight: 8, marginTop: 8 }} />
         {[['recommended', 'Recommended'], ['price', 'Price: low to high'], ['rating', 'Top rated']].map(([key, label]) => <Chip key={key} label={tr(label)} on={sort === key} onPress={() => setSort(key)} />)}
       </ScrollView>
-      {showBudget && <Rise><Card style={{ padding: 14 }}>
+      {showBudget && <Rise><Card style={{ padding: 16 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 }}>{BUDGET_PRESETS.map(r => <Chip key={r} label={`${tr('Up to')} ${inr(r * 100)}`} on={budget === String(r)} onPress={() => { setBudgetDraft(String(r)); setBudget(String(r)); setShowBudget(false); }} />)}</View>
         <Input label={tr('Maximum starting price (₹)')} value={budgetDraft} onChangeText={setBudgetDraft} keyboardType="decimal-pad" placeholder={tr('Any budget')} returnKeyType="done" onSubmitEditing={() => { if (validBudget) { setBudget(budgetDraft); setShowBudget(false); } }} />
         {!validBudget && <Text accessibilityRole="alert" style={{ color: C.warn, marginBottom: 8 }}>{tr('Enter a valid budget amount.')}</Text>}
-        <View style={{ flexDirection: 'row', gap: 10 }}><View style={{ flex: 1 }}><Btn small title={tr('Apply budget')} disabled={!validBudget} onPress={() => { setBudget(budgetDraft); setShowBudget(false); }} /></View>
+        <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Btn small title={tr('Apply budget')} disabled={!validBudget} onPress={() => { setBudget(budgetDraft); setShowBudget(false); }} /></View>
           {!!budget && <View style={{ flex: 1 }}><Btn small kind="ghost" title={tr('Any budget')} onPress={() => { setBudget(''); setBudgetDraft(''); setShowBudget(false); }} /></View>}</View>
       </Card></Rise>}
-      {filtered && <View style={{ flexDirection: 'row', marginBottom: 6 }}><Btn small kind="quiet" icon="close" title={tr('Clear filters')} onPress={clearFilters} /></View>}
+      {filtered && <View style={{ flexDirection: 'row', marginBottom: 8 }}><Btn small kind="quiet" icon="close" title={tr('Clear filters')} onPress={clearFilters} /></View>}
       {!!error && <Card><Text accessibilityRole="alert" style={{ color: C.warn, lineHeight: 21 }}>{error}</Text><Btn kind="quiet" title={tr('Try again')} onPress={() => setRefreshKey(k => k + 1)} /></Card>}
       {busy && !vendors && <Loading what={tr('vendors')} />}
     </>}
@@ -116,13 +119,13 @@ export function PublicExplore({ onSignIn, onBack }: { onSignIn: () => void; onBa
     {selected === null ? <Marketplace openVendor={setSelected} onSignIn={onSignIn} /> : <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
       {error ? <Card><M style={{ color: C.warn }}>{error}</M><Btn title={tr('Try again')} onPress={() => setRetry(k => k + 1)} /></Card> : !vendor ? <Loading what={tr('vendor')} /> : <Rise>
         <View style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}><CategoryCover category={vendor.category} label={categoryLabel(vendor.category)} large /></View>
-        <H style={{ fontSize: 30 }}>{vendor.name}</H><M>{categoryLabel(vendor.category)} · {vendor.city}</M>
+        <H style={{ fontSize: 28 }}>{vendor.name}</H><M>{categoryLabel(vendor.category)} · {vendor.city}</M>
         {vendor.verified ? <View style={{ marginTop: 12 }}><Tag tone="ok" icon="seal" label={tr('Verified')} /></View> : null}
         <Text style={{ color: C.ink, fontSize: 15, lineHeight: 24, marginVertical: 20 }}>{vendor.description}</Text>
-        <Card><M>{tr('Starting price')}</M><H style={{ color: C.primary, fontSize: 30 }}>{inr(vendor.start_paise)}</H><Btn title={tr('Sign in to enquire')} onPress={onSignIn} /></Card>
+        <Card><M>{tr('Starting price')}</M><H style={{ color: C.primary, fontSize: 28 }}>{inr(vendor.start_paise)}</H><Btn title={tr('Sign in to enquire')} onPress={onSignIn} /></Card>
         <VendorCatalog vendor={vendor} />
         <SectionTitle title="Reviews" />
-        {vendor.reviewList?.length ? vendor.reviewList.map((review: any, i: number) => <Card key={i}><View style={s.row}><Text style={{ fontWeight: '600', color: C.ink }}>{review.name}</Text><M>{review.rating}/5</M></View><M style={{ marginTop: 8 }}>{review.text}</M></Card>) : <M>{tr('No reviews yet')}</M>}
+        {vendor.reviewList?.length ? vendor.reviewList.map((review: any, i: number) => <Card key={i}><View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{review.name}</Text><M>{review.rating}/5</M></View><M style={{ marginTop: 8 }}>{review.text}</M></Card>) : <M>{tr('No reviews yet')}</M>}
       </Rise>}
     </ScrollView>}
   </View>;
