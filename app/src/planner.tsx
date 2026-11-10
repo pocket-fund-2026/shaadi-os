@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View, RefreshControl } from 'react-native';
+import { Pressable, ScrollView, Text, View, RefreshControl, Share } from 'react-native';
 import { api } from './api';
 import { tr } from './i18n';
 import { Bar, Btn, C, Card, Chip, Empty, F, H, Input, M, Rise, Tag, confirm, err, inr, notify, s, dateIN, DateField, todayISO } from './ui';
@@ -7,6 +7,7 @@ import { FloralArch } from './visuals';
 import { Icon, IconName } from './icons';
 import { categoryLabel } from './marketplace';
 import { RemindersList } from './organiser';
+import { PlanningJourney } from './journey';
 import { syncReminders } from './reminders';
 
 function usePlanner<T>(path: string) {
@@ -46,7 +47,7 @@ const monthLabel = (ym: string) => new Date(ym + '-01T00:00:00Z').toLocaleDateSt
 function UpNext({ roadmap, open, nav }: { roadmap: any; open: (tab: string) => void; nav: any }) {
   const tasks = roadmap.months.flatMap((m: any) => m.tasks).sort((a: any, b: any) => Number(!!b.overdue) - Number(!!a.overdue) || String(a.due).localeCompare(String(b.due)));
   const task = tasks[0];
-  if (!task) return <Card><Text style={{ color: C.ink, fontSize: 15 }}>{tr('Nothing on the checklist is due.')}</Text><RemindersList open={open} /></Card>;
+  if (!task) return <Card><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}>{tr('Nothing on the checklist is due.')}</Text><RemindersList open={open} /></Card>;
   const service = TASK_SERVICE.find(([re]) => re.test(task.title))?.[1];
   const v = service ? roadmap.vendors.find((x: any) => x.category === service) : null;
   const label = categoryLabel(service || '').toLowerCase();
@@ -56,7 +57,7 @@ function UpNext({ roadmap, open, nav }: { roadmap: any; open: (tab: string) => v
     : { title: `${tr('Find')} ${label}`, go: () => nav.navigate('Discover', { category: service, at: Date.now() }) };
   return <Card style={{ borderColor: task.overdue ? C.warn : C.line }}>
     <View style={s.row}><M>{tr('Up next')}</M>{task.overdue ? <Tag tone="warn" label={`${tr('Overdue since')} ${dateLabel(task.due)}`} /> : <Tag label={dateLabel(task.due)} />}</View>
-    <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 4 }}>{task.title}</Text>
+    <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 4 }}>{task.title}</Text>
     {v && v.stage !== 'booked' ? <M style={{ marginTop: 2 }}>{categoryLabel(service!)}: {tr(STAGE[v.stage].label).toLowerCase()}</M> : null}
     <Btn title={action.title} onPress={action.go} />
     <RemindersList open={open} skip={task.title} />
@@ -75,16 +76,17 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
       <Card style={{ backgroundColor: C.primaryDark, borderColor: C.primaryDark, overflow: 'hidden', padding: 24 }}>
         <View pointerEvents="none" style={{ position: 'absolute', right: -36, top: -20, opacity: 0.25 }}><FloralArch size={180} /></View>
         <M style={{ color: '#F4DDE5' }}>{tr('Wedding countdown')}</M>
-        <Text style={{ fontFamily: F.display, fontSize: 34, color: '#fff', marginVertical: 8 }}>{d.days_left > 0 ? `${d.days_left} ${tr('days to go')}` : d.days_left === 0 ? tr('Today is the day') : tr('Just married')}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 34, color: '#fff', marginVertical: 8 }}>{d.days_left > 0 ? `${d.days_left} ${tr('days to go')}` : d.days_left === 0 ? tr('Today is the day') : tr('Just married')}</Text>
         <M style={{ color: '#F4DDE5' }}>{dateLabel(d.wedding.date)} · {d.wedding.city} · {d.wedding.guests_est} {tr('guests')}</M>
         <View style={{ flexDirection: 'row', marginTop: 20, borderTopWidth: 1, borderTopColor: '#A66B7E', paddingTop: 16 }}>
           {[[`${d.tasks.done}/${d.tasks.total}`, tr('Tasks'), 'checklist'], [String(d.guests.attending), tr('Guests coming'), 'guests'], [inr(d.budget.remaining_paise), tr('Left to book'), 'budget']].map(([value, label, tab]) =>
             <Pressable key={tab} accessibilityRole="button" onPress={() => open(tab)} style={{ flex: 1 }}>
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }} numberOfLines={1}>{value}</Text><M style={{ color: '#F4DDE5' }}>{label}</M>
+              <Text maxFontSizeMultiplier={1.3} style={{ color: '#fff', fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }} numberOfLines={1}>{value}</Text><M style={{ color: '#F4DDE5' }}>{label}</M>
             </Pressable>)}
         </View>
       </Card>
 
+      <PlanningJourney open={open} refreshKey={d} />
       {r ? <UpNext roadmap={r} open={open} nav={nav} /> : null}
       <View style={[s.row, { marginTop: 8 }]}><H style={{ marginVertical: 8 }}>{tr('Vendors')}</H>{r ? <M style={{ fontVariant: ['tabular-nums'] }}>{r.booked_count} {tr('of')} {r.vendors.length} {tr('booked')}</M> : null}</View>
       {r ? <Card style={{ paddingVertical: 4 }}>{(showAllVendors ? r.vendors : r.vendors.filter((v: any) => v.stage !== 'booked').slice(0, 3)).map((v: any, i: number) => {
@@ -97,12 +99,12 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
           : v.stage === 'shortlisted' ? `${v.shortlisted} ${tr('shortlisted')}` : v.allocated_paise ? `${tr('Budget')} ${inr(v.allocated_paise)}` : '';
         return <View key={v.category} style={[s.row, { paddingVertical: 12, gap: 12, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }]}>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{categoryLabel(v.category)}</Text><Tag tone={st.tone} icon={st.icon} label={tr(st.label)} /></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{categoryLabel(v.category)}</Text><Tag tone={st.tone} icon={st.icon} label={tr(st.label)} /></View>
             {detail ? <M style={{ marginTop: 4 }} numberOfLines={2}>{detail}</M> : null}
           </View>
           {action ? <Btn small kind="quiet" title={action.title} onPress={action.go} /> : null}
         </View>; })}
-        <Pressable accessibilityRole="button" onPress={() => setShowAllVendors(!showAllVendors)} style={{ minHeight: 44, justifyContent: 'center', borderTopWidth: 1, borderTopColor: C.line }}><Text style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{showAllVendors ? tr('Show less') : `${tr('Show all')} ${r.vendors.length}`}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setShowAllVendors(!showAllVendors)} style={{ minHeight: 44, justifyContent: 'center', borderTopWidth: 1, borderTopColor: C.line }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{showAllVendors ? tr('Show less') : `${tr('Show all')} ${r.vendors.length}`}</Text></Pressable>
       </Card> : <M>{tr('Loading your vendors…')}</M>}
 
       <H style={{ marginTop: 16 }}>{tr('Timeline')}</H>
@@ -112,15 +114,15 @@ export function Overview({ open, nav }: { open: (tab: string) => void; nav: any 
           {i < shown.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: C.line, marginTop: 4 }} /> : null}
         </View>
         <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text accessibilityRole="header" style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{monthLabel(m.month)}</Text>{i === 0 ? <Tag tone="gold" label={tr('This month')} /> : null}</View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text maxFontSizeMultiplier={1.3} accessibilityRole="header" style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{monthLabel(m.month)}</Text>{i === 0 ? <Tag tone="gold" label={tr('This month')} /> : null}</View>
           {[...m.events.map((e: any) => ({ kind: 'event', date: e.date, e })), ...m.tasks.map((t: any) => ({ kind: 'task', date: t.overdue ? '' : t.due, t })), ...(m.wedding ? [{ kind: 'wedding', date: m.wedding + '~' }] : [])]
             .sort((x: any, y: any) => x.date.localeCompare(y.date)).map((item: any) => item.kind === 'wedding'
-              ? <View key="wedding" style={{ flexDirection: 'row', gap: 8, marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: C.goldSoft }}><Icon name="ring" size={18} color={C.gold} /><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', flex: 1 }}>{tr('Wedding day')} · {dateIN(m.wedding)}</Text></View>
+              ? <View key="wedding" style={{ flexDirection: 'row', gap: 8, marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: C.goldSoft }}><Icon name="ring" size={18} color={C.gold} /><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500', flex: 1 }}>{tr('Wedding day')} · {dateIN(m.wedding)}</Text></View>
               : item.kind === 'event'
               ? <Pressable key={'e' + item.e.id} accessibilityRole="button" onPress={() => open('events')} style={{ flexDirection: 'row', gap: 8, marginTop: 8, minHeight: 32, alignItems: 'flex-start' }}>
-                <Icon name="marigold" size={18} color={C.gold} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{item.e.name}</Text><M>{dateIN(item.e.date)}{item.e.venue ? ` · ${item.e.venue}` : ''}</M></View></Pressable>
+                <Icon name="marigold" size={18} color={C.gold} /><View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{item.e.name}</Text><M>{dateIN(item.e.date)}{item.e.venue ? ` · ${item.e.venue}` : ''}</M></View></Pressable>
               : <Pressable key={'t' + item.t.id} accessibilityRole="button" onPress={() => open('checklist')} style={{ flexDirection: 'row', gap: 8, marginTop: 8, minHeight: 32, alignItems: 'flex-start' }}>
-                <Icon name="checklist" size={18} color={item.t.overdue ? C.warn : C.mute} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{item.t.title}</Text><M style={{ color: item.t.overdue ? C.warn : C.mute }}>{item.t.overdue ? `${tr('Overdue')} · ${dateIN(item.t.due)}` : dateIN(item.t.due)}</M></View></Pressable>)}
+                <Icon name="checklist" size={18} color={item.t.overdue ? C.warn : C.mute} /><View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}>{item.t.title}</Text><M style={{ color: item.t.overdue ? C.warn : C.mute }}>{item.t.overdue ? `${tr('Overdue')} · ${dateIN(item.t.due)}` : dateIN(item.t.due)}</M></View></Pressable>)}
           {!m.events.length && !m.tasks.length && !m.wedding ? <M style={{ marginTop: 4 }}>{tr('Nothing planned yet')}</M> : null}
         </View>
       </View>) : null}
@@ -134,6 +136,8 @@ export function TaskManager() {
   const { data, busy, error, load } = usePlanner<any[]>('/tasks');
   const { data: guide, load: loadGuide, error: guideError } = usePlanner<any[]>('/planner/guide');
   const [title, setTitle] = useState(''); const [due, setDue] = useState(''); const [filter, setFilter] = useState('pending'); const [saving, setSaving] = useState(false);
+  const [owner, setOwner] = useState(''); const [notes, setNotes] = useState(''); const [priority, setPriority] = useState('normal');
+  const [editOwner, setEditOwner] = useState(''); const [editNotes, setEditNotes] = useState(''); const [editPriority, setEditPriority] = useState('normal');
   const [mode, setMode] = useState<'mine' | 'ideas'>('mine'); const [phase, setPhase] = useState('All'); const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<number | null>(null); const [editTitle, setEditTitle] = useState(''); const [editDue, setEditDue] = useState('');
   const tasks = data || []; const today = new Date().toISOString().slice(0, 10); const done = tasks.filter(t => t.done).length;
@@ -141,11 +145,11 @@ export function TaskManager() {
     setSaving(true);
     try { await api(path, method, body); await load(); await loadGuide(); syncReminders().catch(() => {}); return true; } catch (e) { err(e); return false; } finally { setSaving(false); }
   };
-  const add = async () => { if (await action('/tasks', 'POST', { title: title.trim(), ...(due ? { due } : {}) })) { setTitle(''); setDue(''); return true; } return false; };
-  const saveEdit = async () => { if (editing !== null && await action(`/tasks/${editing}`, 'PATCH', { title: editTitle.trim(), due: editDue || null })) setEditing(null); };
+  const add = async () => { if (await action('/tasks', 'POST', { title: title.trim(), owner, notes, priority, ...(due ? { due } : {}) })) { setTitle(''); setDue(''); setOwner(''); setNotes(''); setPriority('normal'); return true; } return false; };
+  const saveEdit = async () => { if (editing !== null && await action(`/tasks/${editing}`, 'PATCH', { title: editTitle.trim(), due: editDue || null, owner: editOwner, notes: editNotes, priority: editPriority })) setEditing(null); };
   const addIdea = async (key: string) => action(`/planner/guide/${key}`, 'POST');
   const remove = async (id: number) => { if (await confirm(tr('Delete task?'), tr('This task will be removed from your checklist.'), tr('Delete'), true)) await action(`/tasks/${id}`, 'DELETE'); };
-  const visible = tasks.filter(t => filter === 'all' || (filter === 'done' ? t.done : filter === 'overdue' ? !t.done && t.due && t.due < today : !t.done));
+  const visible = tasks.filter(t => filter === 'all' || (filter === 'unassigned' ? !t.done && !t.owner?.trim() : filter === 'high' ? !t.done && t.priority === 'high' : filter === 'done' ? t.done : filter === 'overdue' ? !t.done && t.due && t.due < today : !t.done));
   const available = (guide || []).filter(item => !item.already_added);
   const phases = ['All', ...new Set(available.map(item => item.phase))];
   const suggestions = available.filter(item => phase === 'All' || item.phase === phase);
@@ -155,39 +159,48 @@ export function TaskManager() {
     <Failure error={error} retry={load} />
     <Card>
       <M>{tr('Checklist')}</M>
-      <Text style={{ fontFamily: F.display, color: C.ink, fontSize: 24, marginTop: 4 }}>{done} {tr('of')} {tasks.length} {tr('tasks done')}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, color: C.ink, fontSize: 24, marginTop: 4 }}>{done} {tr('of')} {tasks.length} {tr('tasks done')}</Text>
       <M style={{ marginTop: 4 }}>{tr('Suggested tasks are timed from your wedding date. Add your own at the bottom.')}</M>
       <View style={{ marginTop: 16 }}><View><Bar pct={tasks.length ? done / tasks.length * 100 : 0} /></View></View>
       {mode === 'mine' && nextUp.length > 0 && <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: C.line }}>
-        <Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', marginBottom: 4 }}>{tr('Suggested next steps')}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500', marginBottom: 4 }}>{tr('Suggested next steps')}</Text>
         {nextUp.map(item => <View key={item.key} style={[s.row, { paddingVertical: 8, gap: 12 }]}>
-          <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{tr(item.title)}</Text><M style={{ marginTop: 2, color: item.is_catch_up ? C.warn : C.mute }}>{item.is_catch_up ? tr('Start now') : `${tr('Suggested by')} ${dateLabel(item.due)}`}</M></View>
+          <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}>{tr(item.title)}</Text><M style={{ marginTop: 2, color: item.is_catch_up ? C.warn : C.mute }}>{item.is_catch_up ? tr('Start now') : `${tr('Suggested by')} ${dateLabel(item.due)}`}</M></View>
           <Btn small kind="quiet" icon="plus" title={tr('Add')} disabled={saving} onPress={() => addIdea(item.key)} />
         </View>)}
         {available.length > nextUp.length && <Pressable accessibilityRole="button" onPress={() => setMode('ideas')} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, minHeight: 32 }}>
-          <Text style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{tr('See all planning ideas')} ({available.length})</Text><Icon name="chevron" size={16} color={C.primary} />
+          <Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{tr('See all planning ideas')} ({available.length})</Text><Icon name="chevron" size={16} color={C.primary} />
         </Pressable>}
       </View>}
     </Card>
     <View style={{ flexDirection: 'row', marginBottom: 8 }}><Chip label={tr('My tasks')} on={mode === 'mine'} onPress={() => setMode('mine')} /><Chip label={tr('Planning ideas')} on={mode === 'ideas'} onPress={() => setMode('ideas')} /></View>
     {mode === 'mine' ? <>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{[['pending', 'To do'], ['overdue', 'Overdue'], ['done', 'Done'], ['all', 'All']].map(([key, label]) => <Chip key={key} label={tr(label)} on={filter === key} onPress={() => setFilter(key)} />)}</ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{[['pending', 'To do'], ['overdue', 'Overdue'], ['done', 'Done'], ['high', 'High priority'], ['unassigned', 'Unassigned'], ['all', 'All']].map(([key, label]) => <Chip key={key} label={tr(label)} on={filter === key} onPress={() => setFilter(key)} />)}</ScrollView>
       {!busy && !visible.length && <Empty icon="checklist" title={tr('No tasks here')} text={tr('Add a task or choose another filter.')} />}
+      <Btn small kind="quiet" icon="share" title={tr('Share open task handover')} disabled={!tasks.some(t => !t.done)} onPress={() => Share.share({ message: [tr('Wedding task handover'), ...tasks.filter(t => !t.done).map(t => `${t.priority === 'high' ? '[High priority] ' : ''}${t.title} · ${t.owner || tr('Unassigned')} · ${dateLabel(t.due)}${t.notes ? `\n${t.notes}` : ''}`)].join('\n\n') }).catch(err)} />
       {visible.map((t, index) => <Rise key={t.id} i={index}><Card style={{ paddingVertical: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}><View style={{ flex: 1, paddingRight: 8 }}><Text style={{ color: t.done ? C.mute : C.ink, fontSize: 15, fontWeight: '500', textDecorationLine: t.done ? 'line-through' : 'none' }}>{t.title}</Text><M style={{ marginTop: 4 }}>{dateLabel(t.due)}</M></View><Tag tone={t.done ? 'ok' : t.due && t.due < today ? 'warn' : 'mute'} label={t.done ? tr('Done') : t.due && t.due < today ? tr('Overdue') : t.due === today ? tr('Today') : tr('To do')} /></View>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><View style={{ flex: 1 }}><Btn small kind="quiet" icon={t.done ? 'checklist' : 'check'} title={t.done ? tr('Reopen') : tr('Mark done')} disabled={saving} onPress={() => action(`/tasks/${t.id}`, 'PATCH', { done: !t.done })} /></View><View style={{ flex: 1 }}><Btn small kind="ghost" title={tr('Edit')} disabled={saving} onPress={() => { setEditing(editing === t.id ? null : t.id); setEditTitle(t.title); setEditDue(t.due || ''); }} /></View></View>
-        {editing === t.id && <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 16 }}><Input label={tr('Task name')} value={editTitle} onChangeText={setEditTitle} maxLength={200} /><DateField label={tr('Due date (optional)')} value={editDue || ''} onChange={setEditDue} optional /><Btn small title={tr('Save task')} disabled={saving || !editTitle.trim()} onPress={saveEdit} /><Btn small kind="quiet" title={tr('Delete task')} disabled={saving} onPress={() => remove(t.id)} /></View>}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}><View style={{ flex: 1, paddingRight: 8 }}><Text maxFontSizeMultiplier={1.3} style={{ color: t.done ? C.mute : C.ink, fontSize: 15, fontWeight: '500', textDecorationLine: t.done ? 'line-through' : 'none' }}>{t.title}</Text><M style={{ marginTop: 4 }}>{dateLabel(t.due)} · {t.owner || tr('Unassigned')}{t.priority === 'high' ? ` · ${tr('High priority')}` : ''}</M>{t.notes ? <M style={{ marginTop: 4 }}>{t.notes}</M> : null}</View><Tag tone={t.done ? 'ok' : t.due && t.due < today ? 'warn' : 'mute'} label={t.done ? tr('Done') : t.due && t.due < today ? tr('Overdue') : t.due === today ? tr('Today') : tr('To do')} /></View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><View style={{ flex: 1 }}><Btn small kind="quiet" icon={t.done ? 'checklist' : 'check'} title={t.done ? tr('Reopen') : tr('Mark done')} disabled={saving} onPress={() => action(`/tasks/${t.id}`, 'PATCH', { done: !t.done })} /></View><View style={{ flex: 1 }}><Btn small kind="ghost" title={tr('Edit')} disabled={saving} onPress={() => { setEditing(editing === t.id ? null : t.id); setEditTitle(t.title); setEditDue(t.due || ''); setEditOwner(t.owner || ''); setEditNotes(t.notes || ''); setEditPriority(t.priority || 'normal'); }} /></View></View>
+        {editing === t.id && <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 16 }}><Input label={tr('Task name')} value={editTitle} onChangeText={setEditTitle} maxLength={200} /><DateField label={tr('Due date (optional)')} value={editDue || ''} onChange={setEditDue} optional /><TaskDetails owner={editOwner} notes={editNotes} priority={editPriority} setOwner={setEditOwner} setNotes={setEditNotes} setPriority={setEditPriority} /><Btn small title={tr('Save task')} disabled={saving || !editTitle.trim()} onPress={saveEdit} /><Btn small kind="quiet" title={tr('Delete task')} disabled={saving} onPress={() => remove(t.id)} /></View>}
       </Card></Rise>)}
-      {adding ? <Card style={{ marginTop: 8 }}><Input label={tr('Task name')} value={title} onChangeText={setTitle} placeholder={tr('What needs to be done?')} maxLength={200} autoFocus /><DateField label={tr('Due date (optional)')} value={due} onChange={setDue} optional /><Btn title={tr('Add task')} disabled={saving || !title.trim()} onPress={async () => { if (await add()) setAdding(false); }} /><Btn kind="ghost" title={tr('Cancel')} onPress={() => setAdding(false)} /></Card>
+      {adding ? <Card style={{ marginTop: 8 }}><Input label={tr('Task name')} value={title} onChangeText={setTitle} placeholder={tr('What needs to be done?')} maxLength={200} autoFocus /><DateField label={tr('Due date (optional)')} value={due} onChange={setDue} optional /><TaskDetails owner={owner} notes={notes} priority={priority} setOwner={setOwner} setNotes={setNotes} setPriority={setPriority} /><Btn title={tr('Add task')} disabled={saving || !title.trim()} onPress={async () => { if (await add()) setAdding(false); }} /><Btn kind="ghost" title={tr('Cancel')} onPress={() => setAdding(false)} /></Card>
         : <Btn kind="quiet" icon="plus" title={tr('Add a task')} onPress={() => setAdding(true)} />}
     </> : <>
       <H style={{ marginBottom: 2 }}>{tr('Planning ideas')}</H><M style={{ marginBottom: 16 }}>{tr('Suggested timing follows your wedding date. Choose only what suits you.')}</M>
       <Failure error={guideError} retry={loadGuide} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{phases.map(key => <Chip key={key} label={tr(key)} on={phase === key} onPress={() => setPhase(key)} />)}</ScrollView>
-      {suggestions.length ? suggestions.map((item, index) => <Rise key={item.key} i={index}><Card style={{ borderLeftWidth: 3, borderLeftColor: C.gold, paddingVertical: 16 }}><M style={{ color: C.gold, fontWeight: '500' }}>{tr(item.phase)}</M><Text style={{ color: C.ink, fontWeight: '500', fontSize: 17, marginTop: 4 }}>{tr(item.title)}</Text><View style={[s.row, { marginTop: 12 }]}><M>{item.is_catch_up ? tr('Start now') : `${tr('Suggested by')} ${dateLabel(item.due)}`}</M><View style={{ minWidth: 88 }}><Btn small kind="quiet" icon="plus" title={tr('Add')} disabled={saving} onPress={() => addIdea(item.key)} /></View></View></Card></Rise>) : <Empty icon="checklist" title={tr('All ideas added')} text={tr('Your checklist has every suggestion in this section.')} />}
+      {suggestions.length ? suggestions.map((item, index) => <Rise key={item.key} i={index}><Card style={{ borderLeftWidth: 3, borderLeftColor: C.gold, paddingVertical: 16 }}><M style={{ color: C.gold, fontWeight: '500' }}>{tr(item.phase)}</M><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontWeight: '500', fontSize: 17, marginTop: 4 }}>{tr(item.title)}</Text><View style={[s.row, { marginTop: 12 }]}><M>{item.is_catch_up ? tr('Start now') : `${tr('Suggested by')} ${dateLabel(item.due)}`}</M><View style={{ minWidth: 88 }}><Btn small kind="quiet" icon="plus" title={tr('Add')} disabled={saving} onPress={() => addIdea(item.key)} /></View></View></Card></Rise>) : <Empty icon="checklist" title={tr('All ideas added')} text={tr('Your checklist has every suggestion in this section.')} />}
       <M style={{ marginTop: 4 }}>{tr('Inspired by the Brides wedding-planning timeline; adapted for flexible, multi-event celebrations.')}</M>
     </>}
   </ScrollView>;
+}
+
+function TaskDetails({ owner, notes, priority, setOwner, setNotes, setPriority }: { owner: string; notes: string; priority: string; setOwner: (v: string) => void; setNotes: (v: string) => void; setPriority: (v: string) => void }) {
+  return <View>
+    <Input label={tr('Responsible person (optional)')} value={owner} onChangeText={setOwner} placeholder={tr('e.g. Meera, venue coordinator')} maxLength={80} />
+    <Input label={tr('Handover notes (optional)')} value={notes} onChangeText={setNotes} multiline maxLength={1000} placeholder={tr('Decisions, contact details or the next step')} />
+    <M>{tr('Priority')}</M><View style={{ flexDirection: 'row', marginVertical: 8 }}>{[['normal', 'Normal'], ['high', 'High priority']].map(([key, label]) => <Chip key={key} label={tr(label)} on={priority === key} onPress={() => setPriority(key)} />)}</View>
+  </View>;
 }
 
 const PAYERS: [string, string][] = [['shared', 'Shared'], ['bride', 'Bride’s family'], ['groom', 'Groom’s family']];
@@ -211,16 +224,16 @@ export function BudgetManager() {
         <M>{tr('Unallocated buffer')}: {inr(b.total_paise - allocated)}</M>
         {!editing && <Btn kind="quiet" title={tr('Edit allocations')} onPress={edit} />}
       </Card>
-      {!editing && b.rows.some((r: any) => r.paid_by && r.paid_by !== 'shared') ? <Card><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginBottom: 8 }}>{tr('Who pays')}</Text>
-        <View style={{ flexDirection: 'row' }}>{PAYERS.map(([k, n]) => <View key={k} style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 18, color: C.ink, fontVariant: ['tabular-nums'] }}>{inr(share(k))}</Text><M>{tr(n)}</M></View>)}</View>
+      {!editing && b.rows.some((r: any) => r.paid_by && r.paid_by !== 'shared') ? <Card><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginBottom: 8 }}>{tr('Who pays')}</Text>
+        <View style={{ flexDirection: 'row' }}>{PAYERS.map(([k, n]) => <View key={k} style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 18, color: C.ink, fontVariant: ['tabular-nums'] }}>{inr(share(k))}</Text><M>{tr(n)}</M></View>)}</View>
       </Card> : null}
       {editing && <Input label={tr('Total budget (₹)')} value={total} onChangeText={setTotal} keyboardType="decimal-pad" />}
       <Card style={{ paddingVertical: 4 }}>{b.rows.map((r: any, i: number) => <View key={r.category} style={{ paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }}>
-        <View style={s.row}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{categoryLabel(r.category)}</Text><M style={{ fontVariant: ['tabular-nums'] }}>{inr(r.booked_paise)} / {inr(r.allocated_paise)}</M></View>
+        <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{categoryLabel(r.category)}</Text><M style={{ fontVariant: ['tabular-nums'] }}>{inr(r.booked_paise)} / {inr(r.allocated_paise)}</M></View>
         {editing ? <Input label={tr('Allocation (₹)')} value={amounts[r.category]} onChangeText={value => setAmounts({ ...amounts, [r.category]: value })} keyboardType="decimal-pad" /> : <>
           <View style={{ marginTop: 8 }}><Bar pct={r.allocated_paise ? Math.min(100, r.booked_paise / r.allocated_paise * 100) : r.booked_paise ? 100 : 0} color={r.booked_paise > r.allocated_paise ? C.warn : C.primary} /></View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{PAYERS.map(([k, n]) => { const on = (r.paid_by || 'shared') === k; return <Pressable key={k} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={`${categoryLabel(r.category)}: ${tr(n)}`} onPress={() => !on && payer(r.category, k)} hitSlop={4}
-            style={{ paddingHorizontal: 10, minHeight: 28, justifyContent: 'center', borderRadius: 14, borderWidth: 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.tint : 'transparent' }}><Text style={{ fontSize: 12, color: on ? C.primary : C.mute, fontWeight: on ? '600' : '400' }}>{tr(n)}</Text></Pressable>; })}</View>
+            style={{ paddingHorizontal: 10, minHeight: 28, justifyContent: 'center', borderRadius: 14, borderWidth: 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.tint : 'transparent' }}><Text maxFontSizeMultiplier={1.3} style={{ fontSize: 12, color: on ? C.primary : C.mute, fontWeight: on ? '600' : '400' }}>{tr(n)}</Text></Pressable>; })}</View>
           {r.booked_paise > r.allocated_paise ? <M style={{ color: C.warn, marginTop: 4 }}>{tr('Over budget')} {tr('by')} {inr(r.booked_paise - r.allocated_paise)}</M> : r.due_paise ? <M style={{ marginTop: 4 }}>{tr('Due')} {inr(r.due_paise)}{r.outside_paise ? ` · ${tr('Includes')} ${inr(r.outside_paise)} ${tr('paid outside the app')}` : ''}</M> : null}
         </>}
       </View>)}</Card>
@@ -254,7 +267,7 @@ function Expenses({ categories, onChange }: { categories: string[]; onChange: ()
     </Card>}
     {(data || []).map((x: any) => <Card key={x.id} style={{ paddingVertical: 16 }}>
       <View style={s.row}>
-        <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.payee}</Text><M>{categoryLabel(x.category)} · {inr(x.amount_paise)}</M></View>
+        <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.payee}</Text><M>{categoryLabel(x.category)} · {inr(x.amount_paise)}</M></View>
         <Tag tone={x.paid ? 'ok' : 'gold'} label={x.paid ? tr('Paid') : tr('Still due')} />
       </View>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}><Btn small kind="quiet" title={x.paid ? tr('Mark as due') : tr('Mark as paid')} onPress={() => toggle(x)} /><Btn small kind="quiet" title={tr('Remove')} onPress={() => remove(x)} /></View>

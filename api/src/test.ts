@@ -552,3 +552,54 @@ test('choosing a venue directly marks it booked, ticks the task and fills ceremo
   assert.equal((+new Date(moved) - +new Date(first)) / 864e5, 7, 'ceremonies move with the wedding date');
   assert.equal((await request('/api/shortlist/choose', t, 'POST', { vendor_id: 999999, chosen: true })).status, 404);
 });
+
+test('task handovers retain ownership, priority and notes through completion and export', async () => {
+  const owner = await login('9812300801');
+  await request('/api/wedding', owner, 'POST', { title: 'Task & Team', date: '2027-09-10', city: 'Pune', budget_paise: 100000000 });
+  const body = { title: 'Confirm florist arrival', due: '2027-09-09', owner: '  Meera  ', notes: 'Use the east gate', priority: 'high' };
+  assert.equal((await request('/api/tasks', owner, 'POST', body)).status, 200);
+  let task = (await request('/api/tasks', owner)).data.find((t: any) => t.title === body.title);
+  assert.equal(task.owner, 'Meera'); assert.equal(task.notes, body.notes); assert.equal(task.priority, 'high');
+  assert.equal((await request(`/api/tasks/${task.id}`, outsider, 'PATCH', { owner: 'Other family' })).status, 404);
+  assert.equal((await request(`/api/tasks/${task.id}`, owner, 'PATCH', { done: true })).status, 200);
+  task = (await request('/api/tasks', owner)).data.find((t: any) => t.id === task.id);
+  assert.equal(task.done, 1); assert.equal(task.owner, 'Meera'); assert.equal(task.due, body.due); assert.equal(task.notes, body.notes);
+  const exported = (await request('/api/my-data', owner)).data.tasks.find((t: any) => t.id === task.id);
+  assert.equal(exported.priority, 'high'); assert.equal(exported.owner, 'Meera');
+  assert.equal((await request(`/api/tasks/${task.id}`, owner, 'PATCH', { owner: '', notes: '', priority: 'normal', done: false })).status, 200);
+  task = (await request('/api/tasks', owner)).data.find((t: any) => t.id === task.id);
+  assert.equal(task.owner, ''); assert.equal(task.notes, ''); assert.equal(task.priority, 'normal'); assert.equal(task.done, 0);
+});
+
+test('task handover validation rejects malformed updates without changing saved work', async () => {
+  const task = (await request('/api/tasks', couple)).data[0];
+  for (const body of [{ owner: 123 }, { owner: 'x'.repeat(81) }, { notes: 'x'.repeat(1001) }, { priority: 'urgent' }, { priority: null }]) {
+    assert.equal((await request(`/api/tasks/${task.id}`, couple, 'PATCH', body)).status, 400);
+    assert.equal((await request('/api/tasks', couple, 'POST', { title: 'Invalid handover', ...body })).status, 400);
+  }
+  const unchanged = (await request('/api/tasks', couple)).data.find((t: any) => t.id === task.id);
+  assert.deepEqual(unchanged, task);
+});
+
+test('planning journey follows saved wedding data, priority work and post-wedding tasks', async () => {
+  const owner = await login('9812300802');
+  await request('/api/wedding', owner, 'POST', { title: 'Journey & Joy', date: '2027-12-10', city: 'Jaipur', budget_paise: 100000000 });
+  const journey = async () => {
+    const r = await request('/api/planner/journey', owner); assert.equal(r.status, 200); return r.data;
+  };
+  const checkpoint = (d: any, key: string) => d.phases.flatMap((p: any) => p.checks).find((c: any) => c.key === key);
+  let d = await journey();
+  assert.equal(d.phases.length, 6); assert.equal(d.total, 17);
+  assert.equal(d.done, d.phases.flatMap((p: any) => p.checks).filter((c: any) => c.done).length);
+  assert.equal(checkpoint(d, 'details').done, true);
+  for (const key of ['guest-list', 'rsvp', 'website', 'menu', 'run-sheet', 'thanks', 'after-tasks', 'owners']) assert.equal(checkpoint(d, key).done, false, key);
+  assert.equal((await request('/api/planner/journey')).status, 401);
+  await request('/api/tasks', owner, 'POST', { title: 'Urgent arrival', priority: 'high', owner: 'Auntie' });
+  d = await journey(); assert.equal(checkpoint(d, 'urgent').done, false);
+  for (const task of (await request('/api/tasks', owner)).data) await request(`/api/tasks/${task.id}`, owner, 'PATCH', { owner: 'Coordinator', done: true });
+  d = await journey(); assert.equal(checkpoint(d, 'owners').done, true); assert.equal(checkpoint(d, 'urgent').done, true); assert.equal(checkpoint(d, 'after-tasks').done, true);
+  await request('/api/guests', owner, 'POST', { name: 'Travelling family', side: 'bride' });
+  d = await journey(); assert.equal(checkpoint(d, 'guest-list').done, true); assert.equal(checkpoint(d, 'rsvp').done, false);
+  assert.equal(checkpoint((await request('/api/planner/journey', outsider)).data, 'guest-list').done, false, 'Another wedding must not inherit checkpoints');
+  assert.equal(checkpoint(d, 'run-sheet').tab, 'run');
+});

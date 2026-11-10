@@ -24,7 +24,7 @@ export function RemindersList({ open, skip }: { open: (tab: string) => void; ski
     <M style={{ marginBottom: 4 }}>{tr('Also coming up')}</M>
     {items.map((i: any, k: number) => <Pressable key={k} accessibilityRole="button" onPress={() => i.open === 'vendors' ? nav.navigate('Vendors') : open(i.open)} style={[s.row, { paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line, gap: 8 }]}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: i.tone === 'warn' ? C.warn : C.gold }} />
-      <Text style={{ flex: 1, color: i.tone === 'warn' ? C.warn : C.ink, fontSize: 13 }} numberOfLines={2}>{text(i)}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ flex: 1, color: i.tone === 'warn' ? C.warn : C.ink, fontSize: 13 }} numberOfLines={2}>{text(i)}</Text>
       <Icon name="chevron" size={14} color={C.faint} />
     </Pressable>)}
   </View>;
@@ -48,7 +48,7 @@ export function Shopping() {
   const shown = list.filter(x => filter === 'all' || (filter === 'todo' ? !x.bought : x.kind === filter));
   return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card><View style={{ flexDirection: 'row' }}>{[[`${list.filter(x => x.bought).length}/${list.length}`, tr('Bought')], [inr(spent), tr('Spent')], [inr(budget), tr('Planned')]].map(([v, l], i) =>
-      <View key={i} style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, fontVariant: ['tabular-nums'] }}>{v}</Text><M>{l}</M></View>)}</View></Card>
+      <View key={i} style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink, fontVariant: ['tabular-nums'] }}>{v}</Text><M>{l}</M></View>)}</View></Card>
     {!adding && list.length ? <Btn kind="quiet" icon="plus" title={tr('Add an item')} onPress={() => setAdding(true)} /> : <Card>
       <Input label={tr('Item')} value={f.item} onChangeText={v => set('item', v)} placeholder={tr('e.g. Sangeet lehenga')} maxLength={160} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>{KINDS.map(([k, n]) => <Chip key={k} label={tr(n)} on={f.kind === k} onPress={() => set('kind', k)} />)}</ScrollView>
@@ -63,7 +63,7 @@ export function Shopping() {
     {shown.map((x, i) => <Rise key={x.id} i={i}><Card style={{ paddingVertical: 16 }}><View style={s.row}>
       <Pressable accessibilityRole="checkbox" accessibilityLabel={`${tr('Bought')}: ${x.item}`} accessibilityState={{ checked: !!x.bought }} onPress={() => toggle(x)} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
         <Check on={!!x.bought} />
-        <View style={{ flex: 1 }}><Text style={{ color: x.bought ? C.mute : C.ink, fontSize: 15, fontWeight: '500', textDecorationLine: x.bought ? 'line-through' : 'none' }}>{x.item}</Text>
+        <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: x.bought ? C.mute : C.ink, fontSize: 15, fontWeight: '500', textDecorationLine: x.bought ? 'line-through' : 'none' }}>{x.item}</Text>
           <M>{[tr(KINDS.find(k => k[0] === x.kind)?.[1] || 'Other'), x.for_whom && `${tr('for')} ${x.for_whom}`, x.buyer && `${tr('by')} ${x.buyer}`].filter(Boolean).join(' · ')}</M>
           {x.budget_paise || x.spent_paise ? <M>{x.spent_paise ? `${tr('Spent')} ${inr(x.spent_paise)}` : ''}{x.spent_paise && x.budget_paise ? ' · ' : ''}{x.budget_paise ? `${tr('Budget')} ${inr(x.budget_paise)}` : ''}</M> : null}</View>
       </Pressable>
@@ -83,7 +83,7 @@ export function DayContacts() {
     try { await api('/day-contacts', 'POST', { ...f, name: f.name.trim() }); setF(blank); await load(); } catch (e) { err(e); } finally { setSaving(false); }
   };
   const row = (c: any, key: string, removable?: boolean) => <Card key={key} style={{ paddingVertical: 16 }}><View style={s.row}>
-    <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{c.name}</Text>
+    <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{c.name}</Text>
       <M>{[c.source ? categoryLabel(c.role) : c.role, c.arrival && `${tr('arrives')} ${c.arrival}`].filter(Boolean).join(' · ')}</M>
       {c.source ? <M style={{ fontSize: 12 }}>{tr(c.source === 'booking' ? 'Booked on Shaadi OS' : 'Paid outside the app')}</M> : null}</View>
     {c.phone ? <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -115,13 +115,13 @@ export function Documents() {
   const toggle = async (x: any) => { try { await api(`/documents/${x.id}`, 'PATCH', { done: !x.done }); load(); } catch (e) { err(e); } };
   const add = async () => { if (!title.trim()) return; try { await api('/documents', 'POST', { title: title.trim() }); setTitle(''); load(); } catch (e) { err(e); } };
   return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Card><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{tr('Marriage registration')}</Text>
+    <Card><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{tr('Marriage registration')}</Text>
       <M style={{ marginTop: 4 }}>{tr('The usual papers are listed below. Requirements differ by state, so confirm the list with your Sub-Registrar office before your appointment.')}</M>
       <M style={{ marginTop: 8, color: C.ink, fontVariant: ['tabular-nums'] }}>{docs.filter(d => d.done).length} {tr('of')} {docs.length} {tr('ready')}</M></Card>
     {busy && !docs.length ? null : docs.map(x => <Pressable key={x.id} accessibilityRole="checkbox" accessibilityState={{ checked: !!x.done }} onPress={() => toggle(x)}
       style={{ flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.line }}>
-      <Check on={!!x.done} /><Text style={{ flex: 1, color: x.done ? C.mute : C.ink, fontSize: 15 }}>{x.title}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Remove')} ${x.title}`} onPress={() => remove(`/documents/${x.id}`, x.title, load)} hitSlop={12}><Text style={{ color: C.mute, fontSize: 13 }}>{tr('Remove')}</Text></Pressable>
+      <Check on={!!x.done} /><Text maxFontSizeMultiplier={1.3} style={{ flex: 1, color: x.done ? C.mute : C.ink, fontSize: 15 }}>{x.title}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Remove')} ${x.title}`} onPress={() => remove(`/documents/${x.id}`, x.title, load)} hitSlop={12}><Text maxFontSizeMultiplier={1.3} style={{ color: C.mute, fontSize: 13 }}>{tr('Remove')}</Text></Pressable>
     </Pressable>)}
     <View style={{ marginTop: 16 }}><Input label={tr('Add a document')} value={title} onChangeText={setTitle} placeholder={tr('e.g. Guest ID copies for the hotel')} maxLength={200} onSubmitEditing={add} returnKeyType="done" />
       <Btn kind="quiet" icon="plus" title={tr('Add')} disabled={!title.trim()} onPress={add} /></View>
@@ -145,7 +145,7 @@ export function Seating() {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{events.map(e => <Chip key={e.id} label={e.name} on={current === e.id} onPress={() => { setEventId(e.id); setPickFor(null); }} />)}</ScrollView>
     <M style={{ marginBottom: 12 }}>{guests.length - unseated.length} {tr('of')} {guests.length} {tr('guests seated')}</M>
     {tables.map((t: any) => { const here = seatedHere(t.id); const over = here.length > t.seats; return <Card key={t.id}>
-      <View style={s.row}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{t.name}</Text>
+      <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{t.name}</Text>
         <Tag tone={over ? 'warn' : here.length === t.seats ? 'ok' : 'mute'} label={`${here.length}/${t.seats}${over ? ' · ' + tr('over') : ''}`} /></View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>{here.map((g: any) => <Chip key={g.id} icon="close" label={g.name} onPress={() => seat(t.id, g.id, false)} />)}</View>
       {pickFor === t.id ? <View style={{ marginTop: 4 }}><M style={{ marginBottom: 4 }}>{tr('Tap a guest to seat them here')}</M>

@@ -2,7 +2,7 @@ import { Overview, TaskManager, BudgetManager, WeddingSettings } from './planner
 import { tr } from './i18n';
 import { Events, Family, ShortlistTab, InviteTab } from './more';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { FlatList, ScrollView, Text, View, RefreshControl, Linking, KeyboardAvoidingView, Platform, Pressable, Share } from 'react-native';
+import { FlatList, ScrollView, Text, View, useWindowDimensions, RefreshControl, Linking, KeyboardAvoidingView, Platform, Pressable, Share } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, getBase } from './api';
 import { Btn, Card, Chip, H, Input, M, C, F, inr, err, s, Empty, Rise, Tag, Stars, Bar, Check, Loading, confirm, notify, dateIN, DateField, todayISO, GuestCtx, ContactButtons } from './ui';
@@ -51,11 +51,11 @@ export function VendorScreen({ route, navigation }: any) {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
           {v.sample ? <Tag label={tr('Sample listing')} /> : v.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
           {v.rating ? <View style={{ flexDirection: 'row', alignItems: 'center' }}><Stars n={Math.round(v.rating)} /><M> {v.rating} · {v.reviews} {tr('reviews')}</M></View> : v.unclaimed ? null : <M>{tr('No reviews yet')}</M>}</View>
-        {v.description ? <Text style={{ marginTop: 16, color: C.ink, fontSize: 15, lineHeight: 23 }}>{v.description}</Text> : null}
+        {v.description ? <Text maxFontSizeMultiplier={1.3} style={{ marginTop: 16, color: C.ink, fontSize: 15, lineHeight: 23 }}>{v.description}</Text> : null}
         {v.unclaimed
           ? <View style={{ marginTop: 16 }}>
             {v.contact_phone || v.contact_whatsapp || v.contact_email ? <Card style={{ marginBottom: 12 }}>
-              <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Contact')}</Text>
+              <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Contact')}</Text>
               <ContactButtons phone={v.contact_phone} whatsapp={v.contact_whatsapp} email={v.contact_email} />
               <M style={{ marginTop: 8 }}>{tr('From their website')}{v.contact_source ? ` · ${String(v.contact_source).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}` : ''}</M>
             </Card> : null}
@@ -68,13 +68,13 @@ export function VendorScreen({ route, navigation }: any) {
       <VendorCatalog vendor={v} />
       <H style={{ marginTop: 28 }}>{tr('Reviews')}</H>
       {v.reviewList.length ? v.reviewList.map((r: any, i: number) => <Rise key={i} i={i}><Card>
-        <View style={s.row}><Text style={{ fontWeight: '500', color: C.ink }}>{r.name}</Text><Stars n={r.rating} /></View>
+        <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ fontWeight: '500', color: C.ink }}>{r.name}</Text><Stars n={r.rating} /></View>
         {r.text ? <M style={{ marginTop: 4 }}>{r.text}</M> : null}</Card></Rise>)
         : <Empty icon="star" title={tr('No reviews yet')} text={tr('Only couples who booked and paid through Shaadi OS can review, so every review here is from a real booking.')} />}
       </>}
     </ScrollView>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.line }}>
-      <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text style={{ fontFamily: F.display, fontSize: v.start_paise ? 20 : 15, color: v.start_paise ? C.primary : C.mute }}>{v.start_paise ? inr(v.start_paise) : tr('Not listed')}</Text></View>
+      <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: v.start_paise ? 20 : 15, color: v.start_paise ? C.primary : C.mute }}>{v.start_paise ? inr(v.start_paise) : tr('Not listed')}</Text></View>
       <Pressable accessibilityRole="button" accessibilityLabel={saved ? tr('Shortlisted') : tr('Shortlist')} accessibilityState={{ selected: saved, disabled: saved }} disabled={saved} onPress={shortlist}
         style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 12, borderWidth: 1.3, borderColor: C.primary, backgroundColor: saved ? C.tint : 'transparent', alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.75 : 1 })}>
         <Icon name={saved ? 'heartFill' : 'heart'} size={20} color={C.primary} /></Pressable>
@@ -132,20 +132,20 @@ export function EnquiryForm({ route, navigation }: any) {
   };
   return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40, width: '100%', maxWidth: 640, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><CatMark c={v.category} size={44} />
-      <View style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{v.name}</Text><M>{catLabel(v.category)}{v.start_paise ? ` · ${tr('from')} ${inr(v.start_paise)}` : ''}</M></View></Card>
+      <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{v.name}</Text><M>{catLabel(v.category)}{v.start_paise ? ` · ${tr('from')} ${inr(v.start_paise)}` : ''}</M></View></Card>
     {prefilled ? <M style={{ marginBottom: 12 }}>{tr('Filled in from your wedding plan. Change anything that’s different for this vendor.')}</M> : null}
     <DateField label={tr('Event date')} value={date} onChange={setDate} min={todayISO()} />
     <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('Guests')} value={guests} onChangeText={t => setGuests(t.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="250" /></View>
       <View style={{ flex: 1 }}><Input label={tr('Your budget (₹)')} value={budget} onChangeText={t => setBudget(t.replace(/\D/g, ''))} keyboardType="number-pad" />{+budget > 0 ? <M style={{ marginTop: -8, marginBottom: 12 }}>{inr(+budget * 100)}</M> : null}</View></View>
-    {events.length ? <><Text style={s.label}>{tr('Which ceremonies?')}</Text>
+    {events.length ? <><Text maxFontSizeMultiplier={1.3} style={s.label}>{tr('Which ceremonies?')}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 }}>{events.map(e => { const on = picked.includes(e.name); return <Chip key={e.id} icon={on ? 'check' : undefined} label={e.name} on={on} onPress={() => setPicked(on ? picked.filter(x => x !== e.name) : [...picked, e.name])} />; })}</View></> : null}
-    {others.length ? <><Text style={s.label}>{tr('Also send to')}</Text>
+    {others.length ? <><Text maxFontSizeMultiplier={1.3} style={s.label}>{tr('Also send to')}</Text>
       <M style={{ marginBottom: 8 }}>{tr('Other vendors you shortlisted for this service. Each gets the same enquiry as a separate conversation.')}</M>
       {others.map(o => { const on = alsoTo.includes(o.vendor_id); return <Pressable key={o.vendor_id} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => setAlsoTo(on ? alsoTo.filter(x => x !== o.vendor_id) : [...alsoTo, o.vendor_id])} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48 }}>
-        <Check on={on} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{o.name}</Text><M>{o.city}{o.start_paise ? ` · ${tr('from')} ${inr(o.start_paise)}` : ''}</M></View></Pressable>; })}</> : null}
+        <Check on={on} /><View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}>{o.name}</Text><M>{o.city}{o.start_paise ? ` · ${tr('from')} ${inr(o.start_paise)}` : ''}</M></View></Pressable>; })}</> : null}
     <Input label={tr('Anything else?')} value={note} onChangeText={setNote} multiline placeholder={tr('Timings, style you like, questions for the vendor')} style={{ minHeight: 88, textAlignVertical: 'top' }} maxLength={400} />
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}><Icon name="lock" size={16} color={C.mute} /><M style={{ marginLeft: 8, flex: 1 }}>{tr('Your phone number stays hidden until you book.')}</M></View>
-    {error ? <Text accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, marginBottom: 8 }}>{error}</Text> : null}
+    {error ? <Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, marginBottom: 8 }}>{error}</Text> : null}
     <Btn icon="send" title={busy ? tr('Sending…') : alsoTo.length ? `${tr('Send to')} ${alsoTo.length + 1} ${tr('vendors')}` : tr('Send enquiry')} disabled={busy} onPress={send} /></ScrollView>);
 }
 
@@ -172,7 +172,7 @@ function ToolsHub({ open }: { open: (tab: string) => void }) {
       {PLAN_TOOLS.map(([k, n, icon, detail], i) => <Rise key={k} i={i} style={{ width: '47%', flexGrow: 1 }}>
         <Pressable accessibilityRole="button" accessibilityLabel={tr(n)} onPress={() => open(k)} style={({ pressed }) => ({ minHeight: 120, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, opacity: pressed ? 0.8 : 1 })}>
           <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} size={22} color={C.primary} /></View>
-          <Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', marginTop: 12 }}>{tr(n)}</Text>
+          <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500', marginTop: 12 }}>{tr(n)}</Text>
           <M style={{ marginTop: 2 }}>{tr(detail)}</M>
         </Pressable>
       </Rise>)}
@@ -185,7 +185,7 @@ export function Plan(props: any) {
   return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: C.bg }}><PlanBody {...props} /></View>;
 }
 function PlanBody({ navigation: nav, route }: any) {
-  const [me, reload] = useLoad<any>('/me', null); const [tab, setTab] = useState('overview');
+  const [me, reload] = useLoad<any>('/me', null); const [tab, setTab] = useState('overview'); const narrow = useWindowDimensions().width < 360;
   // Other screens (Profile) can open a specific section of the plan.
   useEffect(() => { if (route?.params?.tab) setTab(route.params.tab); }, [route?.params?.tab, route?.params?.at]); 
   if (!me) return <Loading what={tr('your wedding')} />;
@@ -193,20 +193,20 @@ function PlanBody({ navigation: nav, route }: any) {
   const tool = PLAN_TOOLS.find(t => t[0] === tab);
   return (<View style={{ flex: 1, backgroundColor: C.bg }}>
     <View style={{ paddingHorizontal: 16, paddingTop: 12, maxWidth: 700, width: '100%', alignSelf: 'center' }}>
-      <Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink }} numberOfLines={1}>{me.wedding.title}</Text>
+      <Text maxFontSizeMultiplier={1.2} style={{ fontFamily: F.display, fontSize: 24, color: C.ink }} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>{me.wedding.title}</Text>
       <M>{longDate(me.wedding.date)} · {me.wedding.city}</M>
       {/* Five fixed sections that always fit the width; everything else lives under Tools. */}
       <View accessibilityRole="tablist" style={{ flexDirection: 'row', marginTop: 12, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 4 }}>
         {PLAN_BAR.map(([k, n, icon]) => { const on = k === 'tools' ? tab === 'tools' || !!tool : tab === k; return (
           <Pressable key={k} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={tr(n)} onPress={() => setTab(k)}
-            style={({ pressed }) => ({ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 52, borderRadius: 10, backgroundColor: on ? C.tint : 'transparent', opacity: pressed ? 0.7 : 1 })}>
+            style={({ pressed }) => ({ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: narrow ? 48 : 52, paddingHorizontal: 2, borderRadius: 10, backgroundColor: on ? C.tint : 'transparent', opacity: pressed ? 0.7 : 1 })}>
             <Icon name={icon} size={20} color={on ? C.primary : C.mute} strokeWidth={on ? 1.8 : 1.5} />
-            <Text style={{ fontSize: 12, color: on ? C.primary : C.mute, fontWeight: on ? '600' : '500' }} numberOfLines={1}>{tr(n)}</Text>
+            <Text maxFontSizeMultiplier={1.1} style={{ fontSize: narrow ? 11 : 12, color: on ? C.primary : C.mute, fontWeight: on ? '600' : '500' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{tr(n)}</Text>
           </Pressable>); })}
       </View>
       {tool ? <Pressable accessibilityRole="button" onPress={() => setTab('tools')} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, marginTop: 4 }}>
         <View style={{ transform: [{ scaleX: -1 }] }}><Icon name="chevron" size={16} color={C.primary} /></View>
-        <Text style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{tr('All tools')}</Text><Text style={{ color: C.mute, fontSize: 13 }}> · {tr(tool[1])}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontSize: 13, fontWeight: '500' }}>{tr('All tools')}</Text><Text maxFontSizeMultiplier={1.3} style={{ color: C.mute, fontSize: 13 }}> · {tr(tool[1])}</Text>
       </Pressable> : null}
     </View>
     <Rise key={tab} style={{ flex: 1 }}>{tab === 'tools' ? <ToolsHub open={setTab} /> : tab === 'overview' ? <Overview open={setTab} nav={nav} /> : tab === 'settings' ? <WeddingSettings wedding={me.wedding} onSaved={reload} /> : tab === 'checklist' ? <TaskManager /> : tab === 'budget' ? <BudgetManager /> : tab === 'events' ? <Events /> : tab === 'shortlist' ? <ShortlistTab navigation={nav} /> : tab === 'family' ? <Family /> : tab === 'shagun' ? <Gifts /> : tab === 'stays' ? <Stays /> : tab === 'run' ? <RunSheet /> : tab === 'shopping' ? <Shopping /> : tab === 'contacts' ? <DayContacts /> : tab === 'documents' ? <Documents /> : tab === 'seating' ? <Seating /> : tab === 'invite' ? <InviteTab title={me.wedding.title} /> : tab === 'muhurat' ? <Muhurat onDateChange={reload} /> : tab === 'menu' ? <Menu /> : tab === 'transport' ? <Transport /> : tab === 'practice' ? <Practice /> : tab === 'ideas' ? <Ideas /> : tab === 'giving' ? <GiftsToGive /> : <Guests />}</Rise></View>);
@@ -219,8 +219,8 @@ const GUEST_COUNTS = [100, 250, 500, 1000];
 const SetupSection = ({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) => (
   <Card>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: hint ? 4 : 12 }}>
-      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: C.primary, fontSize: 13, fontWeight: '600' }}>{n}</Text></View>
-      <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{title}</Text>
+      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontSize: 13, fontWeight: '600' }}>{n}</Text></View>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{title}</Text>
     </View>
     {hint ? <M style={{ marginBottom: 12 }}>{hint}</M> : null}
     {children}
@@ -246,9 +246,9 @@ function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
   return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <View style={{ backgroundColor: C.primary, padding: 24, paddingTop: 20, overflow: 'hidden' }}>
       <View pointerEvents="none" style={{ position: 'absolute', right: -30, bottom: -50, opacity: 0.3 }}><FloralArch size={150} color={C.goldSoft} /></View>
-      <Text style={{ color: '#F4DDE5', fontSize: 13 }}>{tr('Last step')}</Text>
-      <Text style={{ fontFamily: F.display, fontSize: 28, color: C.goldSoft, marginTop: 4 }}>{first ? `${tr('Welcome')}, ${first}` : tr('Welcome')}</Text>
-      <Text style={{ color: '#F4DDE5', fontSize: 15, lineHeight: 22, marginTop: 8, maxWidth: 300 }}>{tr('Four quick answers and we’ll build your checklist, budget split and ceremonies. You can change any of it later.')}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ color: '#F4DDE5', fontSize: 13 }}>{tr('Last step')}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 28, color: C.goldSoft, marginTop: 4 }}>{first ? `${tr('Welcome')}, ${first}` : tr('Welcome')}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ color: '#F4DDE5', fontSize: 15, lineHeight: 22, marginTop: 8, maxWidth: 300 }}>{tr('Four quick answers and we’ll build your checklist, budget split and ceremonies. You can change any of it later.')}</Text>
     </View>
     <View style={{ padding: 16, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
       <SetupSection n={1} title={tr('Who’s getting married?')}>
@@ -259,7 +259,7 @@ function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
       </SetupSection>
       <SetupSection n={2} title={tr('When and where?')}>
         <DateField label={tr('Wedding date')} value={f.date} onChange={v => set('date', v)} min={todayISO()} placeholder={tr('Choose the main wedding day')} />
-        <Text style={s.label}>{tr('City')}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={s.label}>{tr('City')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{SETUP_CITIES.map(c => <Chip key={c} label={c} on={f.city === c} onPress={() => set('city', c)} />)}<Chip label={tr('Other')} on={f.city === 'other'} onPress={() => set('city', 'other')} /></View>
         {f.city === 'other' ? <Input label={tr('Your city')} value={f.otherCity} onChangeText={v => set('otherCity', v)} autoCapitalize="words" maxLength={60} /> : null}
       </SetupSection>
@@ -273,7 +273,7 @@ function Setup({ onDone, name }: { onDone: () => void; name?: string }) {
       <SetupSection n={4} title={tr('Your traditions')} hint={tr('We suggest ceremonies to match. Keep only the ones your families want.')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{COMMUNITIES.map(c => <Chip key={c} label={tr(c)} on={f.community === c} onPress={() => set('community', c)} />)}</View>
       </SetupSection>
-      {!!error && <Text accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, lineHeight: 20, marginBottom: 8 }}>{error}</Text>}
+      {!!error && <Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, lineHeight: 20, marginBottom: 8 }}>{error}</Text>}
       <Btn title={busy ? tr('Creating your plan…') : tr('Create our wedding plan')} onPress={go} disabled={busy} />
     </View>
   </ScrollView>);

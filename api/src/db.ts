@@ -31,3 +31,8 @@ if (!q('PRAGMA table_info(vendors)').some((c: any) => c.name === 'sample')) {
   db.exec('ALTER TABLE vendors ADD COLUMN sample INT DEFAULT 0');
   run("UPDATE vendors SET sample=1, verified=0 WHERE user_id IN (SELECT id FROM users WHERE role='vendor' AND phone BETWEEN '9000000001' AND '9000000099')");
 }
+
+// Add collaboration details without changing existing checklist dates or completion.
+for (const [column, type] of [['owner', "TEXT NOT NULL DEFAULT ''"], ['notes', "TEXT NOT NULL DEFAULT ''"], ['priority', "TEXT NOT NULL DEFAULT 'normal'"]]) {
+  if (!q('PRAGMA table_info(tasks)').some(c => c.name === column)) db.exec(`ALTER TABLE tasks ADD COLUMN ${column} ${type}`);
+}

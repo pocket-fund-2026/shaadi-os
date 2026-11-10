@@ -38,9 +38,9 @@ function BootScreen({ fontsReady }: { fontsReady: boolean }) {
       <Logo size={120} radius={0} />
     </View>
     <Animated.View style={{ position: 'absolute', top: '50%', left: 32, right: 32, marginTop: 84, alignItems: 'center', opacity: fade }}>
-      <Text style={{ fontSize: 28, color: C.goldSoft, fontFamily: fontsReady ? F.display : Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }) }}>Shaadi OS</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 28, color: C.goldSoft, fontFamily: fontsReady ? F.display : Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }) }}>Shaadi OS</Text>
       <ActivityIndicator style={{ marginTop: 24 }} color={C.goldSoft} />
-      <Text accessibilityLiveRegion="polite" style={{ marginTop: 16, minHeight: 60, maxWidth: 280, textAlign: 'center', fontSize: 13, lineHeight: 20, color: '#F4DDE5' }}>
+      <Text maxFontSizeMultiplier={1.3} accessibilityLiveRegion="polite" style={{ marginTop: 16, minHeight: 60, maxWidth: 280, textAlign: 'center', fontSize: 13, lineHeight: 20, color: '#F4DDE5' }}>
         {slow === 2 ? tr('Still connecting. Check your internet connection; the app will open as soon as it reaches the server.') : slow === 1 ? tr('Connecting to the server…') : ''}
       </Text>
     </Animated.View>
@@ -48,7 +48,7 @@ function BootScreen({ fontsReady }: { fontsReady: boolean }) {
 }
 const Tab = createBottomTabNavigator(); const Stack = createNativeStackNavigator();
 const hdr = { headerStyle: { backgroundColor: C.bg }, headerTintColor: C.primary, headerShadowVisible: false, headerTitleStyle: { fontFamily: F.display, color: C.ink, fontSize: 20 } };
-const tabs = { ...hdr, tabBarActiveTintColor: C.primary, tabBarInactiveTintColor: C.mute, tabBarStyle: { backgroundColor: '#fff', borderTopColor: C.line, ...(Platform.OS === 'web' ? { height: 72, paddingTop: 8, paddingBottom: 12 } : null) }, tabBarLabelStyle: { fontSize: 12, lineHeight: 14, fontWeight: '500' as const } };
+const tabs = { ...hdr, tabBarAllowFontScaling: false, tabBarActiveTintColor: C.primary, tabBarInactiveTintColor: C.mute, tabBarStyle: { backgroundColor: '#fff', borderTopColor: C.line, ...(Platform.OS === 'web' ? { height: 72, paddingTop: 8, paddingBottom: 12 } : null) }, tabBarLabelStyle: { fontSize: 12, lineHeight: 14, fontWeight: '500' as const } };
 const ti = (name: IconName) => ({ color, focused }: { color: string; focused: boolean }) => <TabIcon name={name} focused={focused} color={color} />;
 const CoupleTabs = (me: any, logout: () => void, landing?: string) => function T() {
   const t = useT();

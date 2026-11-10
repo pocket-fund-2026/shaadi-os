@@ -1,3 +1,4 @@
+import { weddingJourney } from './journey.ts';
 import { z } from 'zod';
 import { db, q, one, run } from './db.ts';
 import { GUIDE, guideForWedding } from './planning-guide.ts';
@@ -18,6 +19,7 @@ export function mountPlanner(app: any, auth: any, myWedding: (id: number) => any
     if (!w) throw fail(400, 'Create your wedding first');
     return w;
   };
+  app.get('/api/planner/journey', auth, wrap((req: any, res: any) => res.json(weddingJourney(wedding(req)))));
   app.get('/api/planner/guide', auth, wrap((req: any, res: any) => {
     const w = wedding(req);
     res.json(guideForWedding(w.date, q('SELECT title FROM tasks WHERE wedding_id=?', w.id), new Date(), w.community));

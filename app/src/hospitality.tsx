@@ -27,8 +27,8 @@ export function Gifts() {
   const shown = pendingOnly ? list.filter(g => !g.thanked) : list;
   return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card><View style={{ flexDirection: 'row' }}>
-      <View style={{ flex: 1 }}><M>{tr('Shagun received')}</M><Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{inr(cash)}</Text></View>
-      <View style={{ flex: 1 }}><M>{tr('Thank-you notes')}</M><Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{thanked}/{list.length}</Text></View>
+      <View style={{ flex: 1 }}><M>{tr('Shagun received')}</M><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{inr(cash)}</Text></View>
+      <View style={{ flex: 1 }}><M>{tr('Thank-you notes')}</M><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{thanked}/{list.length}</Text></View>
     </View></Card>
     {!adding && list.length ? <Btn kind="quiet" icon="plus" title={tr('Add a gift')} onPress={() => setAdding(true)} /> : <Card>
       <Input label={tr('From')} value={giver} onChangeText={setGiver} placeholder={tr('Name or family')} maxLength={120} />
@@ -46,7 +46,7 @@ export function Gifts() {
       <View style={s.row}>
         <Pressable accessibilityRole="checkbox" accessibilityLabel={`${tr('Thank-you sent to')} ${g.giver}`} accessibilityState={{ checked: !!g.thanked }} onPress={() => thank(g)} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <Check on={!!g.thanked} />
-          <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{g.giver}</Text>
+          <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{g.giver}</Text>
             <M>{g.kind === 'cash' ? inr(g.amount_paise) : g.description || tr('Gift')}{g.event_name ? ` · ${g.event_name}` : ''}</M></View>
         </Pressable>
         <Btn small kind="quiet" title={tr('Remove')} onPress={() => remove(g)} />
@@ -73,7 +73,7 @@ export function Stays() {
   const sharePickups = () => Share.share({ message: pickups.map(x => `${x.guest_name} (${x.people}) · ${x.arrival || tr('arrival time not set')}${x.hotel ? ` → ${x.hotel}` : ''}`).join('\n') }).catch(() => {});
   return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card><View style={{ flexDirection: 'row' }}>{[[people, tr('Staying')], [rooms, tr('Rooms')], [pickups.length, tr('Pickups')]].map(([n, l], i) =>
-      <View key={i} style={{ flex: 1, alignItems: 'center' }}><Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{n as number}</Text><M>{l as string}</M></View>)}</View>
+      <View key={i} style={{ flex: 1, alignItems: 'center' }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.ink, fontVariant: ['tabular-nums'] }}>{n as number}</Text><M>{l as string}</M></View>)}</View>
       {pickups.length ? <Btn small kind="quiet" icon="share" title={tr('Share pickup list')} onPress={sharePickups} /> : null}
     </Card>
     {adding ? <Card>
@@ -84,12 +84,12 @@ export function Stays() {
       <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><DateField label={tr('Check-in')} value={f.check_in} onChange={v => set('check_in', v)} optional /></View>
         <View style={{ flex: 1 }}><DateField label={tr('Check-out')} value={f.check_out} onChange={v => set('check_out', v)} min={f.check_in || undefined} optional /></View></View>
       <Input label={tr('Arrival')} value={f.arrival} onChangeText={v => set('arrival', v)} placeholder={tr('Train or flight and time')} maxLength={160} />
-      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: f.pickup }} onPress={() => set('pickup', !f.pickup)} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48 }}><Check on={f.pickup} /><Text style={{ color: C.ink, fontSize: 15 }}>{tr('Needs a pickup')}</Text></Pressable>
+      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: f.pickup }} onPress={() => set('pickup', !f.pickup)} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48 }}><Check on={f.pickup} /><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}>{tr('Needs a pickup')}</Text></Pressable>
       <Btn icon="plus" title={tr('Add stay')} disabled={saving} onPress={add} /><Btn kind="ghost" title={tr('Cancel')} onPress={() => { setAdding(false); setF(blank); }} />
     </Card> : <Btn icon="plus" title={tr('Add a guest stay')} onPress={() => setAdding(true)} />}
     {!list.length && !busy && !adding ? <Empty icon="family" title={tr('No stays planned yet')} text={tr('Add relatives coming from out of town with their hotel, dates and arrival, so pickups and rooms are sorted before the wedding.')} /> : null}
     {list.map((x, i) => <Rise key={x.id} i={i}><Card>
-      <View style={s.row}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500', flex: 1 }}>{x.guest_name} · {x.people}</Text>{x.pickup ? <Tag tone="gold" label={tr('Needs pickup')} /> : null}</View>
+      <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500', flex: 1 }}>{x.guest_name} · {x.people}</Text>{x.pickup ? <Tag tone="gold" label={tr('Needs pickup')} /> : null}</View>
       {x.hotel || x.room ? <M style={{ marginTop: 4 }}>{[x.hotel, x.room ? `${tr('Room')} ${x.room}` : ''].filter(Boolean).join(' · ')}</M> : null}
       {x.check_in ? <M>{dateIN(x.check_in)}{x.check_out ? ` – ${dateIN(x.check_out)}` : ''}</M> : null}
       {x.arrival ? <M>{tr('Arrival')}: {x.arrival}</M> : null}
@@ -125,12 +125,12 @@ export function RunSheet() {
   return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{events.map(e => <Chip key={e.id} label={e.name} on={current === e.id} onPress={() => setEventId(e.id)} />)}</ScrollView>
     <Card>
-      <View style={s.row}><View style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{event?.name}</Text><M>{event?.date ? dateIN(event.date) : tr('Date not set')}{event?.venue ? ` · ${event.venue}` : ''}</M></View>
+      <View style={s.row}><View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{event?.name}</Text><M>{event?.date ? dateIN(event.date) : tr('Date not set')}{event?.venue ? ` · ${event.venue}` : ''}</M></View>
         {rows.length ? <Btn small kind="quiet" icon="share" title={tr('Share')} onPress={share} /> : null}</View>
       {rows.length ? rows.map((x, i) => <View key={x.id} style={[s.row, { paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.line, gap: 12, marginTop: i ? 0 : 12 }]}>
-        <Text style={{ width: 72, color: C.primary, fontSize: 15, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{showTime(x.time)}</Text>
-        <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15 }}>{x.title}</Text>{x.owner ? <M>{x.owner}</M> : null}</View>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Remove')} ${x.title}`} onPress={() => remove(x)} hitSlop={12} style={{ padding: 4 }}><Text style={{ color: C.mute, fontSize: 13 }}>{tr('Remove')}</Text></Pressable>
+        <Text maxFontSizeMultiplier={1.3} style={{ width: 72, color: C.primary, fontSize: 15, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{showTime(x.time)}</Text>
+        <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}>{x.title}</Text>{x.owner ? <M>{x.owner}</M> : null}</View>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Remove')} ${x.title}`} onPress={() => remove(x)} hitSlop={12} style={{ padding: 4 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.mute, fontSize: 13 }}>{tr('Remove')}</Text></Pressable>
       </View>) : <M style={{ marginTop: 12 }}>{tr('Nothing scheduled yet. Add the first item below.')}</M>}
     </Card>
     <Card>

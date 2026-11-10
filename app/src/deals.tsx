@@ -53,7 +53,7 @@ export function DealsList({ navigation, vendor }: { navigation: any; vendor?: bo
   return <FlatList style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32, width: '100%', maxWidth: 700, alignSelf: 'center' }} data={shown} keyExtractor={d => String(d.id)}
     refreshControl={<RefreshControl refreshing={busy} onRefresh={load} tintColor={C.primary} />}
     ListHeaderComponent={list.length ? <View>{comparable.map(([cat, n]) => <Card key={cat} onPress={() => navigation.navigate('CompareQuotes', { category: cat })} style={{ backgroundColor: C.tint, borderColor: C.primary, padding: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Icon name={CAT_ICON[cat] || 'store'} size={22} color={C.primary} /><Text style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: '500' }}>{tr('Compare')} {n} {tr('quotes for')} {categoryLabel(cat)}</Text><Icon name="chevron" size={16} color={C.primary} /></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Icon name={CAT_ICON[cat] || 'store'} size={22} color={C.primary} /><Text maxFontSizeMultiplier={1.3} style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: '500' }}>{tr('Compare')} {n} {tr('quotes for')} {categoryLabel(cat)}</Text><Icon name="chevron" size={16} color={C.primary} /></View>
     </Card>)}<View style={{ flexDirection: 'row', marginBottom: 8 }}>
       <Chip label={tr('All')} on={filter === 'all'} onPress={() => setFilter('all')} />
       <Chip label={`${tr('Needs action')}${counts.action ? ` · ${counts.action}` : ''}`} on={filter === 'action'} onPress={() => setFilter('action')} />
@@ -66,13 +66,13 @@ export function DealsList({ navigation, vendor }: { navigation: any; vendor?: bo
       return <Rise i={index}><Card onPress={() => navigation.navigate('Chat', { id: d.id, title: d.other_name, vendor })} style={{ padding: 16, borderColor: step?.urgent ? C.primary : C.line }}>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}>
-            {vendor ? <Text style={{ fontFamily: F.display, fontSize: 17, color: C.primary }}>{(d.other_name || '?')[0].toUpperCase()}</Text> : <Icon name={CAT_ICON[d.category] || 'store'} size={22} color={C.primary} />}
+            {vendor ? <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.primary }}>{(d.other_name || '?')[0].toUpperCase()}</Text> : <Icon name={CAT_ICON[d.category] || 'store'} size={22} color={C.primary} />}
           </View>
           <View style={{ flex: 1 }}>
-            <View style={s.row}><Text style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: '500' }} numberOfLines={1}>{d.other_name}</Text><Tag tone={tag.tone} label={tr(vendor && VENDOR_TAG[d.stage] ? VENDOR_TAG[d.stage] : tag.label)} /></View>
+            <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: '500' }} numberOfLines={1}>{d.other_name}</Text><Tag tone={tag.tone} label={tr(vendor && VENDOR_TAG[d.stage] ? VENDOR_TAG[d.stage] : tag.label)} /></View>
             <M>{vendor ? `${d.guests} ${tr('guests')}` : categoryLabel(d.category)} · {dateIN(d.event_date)}{d.booking ? ` · ${inr(d.booking.total_paise)}` : d.quote ? ` · ${inr(d.quote.total_paise)}` : ''}</M>
             {d.last_message ? <M style={{ marginTop: 4 }} numberOfLines={1}>{d.last_message.mine ? `${tr('You')}: ` : ''}{d.last_message.body}</M> : null}
-            {step ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}><Text style={{ flex: 1, color: step.urgent ? C.primary : C.mute, fontSize: 13, fontWeight: step.urgent ? '600' : '400' }}>{step.text}</Text>{step.urgent ? <Icon name="chevron" size={16} color={C.primary} /> : null}</View> : null}
+            {step ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}><Text maxFontSizeMultiplier={1.3} style={{ flex: 1, color: step.urgent ? C.primary : C.mute, fontSize: 13, fontWeight: step.urgent ? '600' : '400' }}>{step.text}</Text>{step.urgent ? <Icon name="chevron" size={16} color={C.primary} /> : null}</View> : null}
           </View>
         </View>
       </Card></Rise>; }} />;
@@ -88,7 +88,7 @@ function StageTracker({ stage }: { stage: string }) {
         <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: i <= at ? C.primary : C.card, borderWidth: 2, borderColor: i <= at ? C.primary : C.line, alignItems: 'center', justifyContent: 'center' }}>{i < at || stage === 'completed' ? <Icon name="check" size={12} color="#fff" strokeWidth={2.4} /> : null}</View>
         <View style={{ flex: 1, height: 2, backgroundColor: i === STAGES.length - 1 ? 'transparent' : i < at ? C.primary : C.line }} />
       </View>
-      <Text style={{ fontSize: 12, color: i === at ? C.primary : C.mute, fontWeight: i === at ? '600' : '400', marginTop: 4 }}>{tr(label)}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 12, color: i === at ? C.primary : C.mute, fontWeight: i === at ? '600' : '400', marginTop: 4 }}>{tr(label)}</Text>
     </View>)}
   </View>;
 }
@@ -110,7 +110,7 @@ function QuoteBuilder({ enquiryId, onSent, onCancel }: { enquiryId: number; onSe
     try { await api(`/enquiries/${enquiryId}/quotes`, 'POST', { items: valid.map(i => ({ label: i.label.trim(), amount_paise: amount(i.amount) })) }); onSent(); } catch (e: any) { setError(e?.message || String(e)); } finally { setBusy(false); }
   };
   return <Card style={{ borderColor: C.primary }}>
-    <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginBottom: 12 }}>{tr('Your quote')}</Text>
+    <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginBottom: 12 }}>{tr('Your quote')}</Text>
     {packages.length ? <><M style={{ marginBottom: 8 }}>{tr('Start from one of your packages')}</M>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}>{packages.map(p => <Chip key={p.id} icon="plus" label={`${p.title} · ${inr(p.price_paise)}`} onPress={() => usePackage(p)} />)}</View></> : null}
     {items.map((it, k) => <View key={k} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
@@ -118,10 +118,10 @@ function QuoteBuilder({ enquiryId, onSent, onCancel }: { enquiryId: number; onSe
       <View style={{ flex: 1 }}><Input label={k === 0 ? tr('Amount (₹)') : undefined} value={it.amount} onChangeText={v => set(k, 'amount', v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" accessibilityLabel={`${tr('Amount')} ${k + 1}`} /></View>
       {items.length > 1 ? <Pressable accessibilityRole="button" accessibilityLabel={tr('Remove item')} onPress={() => setItems(items.filter((_, j) => j !== k))} hitSlop={8} style={{ height: 52, justifyContent: 'center', marginBottom: 12 }}><Icon name="close" size={18} color={C.mute} /></Pressable> : null}
     </View>)}
-    <Pressable accessibilityRole="button" onPress={() => setItems([...items, { label: '', amount: '' }])} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40 }}><Icon name="plus" size={16} color={C.primary} /><Text style={{ color: C.primary, fontWeight: '500' }}>{tr('Add another item')}</Text></Pressable>
-    <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, paddingTop: 12, marginTop: 8 }]}><Text style={{ color: C.ink, fontWeight: '500' }}>{tr('Total')}</Text><Text style={{ fontFamily: F.display, fontSize: 20, color: C.primary }}>{inr(total)}</Text></View>
+    <Pressable accessibilityRole="button" onPress={() => setItems([...items, { label: '', amount: '' }])} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40 }}><Icon name="plus" size={16} color={C.primary} /><Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontWeight: '500' }}>{tr('Add another item')}</Text></Pressable>
+    <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, paddingTop: 12, marginTop: 8 }]}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontWeight: '500' }}>{tr('Total')}</Text><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.primary }}>{inr(total)}</Text></View>
     {total > 0 ? <View style={{ marginTop: 8 }}>{SPLIT.map(([l, pct]) => <View key={l} style={s.row}><M>{tr(l)} · {pct}%</M><M>{inr(Math.round(total * pct / 100))}</M></View>)}</View> : null}
-    {error ? <Text accessibilityRole="alert" style={{ color: C.warn, marginTop: 8 }}>{error}</Text> : null}
+    {error ? <Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn, marginTop: 8 }}>{error}</Text> : null}
     <Btn icon="send" title={busy ? tr('Sending…') : tr('Send quote')} disabled={busy} onPress={send} /><Btn kind="ghost" title={tr('Cancel')} onPress={onCancel} />
   </Card>;
 }
@@ -152,11 +152,11 @@ export function DealScreen({ route, navigation }: any) {
   return <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90} style={{ flex: 1, backgroundColor: C.bg }}>
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24, width: '100%', maxWidth: 700, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={C.primary} />}>
       <Card>
-        <Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink }}>{deal.other_name}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.ink }}>{deal.other_name}</Text>
         <M>{vendor ? `${deal.guests} ${tr('guests')}` : categoryLabel(deal.category)} · {dateIN(deal.event_date)} · {tr('budget')} {inr(deal.budget_paise)}</M>
         {detail.enquiry.note ? <View style={{ marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: C.bg }}>
           <M style={{ fontSize: 12 }}>{vendor ? tr('Their enquiry') : tr('Your enquiry')}</M>
-          <Text style={{ color: C.ink, fontSize: 15, lineHeight: 22, marginTop: 2 }}>{detail.enquiry.note}</Text>
+          <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, lineHeight: 22, marginTop: 2 }}>{detail.enquiry.note}</Text>
         </View> : null}
         {deal.contact_phone ? <View style={{ marginTop: 12 }}><M>{tr(vendor ? 'Booked, so you can now reach them directly' : 'Booked, so you can now reach the vendor directly')}</M><ContactButtons phone={deal.contact_phone} whatsapp={deal.contact_phone} /></View> : null}
         <StageTracker stage={deal.stage} />
@@ -165,7 +165,7 @@ export function DealScreen({ route, navigation }: any) {
       {alsoSent?.length ? <Card style={{ padding: 16 }}><M>{tr('The same enquiry also went to')} {alsoSent.join(', ')}. {tr('Their replies appear in My vendors.')}</M></Card> : null}
       {step ? <Card style={{ backgroundColor: step.urgent ? C.tint : C.card, borderColor: step.urgent ? C.primary : C.line }}>
         <M>{tr('Next step')}</M>
-        <Text style={{ color: C.ink, fontSize: 17, fontWeight: '500', marginTop: 2 }}>{step.text}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 17, fontWeight: '500', marginTop: 2 }}>{step.text}</Text>
         {!vendor && deal.stage === 'quoted' && quote ? <Btn icon="shield" title={tr('Accept & book')} disabled={working} onPress={() => accept(quote)} /> : null}
         {!vendor && open && deal.stage !== 'disputed' ? (open.status === 'pending'
           ? <Btn title={`${tr('Pay (demo)')} ${inr(open.amount_paise)}`} disabled={working} onPress={() => act(`/milestones/${open.id}/pay`)} />
@@ -176,18 +176,18 @@ export function DealScreen({ route, navigation }: any) {
       {quoting ? <QuoteBuilder enquiryId={id} onSent={() => { setQuoting(false); load(); }} onCancel={() => setQuoting(false)} /> : null}
 
       {quote ? <Card>
-        <View style={s.row}><Text style={{ color: C.ink, fontWeight: '500' }}>{tr('Quote')} v{quote.version}</Text><Tag tone={quote.status === 'accepted' ? 'ok' : 'gold'} label={tr(quote.status === 'accepted' ? 'Accepted' : 'Waiting for you')} /></View>
-        <Text style={{ fontFamily: F.display, fontSize: 24, color: C.primary, marginVertical: 4 }}>{inr(quote.total_paise)}</Text>
+        <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontWeight: '500' }}>{tr('Quote')} v{quote.version}</Text><Tag tone={quote.status === 'accepted' ? 'ok' : 'gold'} label={tr(quote.status === 'accepted' ? 'Accepted' : 'Waiting for you')} /></View>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.primary, marginVertical: 4 }}>{inr(quote.total_paise)}</Text>
         {quote.items.map((i: any, k: number) => <View key={k} style={s.row}><M style={{ flex: 1 }}>{i.label}</M><M>{inr(i.amount_paise)}</M></View>)}
         {!deal.booking ? <M style={{ marginTop: 8 }}>{tr('Paid in instalments')}: {quote.milestones.map((m: any) => `${tr(m.label)} ${m.pct}%`).join(' · ')}</M> : null}
         {vendor && !deal.booking && !quoting ? <Btn small kind="quiet" title={tr('Send a revised quote')} onPress={() => setQuoting(true)} /> : null}
       </Card> : null}
 
       {deal.booking ? <Card>
-        <View style={s.row}><Text style={{ color: C.ink, fontWeight: '500' }}>{tr('Payments')}</Text><M>{inr(paid)} {tr('of')} {inr(deal.booking.total_paise)}</M></View>
+        <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontWeight: '500' }}>{tr('Payments')}</Text><M>{inr(paid)} {tr('of')} {inr(deal.booking.total_paise)}</M></View>
         <View style={{ marginVertical: 8 }}><Bar pct={deal.booking.total_paise ? paid / deal.booking.total_paise * 100 : 0} color={C.ok} /></View>
         {ms.map(m => <View key={m.id} style={[s.row, { paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line }]}>
-          <View style={{ flex: 1 }}><Text style={{ color: C.ink }}>{tr(m.label)}</Text><M style={{ color: m.status === 'pending' && m.due_on && m.due_on < today() ? C.warn : C.mute }}>{inr(m.amount_paise)}{m.due_on && m.status === 'pending' ? ` · ${m.due_on < today() ? tr('overdue since') : tr('due')} ${dateIN(m.due_on)}` : ''}</M></View>
+          <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink }}>{tr(m.label)}</Text><M style={{ color: m.status === 'pending' && m.due_on && m.due_on < today() ? C.warn : C.mute }}>{inr(m.amount_paise)}{m.due_on && m.status === 'pending' ? ` · ${m.due_on < today() ? tr('overdue since') : tr('due')} ${dateIN(m.due_on)}` : ''}</M></View>
           <Tag tone={m.status === 'released' ? 'ok' : m.status === 'held' ? 'gold' : 'mute'} label={tr(m.status === 'released' ? 'Released' : m.status === 'held' ? 'Held in escrow' : 'Due')} />
         </View>)}
         <M style={{ marginTop: 8 }}>{vendor ? `${tr('Platform fee')} ${deal.booking.commission_bps / 100}% · ${tr('paid by you when money is released')}` : tr('Each payment is held until you release it, so you only release money for work that is done.')}</M>
@@ -198,18 +198,18 @@ export function DealScreen({ route, navigation }: any) {
       </Card> : null}
 
       {canReview ? <Card>
-        <Text style={{ color: C.ink, fontWeight: '500' }}>{tr('Rate this vendor')}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontWeight: '500' }}>{tr('Rate this vendor')}</Text>
         <View style={{ flexDirection: 'row', marginVertical: 8 }}>{[1, 2, 3, 4, 5].map(n => <Pressable key={n} accessibilityRole="button" accessibilityLabel={`${n} stars`} accessibilityState={{ selected: n <= rating }} hitSlop={6} onPress={() => setRating(n)} style={{ padding: 4 }}><Icon name="star" size={28} color={n <= rating ? C.gold : C.line} /></Pressable>)}</View>
         <Btn small title={tr('Submit review')} disabled={!rating || working} onPress={() => act(`/bookings/${deal.booking.id}/review`, { rating, text: '' })} />
       </Card> : null}
 
-      <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginTop: 8, marginBottom: 8 }}>{tr('Messages')}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginTop: 8, marginBottom: 8 }}>{tr('Messages')}</Text>
       {!detail.messages.length ? <M style={{ marginBottom: 12 }}>{vendor ? tr('Reply to start the conversation. Phone numbers stay hidden until the couple books.') : tr('Your enquiry was sent. The vendor usually replies here with questions or a quote.')}</M> : null}
       {detail.messages.map((m: any) => { const mine = vendor ? m.sender_id !== detail.enquiry.couple_id : m.sender_id === detail.enquiry.couple_id; return (
         <View key={m.id} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '82%', marginBottom: 8 }}>
           <View style={{ backgroundColor: mine ? C.primary : C.card, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderBottomRightRadius: mine ? 4 : 16, borderBottomLeftRadius: mine ? 16 : 4, borderWidth: mine ? 0 : 1, borderColor: C.line }}>
-            <Text style={{ color: mine ? '#fff' : C.ink, fontSize: 15, lineHeight: 20 }}>{m.body}</Text></View>
-          <Text style={{ fontSize: 12, color: C.mute, marginTop: 2, alignSelf: mine ? 'flex-end' : 'flex-start' }}>{String(m.created_at).slice(11, 16)}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={{ color: mine ? '#fff' : C.ink, fontSize: 15, lineHeight: 20 }}>{m.body}</Text></View>
+          <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 12, color: C.mute, marginTop: 2, alignSelf: mine ? 'flex-end' : 'flex-start' }}>{String(m.created_at).slice(11, 16)}</Text>
         </View>); })}
     </ScrollView>
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12, backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.line }}>
@@ -229,18 +229,18 @@ export function CompareQuotes({ route, navigation }: any) {
   const rows = deals.filter(d => d.category === category && d.quote && d.stage !== 'completed').sort((a, b) => a.quote.total_paise - b.quote.total_paise);
   const cheapest = rows[0]?.quote.total_paise;
   return <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-    <Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink }}>{categoryLabel(category)}</Text>
+    <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.ink }}>{categoryLabel(category)}</Text>
     <M style={{ marginBottom: 16 }}>{rows.length} {tr('quotes, lowest first. Swipe to see them all.')}</M>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
       {rows.map(d => <View key={d.id} style={{ width: 272, padding: 16, borderRadius: 16, borderWidth: d.quote.total_paise === cheapest ? 2 : 1, borderColor: d.quote.total_paise === cheapest ? C.ok : C.line, backgroundColor: C.card }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, minHeight: 24 }}>{d.quote.total_paise === cheapest && rows.length > 1 ? <Tag tone="ok" label={tr('Lowest price')} /> : null}{d.booking ? <Tag tone="ok" icon="check" label={tr('Booked')} /> : null}</View>
-        <Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 8 }} numberOfLines={2}>{d.other_name}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 8 }} numberOfLines={2}>{d.other_name}</Text>
         <M>{d.rating ? `★ ${d.rating} (${d.reviews})` : tr('No reviews yet')}</M>
-        <Text style={{ fontFamily: F.display, fontSize: 28, color: C.primary, marginTop: 12, fontVariant: ['tabular-nums'] }}>{inr(d.quote.total_paise)}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 28, color: C.primary, marginTop: 12, fontVariant: ['tabular-nums'] }}>{inr(d.quote.total_paise)}</Text>
         {d.budget_paise ? <M style={{ color: d.quote.total_paise > d.budget_paise ? C.warn : C.ok }}>{d.quote.total_paise > d.budget_paise ? `${inr(d.quote.total_paise - d.budget_paise)} ${tr('over your budget')}` : `${tr('Within your budget of')} ${inr(d.budget_paise)}`}</M> : null}
         <View style={{ borderTopWidth: 1, borderTopColor: C.line, marginTop: 12, paddingTop: 8 }}>
           <M style={{ fontSize: 12, marginBottom: 4 }}>{tr('Included')}</M>
-          {d.quote.items.map((i: any, k: number) => <View key={k} style={[s.row, { gap: 8, paddingVertical: 2 }]}><Text style={{ flex: 1, color: C.ink, fontSize: 13 }}>{i.label}</Text><M>{inr(i.amount_paise)}</M></View>)}
+          {d.quote.items.map((i: any, k: number) => <View key={k} style={[s.row, { gap: 8, paddingVertical: 2 }]}><Text maxFontSizeMultiplier={1.3} style={{ flex: 1, color: C.ink, fontSize: 13 }}>{i.label}</Text><M>{inr(i.amount_paise)}</M></View>)}
         </View>
         <M style={{ marginTop: 12 }}>{tr('Token today')}: {inr(Math.round(d.quote.total_paise * 0.2))}</M>
         <View style={{ marginTop: 12 }}><Btn small kind={d.quote.total_paise === cheapest ? 'primary' : 'quiet'} title={tr('Open')} onPress={() => navigation.navigate('Chat', { id: d.id, title: d.other_name })} /></View>

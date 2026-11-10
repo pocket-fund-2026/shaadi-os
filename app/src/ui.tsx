@@ -79,17 +79,17 @@ export const Btn = ({ title, onPress, kind = 'primary', disabled, icon, small }:
       <AnimatedPressable accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} onPressIn={p.onPressIn} onPressOut={p.onPressOut}
         style={[s.btn, { marginVertical: 4 }, small && s.btnSmall, kind === 'primary' && s.btnLift, kind === 'ghost' && s.btnGhost, kind === 'quiet' && s.btnQuiet, kind === 'ok' && { backgroundColor: C.ok }, disabled && { opacity: 0.45 }, p.style]}>
         {icon ? <View style={{ marginRight: 8 }}><Icon name={icon} size={small ? 16 : 18} color={fg} /></View> : null}
-        <Text style={[s.btnT, small && { fontSize: 15 }, { color: fg, flexShrink: 1, textAlign: 'center' }]}>{title}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={[s.btnT, small && { fontSize: 15 }, { color: fg, flexShrink: 1, textAlign: 'center' }]}>{title}</Text>
       </AnimatedPressable>);
 };
 
 export const Input = ({ icon, prefix, ...p }: TextInputProps & { label?: string; icon?: IconName; prefix?: string }) => {
   const [focus, setFocus] = useState(false);
   // The leading icon sits over the field; left padding is shifted 1 unit on focus to offset the thicker border.
-  return (<View style={{ marginBottom: 12 }}>{p.label ? <Text style={s.label}>{p.label}</Text> : null}
+  return (<View style={{ marginBottom: 12 }}>{p.label ? <Text maxFontSizeMultiplier={1.3} style={s.label}>{p.label}</Text> : null}
     <View>
-      <TextInput accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 14, paddingVertical: 12 }, icon && { paddingLeft: focus ? 42 : 43 }, prefix && { paddingLeft: focus ? 51 : 52 }, p.style]} />
-      {prefix ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><Text style={{ fontSize: 15, color: C.ink }}>{prefix}</Text></View> : null}
+      <TextInput maxFontSizeMultiplier={1.3} accessibilityLabel={p.label || p.placeholder} placeholderTextColor={C.faint} {...p} onFocus={e => { setFocus(true); p.onFocus?.(e); }} onBlur={e => { setFocus(false); p.onBlur?.(e); }} style={[s.input, focus && { borderColor: C.primary, borderWidth: 2, paddingHorizontal: 14, paddingVertical: 12 }, icon && { paddingLeft: focus ? 42 : 43 }, prefix && { paddingLeft: focus ? 51 : 52 }, p.style]} />
+      {prefix ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><Text maxFontSizeMultiplier={1.3} style={{ fontSize: 15, color: C.ink }}>{prefix}</Text></View> : null}
       {icon ? <View pointerEvents="none" style={{ position: 'absolute', left: 16, top: 0, bottom: 0, justifyContent: 'center' }}><Icon name={icon} size={19} color={focus ? C.primary : C.mute} /></View> : null}
     </View></View>);
 };
@@ -118,23 +118,23 @@ export function DateField({ label, value, onChange, placeholder, min, optional }
     style={({ pressed }) => ({ width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? C.tint : 'transparent', opacity: disabled ? 0.3 : 1, transform: dir < 0 ? [{ scaleX: -1 }] : undefined })}>
     <Icon name="chevron" size={20} color={C.ink} /></Pressable>;
   return <View style={{ marginBottom: 12 }}>
-    {label ? <Text style={s.label}>{label}</Text> : null}
+    {label ? <Text maxFontSizeMultiplier={1.3} style={s.label}>{label}</Text> : null}
     <Pressable accessibilityRole="button" accessibilityLabel={`${label || tr('Date')}: ${valid ? dateIN(value) : tr('not set')}`} onPress={show}
       style={({ pressed }) => [s.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderColor: open ? C.primary : C.line, opacity: pressed ? 0.85 : 1 }]}>
-      <Text style={{ fontSize: 15, color: valid ? C.ink : C.faint }}>{valid ? dateIN(value) : placeholder || tr('Choose a date')}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 15, color: valid ? C.ink : C.faint }}>{valid ? dateIN(value) : placeholder || tr('Choose a date')}</Text>
       <Icon name="calendar" size={19} color={C.mute} />
     </Pressable>
     <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
       <Pressable accessibilityRole="button" accessibilityLabel={tr('Close')} onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(44,32,36,0.4)', justifyContent: 'center', padding: 24 }}>
         <Pressable accessible={false} onPress={() => {}} style={{ backgroundColor: C.card, borderRadius: 16, padding: 16, width: '100%', maxWidth: 380, alignSelf: 'center' }}>
-          <View style={[s.row, { marginBottom: 8 }]}><Arrow dir={-1} disabled={!canGoBack} /><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{title}</Text><Arrow dir={1} /></View>
-          <View style={{ flexDirection: 'row' }}>{WEEKDAYS.map((w, i) => <Text key={i} style={{ width: `${100 / 7}%`, textAlign: 'center', fontSize: 12, color: C.mute, paddingVertical: 4 }}>{w}</Text>)}</View>
+          <View style={[s.row, { marginBottom: 8 }]}><Arrow dir={-1} disabled={!canGoBack} /><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{title}</Text><Arrow dir={1} /></View>
+          <View style={{ flexDirection: 'row' }}>{WEEKDAYS.map((w, i) => <Text maxFontSizeMultiplier={1.3} key={i} style={{ width: `${100 / 7}%`, textAlign: 'center', fontSize: 12, color: C.mute, paddingVertical: 4 }}>{w}</Text>)}</View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{cells.map((d, i) => {
             if (!d) return <View key={i} style={{ width: `${100 / 7}%`, aspectRatio: 1 }} />;
             const iso = isoOf(view.y, view.m, d); const on = valid && iso === value; const off = !!min && iso < min; const isToday = iso === today;
             return <Pressable key={i} accessibilityRole="button" accessibilityLabel={dateIN(iso)} accessibilityState={{ selected: on, disabled: off }} disabled={off} onPress={() => pick(iso)} style={{ width: `${100 / 7}%`, aspectRatio: 1, padding: 2 }}>
               {({ pressed }) => <View style={{ flex: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C.primary : pressed ? C.tint : 'transparent', borderWidth: isToday && !on ? 1 : 0, borderColor: C.primary }}>
-                <Text style={{ fontSize: 15, color: on ? '#fff' : off ? C.line : C.ink, fontVariant: ['tabular-nums'] }}>{d}</Text></View>}
+                <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 15, color: on ? '#fff' : off ? C.line : C.ink, fontVariant: ['tabular-nums'] }}>{d}</Text></View>}
             </Pressable>; })}</View>
           <View style={[s.row, { marginTop: 8, justifyContent: 'flex-end', gap: 8 }]}>
             {optional && valid ? <Btn small kind="ghost" title={tr('Clear date')} onPress={() => pick('')} /> : null}
@@ -157,7 +157,7 @@ export function ContactButtons({ phone, whatsapp, email }: { phone?: string | nu
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>{items.map(([icon, label, url]) =>
     <Pressable key={url} accessibilityRole="link" accessibilityLabel={label} onPress={() => Linking.openURL(url).catch(() => {})}
       style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.tint, opacity: pressed ? 0.75 : 1, maxWidth: '100%' })}>
-      <Icon name={icon} size={16} color={C.primary} /><Text style={{ color: C.primary, fontSize: 15, fontWeight: '500', flexShrink: 1 }} numberOfLines={1}>{label}</Text>
+      <Icon name={icon} size={16} color={C.primary} /><Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontSize: 15, fontWeight: '500', flexShrink: 1 }} numberOfLines={1}>{label}</Text>
     </Pressable>)}</View>;
 }
 
@@ -167,14 +167,14 @@ export const Card = ({ children, onPress, style }: { children: React.ReactNode; 
   return <AnimatedPressable accessibilityRole="button" onPress={onPress} onPressIn={p.onPressIn} onPressOut={p.onPressOut} style={[s.card, style, p.style]}>{children}</AnimatedPressable>;
 };
 
-export const H = ({ children, style }: { children: React.ReactNode; style?: any }) => <Text accessibilityRole="header" style={[{ fontFamily: F.display, fontSize: 24, color: C.ink, marginVertical: 12 }, style]}>{children}</Text>;
-export const M = ({ children, style }: any) => <Text style={[{ color: C.mute, fontSize: 13, lineHeight: 18 }, style]}>{children}</Text>;
+export const H = ({ children, style }: { children: React.ReactNode; style?: any }) => <Text maxFontSizeMultiplier={1.3} accessibilityRole="header" style={[{ fontFamily: F.display, fontSize: 24, color: C.ink, marginVertical: 12 }, style]}>{children}</Text>;
+export const M = ({ children, style }: any) => <Text maxFontSizeMultiplier={1.3} style={[{ color: C.mute, fontSize: 13, lineHeight: 18 }, style]}>{children}</Text>;
 
 export const Chip = ({ label, on, onPress, icon }: { label: string; on?: boolean; onPress?: () => void; icon?: IconName }) => {
   const p = usePress(0.97);
   return (<AnimatedPressable accessibilityRole="button" accessibilityState={{ selected: !!on }} onPress={onPress} onPressIn={p.onPressIn} onPressOut={p.onPressOut} hitSlop={6} style={[s.chip, on && s.chipOn, p.style]}>
     {icon ? <View style={{ marginRight: 4 }}><Icon name={icon} size={16} color={on ? C.primary : C.mute} /></View> : null}
-    <Text style={{ color: on ? C.primary : C.ink, fontSize: 13, fontWeight: '500', flexShrink: 1 }}>{label}</Text></AnimatedPressable>);
+    <Text maxFontSizeMultiplier={1.3} style={{ color: on ? C.primary : C.ink, fontSize: 13, fontWeight: '500', flexShrink: 1 }}>{label}</Text></AnimatedPressable>);
 };
 
 // A status label that marks real state (verified, escrow, RSVP). Sentence case, no glow, no pulse.
@@ -183,7 +183,7 @@ export const Tag = ({ label, tone = 'mute', icon }: { label: string; tone?: 'ok'
   const bg = tone === 'ok' ? C.okSoft : tone === 'warn' ? C.warnSoft : tone === 'gold' ? C.goldSoft : C.chipBg;
   return (<View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: bg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start' }}>
     {icon ? <View style={{ marginRight: 4 }}><Icon name={icon} size={12} color={fg} strokeWidth={2} /></View> : null}
-    <Text style={{ color: fg, fontSize: 12, fontWeight: '500' }}>{label}</Text></View>);
+    <Text maxFontSizeMultiplier={1.3} style={{ color: fg, fontSize: 12, fontWeight: '500' }}>{label}</Text></View>);
 };
 
 export const Stars = ({ n, size = 13 }: { n: number; size?: number }) => (
@@ -193,7 +193,7 @@ export const Stars = ({ n, size = 13 }: { n: number; size?: number }) => (
 export const Empty = ({ icon, title, text, action, onAction }: { icon: IconName; title: string; text: string; action?: string; onAction?: () => void }) => (
   <Rise style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 28 }}>
     <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}><Icon name={icon} size={24} color={C.primary} /></View>
-    <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginBottom: 4, textAlign: 'center' }}>{title}</Text>
+    <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink, marginBottom: 4, textAlign: 'center' }}>{title}</Text>
     <M style={{ textAlign: 'center' }}>{text}</M>
     {action && onAction ? <View style={{ marginTop: 12 }}><Btn small kind="ghost" title={action} onPress={onAction} /></View> : null}
   </Rise>);

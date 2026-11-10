@@ -105,7 +105,7 @@ export function mountExtras(app: any, auth: any, myWedding: (u: number) => any, 
     res.json({ ok: true }); }));
   app.get('/api/events/headcount', auth, wrap((req: any, res: any) => { const w = W(req);
     // Households count every invited person; food counts cover everyone coming, using the guest's or household's preference.
-    res.json(q(`SELECT e.id, e.name, e.date, COUNT(ge.guest_id) households, COALESCE(SUM(COALESCE(g.party,1)),0) invited,
+    res.json(q(`SELECT e.id, e.name, e.date, COUNT(ge.guest_id) households, COALESCE(SUM(CASE WHEN g.id IS NULL THEN 0 ELSE COALESCE(g.party,1) END),0) invited,
       COALESCE(SUM(CASE WHEN ge.rsvp='yes' THEN 1 + g.plus_ones ELSE 0 END),0) coming,
       COALESCE(SUM(CASE WHEN ge.rsvp='no' THEN 1 ELSE 0 END),0) declined,
       COALESCE(SUM(CASE WHEN ge.rsvp='pending' THEN COALESCE(g.party,1) ELSE 0 END),0) waiting,

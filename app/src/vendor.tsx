@@ -11,13 +11,13 @@ export function Payouts() {
   const [p, , busy] = useLoad<any>('/payouts', { released_paise: 0, in_escrow_paise: 0, rows: [] });
   return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
     <Rise><Card>
-      <M>{tr('Released to you')}</M><Text style={{ fontFamily: F.display, fontSize: 28, color: C.ok, marginTop: 2 }}>{inr(p.released_paise)}</Text><M>{tr('After the platform fee')}</M>
+      <M>{tr('Released to you')}</M><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 28, color: C.ok, marginTop: 2 }}>{inr(p.released_paise)}</Text><M>{tr('After the platform fee')}</M>
       <View style={{ height: 1, backgroundColor: C.line, marginVertical: 12 }} />
-      <View style={s.row}><View><M>{tr('Held in escrow')}</M><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 2 }}>{inr(p.in_escrow_paise)}</Text></View>
+      <View style={s.row}><View><M>{tr('Held in escrow')}</M><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink, marginTop: 2 }}>{inr(p.in_escrow_paise)}</Text></View>
         <M style={{ maxWidth: '50%', textAlign: 'right' }}>{tr('Paid out as each couple releases a milestone')}</M></View></Card></Rise>
     <H style={{ fontSize: 17, marginTop: 12 }}>{tr('Payout history')}</H>
     {p.rows.length ? p.rows.map((r: any, i: number) => <Rise key={r.id} i={i}><Card><View style={s.row}>
-      <View><Text style={{ fontWeight: '500', color: C.ok, fontSize: 15 }}>+{inr(r.amount_paise)}</Text><M>{tr('Booking')} #{r.booking_id}</M></View><M>{dateIN(String(r.created_at))}</M></View></Card></Rise>)
+      <View><Text maxFontSizeMultiplier={1.3} style={{ fontWeight: '500', color: C.ok, fontSize: 15 }}>+{inr(r.amount_paise)}</Text><M>{tr('Booking')} #{r.booking_id}</M></View><M>{dateIN(String(r.created_at))}</M></View></Card></Rise>)
       : busy ? null : <Empty icon="wallet" title={tr('No payouts yet')} text={tr('When a couple releases a milestone, the amount minus the platform fee lands here.')} />}</ScrollView>);
 }
 
@@ -30,10 +30,10 @@ export function VendorProfile({ onSaved }: any) {
   const save = async () => { try { await api('/vendor', 'PUT', { name: f.name, category: f.category, city: f.city, locality: f.locality, start_paise: Math.round(+f.price * 100), description: f.description }); setSaved(true); onSaved?.(); } catch (e) { err(e); } };
   const fee = ['venue', 'caterer'].includes(f.category) ? 3 : 6;
   return (<ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    {me && !me.vendor && !saved ? <View style={{ backgroundColor: C.tint, borderRadius: 12, padding: 16, marginBottom: 16 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{tr('Set up your storefront')}</Text><M style={{ marginTop: 4, color: C.ink }}>{tr('Add your business name, service, city and starting price. Couples can find you as soon as you save.')}</M></View> : null}
+    {me && !me.vendor && !saved ? <View style={{ backgroundColor: C.tint, borderRadius: 12, padding: 16, marginBottom: 16 }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink }}>{tr('Set up your storefront')}</Text><M style={{ marginTop: 4, color: C.ink }}>{tr('Add your business name, service, city and starting price. Couples can find you as soon as you save.')}</M></View> : null}
     <M style={{ marginBottom: 12 }}>{tr('Listing is free. You pay')} {fee}% {tr('only when a couple books and pays through the app.')}</M>
     <Input label={tr('Business name')} value={f.name} onChangeText={v => set('name', v)} placeholder="Business Name" />
-    <Text style={s.label}>{tr('Category')}</Text>
+    <Text maxFontSizeMultiplier={1.3} style={s.label}>{tr('Category')}</Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}>{CATS.map(c => <Chip key={c} icon={CAT_ICON[c]} label={tr(CAT_LABEL[c])} on={f.category === c} onPress={() => set('category', c)} />)}</View>
     <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Input label={tr('City')} value={f.city} onChangeText={v => set('city', v)} placeholder="City" /></View>
       <View style={{ flex: 1 }}><Input label={tr('Locality')} value={f.locality} onChangeText={v => set('locality', v)} placeholder="Area" /></View></View>

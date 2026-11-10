@@ -19,7 +19,7 @@ function Row({ icon, label, value, onPress, open, children, first }: { icon: Ico
     <Pressable accessibilityRole="button" accessibilityState={children !== undefined ? { expanded: !!open } : undefined} onPress={onPress} disabled={!onPress}
       style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
       <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} size={18} color={C.primary} /></View>
-      <Text style={{ flex: 1, color: C.ink, fontSize: 15 }}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ flex: 1, color: C.ink, fontSize: 15 }}>{label}</Text>
       {typeof value === 'string' ? <M>{value}</M> : value}
       {onPress ? <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}><Icon name="chevron" size={16} color={C.faint} /></View> : null}
     </Pressable>
@@ -28,7 +28,7 @@ function Row({ icon, label, value, onPress, open, children, first }: { icon: Ico
 }
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => <>
-  <Text style={{ fontSize: 13, color: C.mute, fontWeight: '500', marginTop: 24, marginBottom: 8, marginLeft: 4 }}>{title}</Text>
+  <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 13, color: C.mute, fontWeight: '500', marginTop: 24, marginBottom: 8, marginLeft: 4 }}>{title}</Text>
   <Card style={{ paddingVertical: 4 }}>{children}</Card>
 </>;
 
@@ -78,9 +78,9 @@ export function ProfileScreen({ onLogout }: { onLogout: () => void }) {
   return <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40, width: '100%', maxWidth: 640, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Card>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft }}>{initials(user.name || '')}</Text></View>
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft }}>{initials(user.name || '')}</Text></View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: F.display, fontSize: 24, color: C.ink }} numberOfLines={1}>{user.name}</Text>
+          <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.ink }} numberOfLines={1}>{user.name}</Text>
           <M style={{ fontVariant: ['tabular-nums'] }}>+91 {String(user.phone).slice(0, 5)} {String(user.phone).slice(5)}</M>
           <View style={{ flexDirection: 'row', marginTop: 4 }}><Tag tone="gold" icon={vendor ? 'store' : 'family'} label={vendor ? tr('Vendor') : role ? `${tr('Family')} · ${role}` : tr('Couple')} /></View>
         </View>
@@ -88,7 +88,7 @@ export function ProfileScreen({ onLogout }: { onLogout: () => void }) {
       </View>
       {editing ? <View style={{ marginTop: 16 }}>
         <Input label={tr('Your name')} value={name} onChangeText={t => { setName(t); setNameError(''); }} autoFocus autoCapitalize="words" maxLength={80} returnKeyType="done" onSubmitEditing={saveName} />
-        {nameError ? <Text accessibilityRole="alert" style={{ color: C.warn, marginBottom: 8 }}>{nameError}</Text> : null}
+        {nameError ? <Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn, marginBottom: 8 }}>{nameError}</Text> : null}
         <View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Btn small title={tr('Save')} disabled={saving} onPress={saveName} /></View><View style={{ flex: 1 }}><Btn small kind="ghost" title={tr('Cancel')} onPress={() => setEditing(false)} /></View></View>
         <M style={{ marginTop: 8 }}>{tr('Your mobile number is your login, so it can’t be changed here.')}</M>
       </View> : null}
@@ -97,24 +97,24 @@ export function ProfileScreen({ onLogout }: { onLogout: () => void }) {
     {!vendor && me.wedding ? <Pressable accessibilityRole="button" onPress={() => openPlan('settings')} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
       <Card style={{ backgroundColor: C.primaryDark, borderColor: C.primaryDark }}>
         <M style={{ color: '#F4DDE5' }}>{tr('Your wedding')}</M>
-        <Text style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft, marginTop: 4 }}>{me.wedding.title}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft, marginTop: 4 }}>{me.wedding.title}</Text>
         <M style={{ color: '#F4DDE5', marginTop: 2 }}>{dateIN(me.wedding.date)} · {me.wedding.city}{overview ? ` · ${overview.days_left > 0 ? `${overview.days_left} ${tr('days to go')}` : overview.days_left === 0 ? tr('Today is the day') : tr('Just married')}` : ''}</M>
         {overview ? <View style={{ flexDirection: 'row', marginTop: 16, gap: 16 }}>{[[`${overview.tasks.done}/${overview.tasks.total}`, tr('Tasks')], [String(overview.guests.attending), tr('Guests coming')], [inr(overview.budget.booked_paise), tr('Booked')]].map(([v, l]) =>
-          <View key={l} style={{ flex: 1 }}><Text style={{ color: '#fff', fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }} numberOfLines={1}>{v}</Text><M style={{ color: '#F4DDE5' }}>{l}</M></View>)}</View> : null}
+          <View key={l} style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: '#fff', fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }} numberOfLines={1}>{v}</Text><M style={{ color: '#F4DDE5' }}>{l}</M></View>)}</View> : null}
       </Card>
     </Pressable> : null}
-    {!vendor && !me.wedding ? <Card><Text style={{ color: C.ink, fontSize: 15 }}>{tr('You haven’t set up a wedding yet.')}</Text><Btn small title={tr('Set up your wedding')} onPress={() => nav.navigate('Plan')} /></Card> : null}
+    {!vendor && !me.wedding ? <Card><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}>{tr('You haven’t set up a wedding yet.')}</Text><Btn small title={tr('Set up your wedding')} onPress={() => nav.navigate('Plan')} /></Card> : null}
 
     {vendor ? <Pressable accessibilityRole="button" onPress={() => nav.navigate('Store')} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
       <Card>
         <M>{tr('Your business')}</M>
         {me.vendor ? <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}><Text style={{ fontFamily: F.display, fontSize: 22, color: C.ink, flex: 1 }}>{me.vendor.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 22, color: C.ink, flex: 1 }}>{me.vendor.name}</Text>
             {me.vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : <Tag label={tr('Not verified yet')} />}</View>
           <M>{categoryLabel(me.vendor.category)} · {me.vendor.city}{me.vendor.start_paise ? ` · ${tr('from')} ${inr(me.vendor.start_paise)}` : ''}</M>
           {biz ? <View style={{ flexDirection: 'row', marginTop: 16, gap: 16 }}>{[[String(biz.leads), tr('Leads')], [String(biz.bookings), tr('Bookings')], [biz.rating ? `${biz.rating} (${biz.reviews})` : '—', tr('Rating')]].map(([v, l]) =>
-            <View key={l} style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{v}</Text><M>{l}</M></View>)}</View> : null}
-        </> : <><Text style={{ color: C.ink, fontSize: 15, marginTop: 4 }}>{tr('Your storefront isn’t set up yet. Couples can’t find you until it is.')}</Text><Btn small title={tr('Set up your storefront')} onPress={() => nav.navigate('Store')} /></>}
+            <View key={l} style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{v}</Text><M>{l}</M></View>)}</View> : null}
+        </> : <><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, marginTop: 4 }}>{tr('Your storefront isn’t set up yet. Couples can’t find you until it is.')}</Text><Btn small title={tr('Set up your storefront')} onPress={() => nav.navigate('Store')} /></>}
       </Card>
     </Pressable> : null}
 
@@ -129,7 +129,7 @@ export function ProfileScreen({ onLogout }: { onLogout: () => void }) {
     <Section title={tr('Privacy')}>
       <Row first icon="lock" label={tr('Privacy and your data')} open={openRow === 'privacy'} onPress={() => toggle('privacy')}>
         <M style={{ marginBottom: 12 }}>{tr('Under the DPDP Act you can export or delete your data. Every consent choice is logged.')}</M>
-        <Text style={{ fontSize: 13, fontWeight: '500', color: C.mute, marginBottom: 8 }}>{tr('Marketing messages')}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 13, fontWeight: '500', color: C.mute, marginBottom: 8 }}>{tr('Marketing messages')}</Text>
         <View style={{ flexDirection: 'row' }}><Chip label={tr('Allow')} on={marketing === true} onPress={() => consent(true)} /><Chip label={tr('Don’t allow')} on={marketing === false} onPress={() => consent(false)} /></View>
         <Btn small kind="quiet" icon="share" title={tr('Export my data')} onPress={exportData} />
         <Btn small kind="ghost" title={tr('Delete my account data')} onPress={deleteData} />

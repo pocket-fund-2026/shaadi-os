@@ -22,11 +22,11 @@ function CompareToggle({ vendor, compare, floating }: { vendor: any; compare: Co
   return <Pressable accessibilityRole="checkbox" accessibilityLabel={`${tr('Compare')} ${vendor.name}`} accessibilityState={{ checked: compare.on, disabled: compare.disabled }} disabled={compare.disabled} onPress={compare.onToggle} hitSlop={8}
     style={({ pressed }) => ({ ...(floating ? { position: 'absolute' as const, top: 12, right: 12 } : null), flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 12, borderRadius: 8, backgroundColor: compare.on ? C.primary : '#FFFEFCEE', borderWidth: compare.on ? 0 : 1, borderColor: C.line, opacity: compare.disabled ? 0.5 : pressed ? 0.8 : 1 })}>
     <Icon name={compare.on ? 'check' : 'plus'} size={14} color={compare.on ? '#fff' : C.primary} strokeWidth={2} />
-    <Text style={{ fontSize: 12, fontWeight: '500', color: compare.on ? '#fff' : C.primary }}>{compare.on ? tr('Comparing') : tr('Compare')}</Text>
+    <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 12, fontWeight: '500', color: compare.on ? '#fff' : C.primary }}>{compare.on ? tr('Comparing') : tr('Compare')}</Text>
   </Pressable>;
 }
 const Rating = ({ vendor }: { vendor: any }) => vendor.rating
-  ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="star" size={15} color={C.gold} /><Text style={{ color: C.ink, fontWeight: '500' }}>{vendor.rating}</Text><M>({vendor.reviews})</M></View>
+  ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="star" size={15} color={C.gold} /><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontWeight: '500' }}>{vendor.rating}</Text><M>({vendor.reviews})</M></View>
   : <M>{tr('No reviews yet')}</M>;
 const place = (vendor: any) => `${vendor.locality ? vendor.locality + ', ' : ''}${vendor.city}${vendor.travels ? ' · ' + tr('travels') : ''}`;
 
@@ -40,13 +40,13 @@ export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress:
         <View style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: palette.bg, alignItems: 'center', justifyContent: 'center' }}><Icon name={CAT_ICON[vendor.category] || 'store'} size={28} color={palette.ink} /></View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-            <Text style={{ flex: 1, fontFamily: F.display, fontSize: 17, lineHeight: 24, color: C.ink }}>{vendor.name}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={{ flex: 1, fontFamily: F.display, fontSize: 17, lineHeight: 24, color: C.ink }}>{vendor.name}</Text>
             {vendor.verified ? <View accessible accessibilityLabel={tr('Verified')}><Icon name="seal" size={18} color={C.ok} /></View> : null}
           </View>
           <M style={{ marginTop: 2 }}>{categoryLabel(vendor.category)} · {place(vendor)}</M>
           {vendor.sample || vendor.unclaimed ? <View style={{ flexDirection: 'row', marginTop: 4 }}><Tag label={tr(vendor.sample ? 'Sample listing' : 'Not on Shaadi OS yet')} /></View> : null}
           <View style={[s.row, { marginTop: 12, gap: 8 }]}>
-            {vendor.start_paise ? <Text style={{ color: C.ink, fontSize: 15 }}><M style={{ fontSize: 12 }}>{tr('From')} </M><Text style={{ fontWeight: '500', fontSize: 17, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></Text> : <M>{tr('Price not listed')}</M>}
+            {vendor.start_paise ? <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15 }}><M style={{ fontSize: 12 }}>{tr('From')} </M><Text maxFontSizeMultiplier={1.3} style={{ fontWeight: '500', fontSize: 17, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></Text> : <M>{tr('Price not listed')}</M>}
             {compare ? <CompareToggle vendor={vendor} compare={compare} /> : <Rating vendor={vendor} />}
           </View>
           {compare && vendor.rating ? <View style={{ marginTop: 8 }}><Rating vendor={vendor} /></View> : null}
@@ -59,12 +59,12 @@ export function VendorCard({ vendor, onPress, compare }: { vendor: any; onPress:
     {compare ? <CompareToggle vendor={vendor} compare={compare} floating /> : null}
     <View style={{ padding: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <Text style={{ flex: 1, fontFamily: F.display, fontSize: 20, lineHeight: 28, color: C.ink }}>{vendor.name}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ flex: 1, fontFamily: F.display, fontSize: 20, lineHeight: 28, color: C.ink }}>{vendor.name}</Text>
         {vendor.sample || vendor.unclaimed ? <Tag label={tr(vendor.sample ? 'Sample listing' : 'Not on Shaadi OS yet')} /> : vendor.verified ? <Tag tone="ok" icon="seal" label={tr('Verified')} /> : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}><Icon name="pin" size={15} color={C.mute} /><M style={{ flex: 1 }}>{place(vendor)}</M></View>
       <View style={[s.row, { borderTopWidth: 1, borderTopColor: C.line, marginTop: 16, paddingTop: 16, gap: 8 }]}>
-        <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text style={{ color: C.ink, fontWeight: '500', fontSize: 20, marginTop: 4, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></View>
+        <View><M style={{ fontSize: 12 }}>{tr('Starting price')}</M><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontWeight: '500', fontSize: 20, marginTop: 4, fontVariant: ['tabular-nums'] }}>{inr(vendor.start_paise)}</Text></View>
         <Rating vendor={vendor} />
       </View>
     </View>
@@ -101,8 +101,8 @@ export function Marketplace({ openVendor, onSignIn, preset, weddingDate }: { ope
   return <FlatList style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 36, width: '100%', maxWidth: 760, alignSelf: 'center' }} data={results} keyExtractor={v => String(v.id)} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
     refreshControl={<RefreshControl refreshing={busy} onRefresh={() => setRefreshKey(k => k + 1)} tintColor={C.primary} />}
     ListHeaderComponent={<>
-      {onSignIn && <View style={[s.row, { marginBottom: 20 }]}><View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Logo size={28} /><Text style={{ fontFamily: F.display, color: C.primary, fontSize: 20 }}>Shaadi OS</Text></View><Btn small kind="quiet" title={tr('Sign in')} onPress={onSignIn} /></View>}
-      <Text accessibilityRole="header" style={{ fontFamily: F.display, color: C.ink, fontSize: 28, lineHeight: 34, textAlign: 'center' }}>{tr('Find wedding vendors')}</Text>
+      {onSignIn && <View style={[s.row, { marginBottom: 20 }]}><View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Logo size={28} /><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, color: C.primary, fontSize: 20 }}>Shaadi OS</Text></View><Btn small kind="quiet" title={tr('Sign in')} onPress={onSignIn} /></View>}
+      <Text maxFontSizeMultiplier={1.3} accessibilityRole="header" style={{ fontFamily: F.display, color: C.ink, fontSize: 28, lineHeight: 34, textAlign: 'center' }}>{tr('Find wedding vendors')}</Text>
       <M style={{ marginTop: 4, marginBottom: 16, textAlign: 'center', alignSelf: 'center', maxWidth: 320 }}>{tr('Venues, caterers, photographers, mehndi artists and pandits in Mumbai, Pune, Nashik and Nagpur.')}</M>
       <Input icon="search" accessibilityLabel={tr('Search vendors')} placeholder={tr('Search vendors')} value={query} onChangeText={setQuery} returnKeyType="search" />
       {/* All eight services visible at once, as a 4 x 2 grid. */}
@@ -111,7 +111,7 @@ export function Marketplace({ openVendor, onSignIn, preset, weddingDate }: { ope
           <Pressable key={key} accessibilityRole="button" accessibilityLabel={tr(label)} accessibilityState={{ selected: on }} onPress={() => setCategory(on ? '' : key)}
             style={({ pressed }) => ({ width: '23%', flexGrow: 1, minHeight: 84, paddingVertical: 12, borderRadius: 12, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.tint : C.card, alignItems: 'center', justifyContent: 'center', gap: 8, opacity: pressed ? 0.75 : 1 })}>
             <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: pal.bg, alignItems: 'center', justifyContent: 'center' }}><Icon name={CAT_ICON[key] || 'store'} size={20} color={pal.ink} /></View>
-            <Text style={{ fontSize: 12, color: C.ink, fontWeight: on ? '600' : '500', textAlign: 'center' }} numberOfLines={1}>{tr(label)}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 12, color: C.ink, fontWeight: on ? '600' : '500', textAlign: 'center' }} numberOfLines={1}>{tr(label)}</Text>
           </Pressable>); })}
       </View>
       <M style={{ marginTop: 20, marginBottom: 8 }}>{tr('Wedding city')}</M>
@@ -130,12 +130,12 @@ export function Marketplace({ openVendor, onSignIn, preset, weddingDate }: { ope
       {showBudget && <Rise><Card style={{ padding: 16 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 }}>{BUDGET_PRESETS.map(r => <Chip key={r} label={`${tr('Up to')} ${inr(r * 100)}`} on={budget === String(r)} onPress={() => { setBudgetDraft(String(r)); setBudget(String(r)); setShowBudget(false); }} />)}</View>
         <Input label={tr('Maximum starting price (₹)')} value={budgetDraft} onChangeText={setBudgetDraft} keyboardType="decimal-pad" placeholder={tr('Any budget')} returnKeyType="done" onSubmitEditing={() => { if (validBudget) { setBudget(budgetDraft); setShowBudget(false); } }} />
-        {!validBudget && <Text accessibilityRole="alert" style={{ color: C.warn, marginBottom: 8 }}>{tr('Enter a valid budget amount.')}</Text>}
+        {!validBudget && <Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn, marginBottom: 8 }}>{tr('Enter a valid budget amount.')}</Text>}
         <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Btn small title={tr('Apply budget')} disabled={!validBudget} onPress={() => { setBudget(budgetDraft); setShowBudget(false); }} /></View>
           {!!budget && <View style={{ flex: 1 }}><Btn small kind="ghost" title={tr('Any budget')} onPress={() => { setBudget(''); setBudgetDraft(''); setShowBudget(false); }} /></View>}</View>
       </Card></Rise>}
       {filtered && <View style={{ flexDirection: 'row', marginBottom: 8 }}><Btn small kind="quiet" icon="close" title={tr('Clear filters')} onPress={clearFilters} /></View>}
-      {!!error && <Card><Text accessibilityRole="alert" style={{ color: C.warn, lineHeight: 21 }}>{error}</Text><Btn kind="quiet" title={tr('Try again')} onPress={() => setRefreshKey(k => k + 1)} /></Card>}
+      {!!error && <Card><Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn, lineHeight: 21 }}>{error}</Text><Btn kind="quiet" title={tr('Try again')} onPress={() => setRefreshKey(k => k + 1)} /></Card>}
       {busy && !vendors && <Loading what={tr('vendors')} />}
     </>}
     ListEmptyComponent={!busy && vendors && !error ? <Empty icon="search" title={tr('No vendors match')} text={tr('Change your city or service to see more options.')} action={filtered ? tr('Clear filters') : undefined} onAction={clearFilters} /> : null}

@@ -18,7 +18,7 @@ export function VendorCatalog({ vendor }: { vendor: any }) {
     <H style={{ marginTop: 28 }}>{tr('Portfolio')}</H>
     {photos.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 12 }}>{photos.map((photo: any) => <View key={photo.id} style={{ width: 260 }}><View style={{ overflow: 'hidden', borderRadius: 12 }}><PortfolioPhoto uri={photo.url} caption={photo.caption} /></View>{photo.caption ? <M style={{ marginTop: 8 }}>{photo.caption}</M> : null}</View>)}</ScrollView> : <M>{tr('This vendor has not added portfolio photos yet.')}</M>}
     <H style={{ marginTop: 28 }}>{tr('Packages')}</H>
-    {packages.length ? packages.map((item: any) => <Card key={item.id}><Text style={{ fontWeight: '500', fontSize: 17, color: C.ink }}>{item.title}</Text><H style={{ color: C.primary }}>{inr(item.price_paise)}</H><M>{item.description}</M><M style={{ marginTop: 12 }}>{tr('Confirm dates and inclusions with the vendor before booking.')}</M></Card>) : <M>{tr('Enquire with the vendor for a package tailored to your wedding.')}</M>}
+    {packages.length ? packages.map((item: any) => <Card key={item.id}><Text maxFontSizeMultiplier={1.3} style={{ fontWeight: '500', fontSize: 17, color: C.ink }}>{item.title}</Text><H style={{ color: C.primary }}>{inr(item.price_paise)}</H><M>{item.description}</M><M style={{ marginTop: 12 }}>{tr('Confirm dates and inclusions with the vendor before booking.')}</M></Card>) : <M>{tr('Enquire with the vendor for a package tailored to your wedding.')}</M>}
   </>;
 }
 export function CatalogEditor() {
@@ -52,11 +52,11 @@ export function CatalogEditor() {
   const remove = async (kind: string, id: number) => { if (await confirm(tr('Remove item?'), tr('This item will be removed from your public storefront.'), tr('Remove'), true)) await mutate(`/vendor/${kind}/${id}`, 'DELETE'); };
   return <View style={{ marginTop: 20 }}>
     <H>{tr('Your portfolio and packages')}</H>
-    {!!error && <Card><Text accessibilityRole="alert" style={{ color: C.warn }}>{error}</Text>{!catalog && <Btn title={tr('Try again')} onPress={load} />}</Card>}
+    {!!error && <Card><Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn }}>{error}</Text>{!catalog && <Btn title={tr('Try again')} onPress={load} />}</Card>}
     {!catalog ? !error && <Loading what={tr('portfolio')} /> : <>
       <Card><H style={{ fontSize: 20 }}>{tr('Add a portfolio photo')}</H><M style={{ marginBottom: 12 }}>{tr('Upload from your phone, or paste a link to a photo already online.')}</M>
         <Input label={tr('Photo caption')} value={caption} onChangeText={setCaption} maxLength={160} />
-        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: permission }} onPress={() => setPermission(!permission)} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingVertical: 8 }}><Check on={permission} /><Text style={{ color: C.ink, flex: 1, lineHeight: 21 }}>{tr('I have permission to publish this photo and any people shown in it.')}</Text></Pressable>
+        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: permission }} onPress={() => setPermission(!permission)} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingVertical: 8 }}><Check on={permission} /><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, flex: 1, lineHeight: 21 }}>{tr('I have permission to publish this photo and any people shown in it.')}</Text></Pressable>
         <Btn icon="camera" title={busy ? tr('Uploading…') : tr('Upload from phone')} disabled={busy || !permission || catalog.photos.length >= 12} onPress={uploadPhoto} />
         <Input label={tr('Or paste a photo link')} value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" maxLength={2000} placeholder="https://" />
         <Btn kind="ghost" icon="plus" title={tr('Add from link')} disabled={busy || !permission || !url.trim() || catalog.photos.length >= 12} onPress={addPhoto} /><M>{catalog.photos.length}/12 {tr('photos')}</M>

@@ -10,13 +10,13 @@ import { useLoad } from './couple';
 const rupees = (v: string) => { const n = Number(String(v).replace(/,/g, '')); return v.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null; };
 const remove = async (path: string, label: string, reload: () => void) => { if (await confirm(tr('Remove this?'), label, tr('Remove'), true)) { try { await api(path, 'DELETE'); reload(); } catch (e) { err(e); } } };
 const Row = ({ children }: { children: React.ReactNode }) => <View style={{ flexDirection: 'row', gap: 12 }}>{React.Children.map(children, c => <View style={{ flex: 1 }}>{c}</View>)}</View>;
-const Label = ({ children }: { children: string }) => <Text style={s.label}>{children}</Text>;
+const Label = ({ children }: { children: string }) => <Text maxFontSizeMultiplier={1.3} style={s.label}>{children}</Text>;
 const Chips = ({ options, value, onChange }: { options: [string, string][]; value: any; onChange: (v: any) => void }) =>
   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>{options.map(([k, n]) => <Chip key={k} label={tr(n)} on={String(value) === k} onPress={() => onChange(k)} />)}</ScrollView>;
 const Stats = ({ items }: { items: [string | number, string][] }) => <Card><View style={{ flexDirection: 'row' }}>{items.map(([v, l], i) =>
-  <View key={i} style={{ flex: 1 }}><Text style={{ fontFamily: F.display, fontSize: 20, color: C.ink, fontVariant: ['tabular-nums'] }}>{v}</Text><M>{l}</M></View>)}</View></Card>;
+  <View key={i} style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 20, color: C.ink, fontVariant: ['tabular-nums'] }}>{v}</Text><M>{l}</M></View>)}</View></Card>;
 const Section = ({ title, hint }: { title: string; hint?: string }) => <View style={{ marginTop: 16, marginBottom: 8 }}>
-  <Text accessibilityRole="header" style={{ fontFamily: F.display, fontSize: 19, color: C.ink }}>{title}</Text>{hint ? <M>{hint}</M> : null}</View>;
+  <Text maxFontSizeMultiplier={1.3} accessibilityRole="header" style={{ fontFamily: F.display, fontSize: 19, color: C.ink }}>{title}</Text>{hint ? <M>{hint}</M> : null}</View>;
 const page = { padding: 16, paddingBottom: 40, width: '100%', maxWidth: 700, alignSelf: 'center' } as const;
 
 // ---------- Guests: households, food preference and invitation cards ----------
@@ -56,10 +56,10 @@ export function Guests() {
   return (<ScrollView contentContainerStyle={page} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Stats items={[[people, `${tr('Invited')}\n${list.length} ${tr(list.length === 1 ? 'family' : 'families')}`], [coming, tr('Coming')], [waiting, tr('Yet to reply')], [`${cards}/${list.length}`, tr('Cards given')]]} />
     {counts.some(c => c.invited) ? <Card>
-      <View style={s.row}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Headcount by ceremony')}</Text><Btn small kind="quiet" icon="share" title={tr('Share')} onPress={shareHeadcount} /></View>
+      <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Headcount by ceremony')}</Text><Btn small kind="quiet" icon="share" title={tr('Share')} onPress={shareHeadcount} /></View>
       {counts.filter(c => c.invited).map((c, i) => <View key={c.id} style={[s.row, { paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderTopColor: C.line }]}>
-        <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{c.name}</Text><M>{c.date ? dateIN(c.date) + ' · ' : ''}{c.invited} {tr('invited')}{c.coming ? ` · ${foodLine(c)}` : ''}</M></View>
-        <View style={{ alignItems: 'flex-end' }}><Text style={{ color: C.ok, fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{c.coming}</Text><M>{c.waiting} {tr('waiting')}</M></View>
+        <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{c.name}</Text><M>{c.date ? dateIN(c.date) + ' · ' : ''}{c.invited} {tr('invited')}{c.coming ? ` · ${foodLine(c)}` : ''}</M></View>
+        <View style={{ alignItems: 'flex-end' }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ok, fontSize: 17, fontWeight: '500', fontVariant: ['tabular-nums'] }}>{c.coming}</Text><M>{c.waiting} {tr('waiting')}</M></View>
       </View>)}
     </Card> : null}
     {adding || !list.length ? <Card>
@@ -75,7 +75,7 @@ export function Guests() {
     {!list.length && <Empty icon="family" title={tr('No guests yet')} text={tr('Add each family once with how many people are invited, then send one RSVP link on WhatsApp.')} />}
     {shown.map((g, i) => (<Rise key={g.id} i={i}><Card>
       <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Edit')} ${g.name}`} onPress={() => setOpen(open === g.id ? null : g.id)} style={s.row}>
-        <View style={{ flex: 1 }}><Text style={{ fontWeight: '500', color: C.ink, fontSize: 15 }}>{g.name}</Text>
+        <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ fontWeight: '500', color: C.ink, fontSize: 15 }}>{g.name}</Text>
           <M>{[familyLabel(peopleIn(g)), g.side === 'bride' ? tr('Bride side') : tr('Groom side'), g.meal && tr(g.meal)].filter(Boolean).join(' · ')}</M>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
             <Tag tone={g.rsvp === 'yes' ? 'ok' : g.rsvp === 'no' ? 'warn' : 'mute'} label={g.rsvp === 'yes' ? `${tr('Coming')} · ${1 + (g.plus_ones || 0)}` : g.rsvp === 'no' ? tr('Declined') : tr('Waiting')} />
@@ -131,11 +131,11 @@ export function Muhurat({ onDateChange }: { onDateChange: () => void }) {
     </Card> : <Btn kind="quiet" icon="plus" title={tr('Add a muhurat date')} onPress={() => setAdding(true)} />}
     {options.map((m: any, i: number) => <Rise key={m.id} i={i}><Card style={m.chosen ? { borderColor: C.primary, borderWidth: 2 } : undefined}>
       <View style={s.row}><View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: F.display, fontSize: 18, color: C.ink }}>{dateIN(m.date)}{m.time ? ` · ${m.time}` : ''}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 18, color: C.ink }}>{dateIN(m.date)}{m.time ? ` · ${m.time}` : ''}</Text>
         {m.source || m.note ? <M>{[m.source && `${tr('Suggested by')} ${m.source}`, m.note].filter(Boolean).join(' · ')}</M> : null}
       </View>{m.chosen ? <Tag tone="ok" icon="check" label={tr('Wedding date')} /> : null}</View>
-      {m.busy.length ? <Text style={{ color: C.warn, fontSize: 13, marginTop: 8 }}>{`${m.busy.length} ${tr(m.busy.length === 1 ? 'of your vendors is busy' : 'of your vendors are busy')}: ${m.busy.map((b: any) => b.name).join(', ')}`}</Text>
-        : d.vendors ? <Text style={{ color: C.ok, fontSize: 13, marginTop: 8 }}>{`${tr('All your vendors are free')} (${d.vendors})`}</Text>
+      {m.busy.length ? <Text maxFontSizeMultiplier={1.3} style={{ color: C.warn, fontSize: 13, marginTop: 8 }}>{`${m.busy.length} ${tr(m.busy.length === 1 ? 'of your vendors is busy' : 'of your vendors are busy')}: ${m.busy.map((b: any) => b.name).join(', ')}`}</Text>
+        : d.vendors ? <Text maxFontSizeMultiplier={1.3} style={{ color: C.ok, fontSize: 13, marginTop: 8 }}>{`${tr('All your vendors are free')} (${d.vendors})`}</Text>
         : <M style={{ marginTop: 8 }}>{tr('Shortlist or book vendors to check their availability.')}</M>}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
         {!m.chosen ? <Btn small kind="quiet" icon="calendar" title={tr('Make this the wedding date')} onPress={() => choose(m)} /> : null}
@@ -176,7 +176,7 @@ export function Transport() {
       return <View key={String(g.id)}>
         <Section title={g.name} hint={[g.date && dateIN(g.date), seats && `${seats} ${tr('seats')}`, coming && `${coming} ${tr('coming')}`].filter(Boolean).join(' · ')} />
         {g.items.map((v: any) => <Card key={v.id}>
-          <View style={s.row}><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{v.label}</Text>
+          <View style={s.row}><View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{v.label}</Text>
             <M>{[tr(VEHICLE_KINDS.find(k => k[0] === v.kind)?.[1] || 'Other'), v.seats && `${v.seats} ${tr('seats')}`, v.pickup_time && `${tr('leaves')} ${v.pickup_time}`].filter(Boolean).join(' · ')}</M>
             {v.from_place || v.to_place ? <M>{[v.from_place, v.to_place].filter(Boolean).join(' → ')}</M> : null}
             {v.passengers ? <M style={{ color: C.ink, marginTop: 4 }}>{v.passengers}</M> : null}
@@ -216,7 +216,7 @@ export function GiftsToGive() {
       <Section title={tr(n)} />
       {rows.map((x: any) => <Card key={x.id} style={{ paddingVertical: 16 }}><View style={s.row}>
         <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!x.ready }} accessibilityLabel={`${tr('Ready')}: ${x.recipient}`} onPress={() => toggle(x)} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <Check on={!!x.ready} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.recipient}</Text>
+          <Check on={!!x.ready} /><View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.recipient}</Text>
             <M>{[x.item, x.qty > 1 && `× ${x.qty}`, x.cost_paise && inr(x.cost_paise)].filter(Boolean).join(' · ')}</M></View>
         </Pressable>
         <Btn small kind="quiet" title={tr('Remove')} onPress={() => remove(`/gifts-out/${x.id}`, x.recipient, load)} />
@@ -258,7 +258,7 @@ export function Menu() {
         <M style={{ marginBottom: 4 }}>{tr(n)}</M>
         {rows.map((x: any) => <View key={x.id} style={[s.row, { minHeight: 36 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}><View style={{ width: 10, height: 10, borderRadius: 2, borderWidth: 1.5, borderColor: dietColor(x.diet), alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: dietColor(x.diet) }} /></View>
-            <Text style={{ color: C.ink, fontSize: 15, flex: 1 }}>{x.dish}{x.diet !== 'Veg' ? <Text style={{ color: C.mute, fontSize: 13 }}> · {tr(x.diet)}</Text> : null}</Text></View>
+            <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, flex: 1 }}>{x.dish}{x.diet !== 'Veg' ? <Text maxFontSizeMultiplier={1.3} style={{ color: C.mute, fontSize: 13 }}> · {tr(x.diet)}</Text> : null}</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel={`${tr('Remove')} ${x.dish}`} hitSlop={10} onPress={() => remove(`/menu/items/${x.id}`, x.dish, load)}><Icon name="close" size={16} color={C.faint} /></Pressable>
         </View>)}
       </View> : null; })}</Card>
@@ -272,7 +272,7 @@ export function Menu() {
     </Card> : <Btn kind="quiet" icon="plus" title={tr('Add a tasting')} onPress={() => setAddingT(true)} />}
     {d.tastings.map((x: any) => <Card key={x.id} style={{ paddingVertical: 16 }}><View style={s.row}>
       <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!x.done }} accessibilityLabel={`${tr('Done')}: ${x.caterer}`} onPress={() => done(x)} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-        <Check on={!!x.done} /><View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.caterer}</Text><M>{dateIN(x.date)}{x.time ? ` · ${x.time}` : ''}</M>{x.notes ? <M style={{ color: C.ink }}>{x.notes}</M> : null}</View>
+        <Check on={!!x.done} /><View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.caterer}</Text><M>{dateIN(x.date)}{x.time ? ` · ${x.time}` : ''}</M>{x.notes ? <M style={{ color: C.ink }}>{x.notes}</M> : null}</View>
       </Pressable>
       <Btn small kind="quiet" title={tr('Remove')} onPress={() => remove(`/menu/tastings/${x.id}`, x.caterer, load)} />
     </View></Card>)}
@@ -291,7 +291,7 @@ export function Practice() {
   const today = todayISO(); const upcoming = list.filter(x => x.date >= today); const past = list.filter(x => x.date < today);
   const shareAll = () => Share.share({ message: `${tr('Sangeet practice')}\n` + upcoming.map(x => `${dateIN(x.date)}${x.time ? ` ${x.time}` : ''}${x.place ? `, ${x.place}` : ''}: ${x.item}${x.people ? ` (${x.people})` : ''}`).join('\n') }).catch(() => {});
   const card = (x: any) => <Card key={x.id} style={{ paddingVertical: 16 }}><View style={s.row}><View style={{ flex: 1 }}>
-    <Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.item}</Text>
+    <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{x.item}</Text>
     <M>{[dateIN(x.date), x.time, x.place].filter(Boolean).join(' · ')}</M>{x.people ? <M style={{ color: C.ink }}>{x.people}</M> : null}</View>
     <Btn small kind="quiet" title={tr('Remove')} onPress={() => remove(`/practices/${x.id}`, x.item, load)} /></View></Card>;
   return <ScrollView contentContainerStyle={page} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
@@ -337,11 +337,11 @@ export function Ideas() {
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>{shown.map(x => <View key={x.id} style={{ width: '47%', flexGrow: 1, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.card, overflow: 'hidden' }}>
       {x.url && isImage(x.url) ? <Image source={{ uri: x.url.startsWith('/') ? getBase() + x.url : x.url }} accessibilityLabel={x.note || tr('Saved idea')} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, backgroundColor: C.tint }} />
         : x.url ? <Pressable accessibilityRole="link" onPress={() => Linking.openURL(x.url).catch(err)} style={{ aspectRatio: 1.6, backgroundColor: C.tint, alignItems: 'center', justifyContent: 'center', gap: 4, padding: 12 }}>
-          <Icon name="globe" size={22} color={C.primary} /><Text style={{ color: C.primary, fontSize: 13 }} numberOfLines={1}>{x.url.replace(/^https:\/\/(www\.)?/, '').split('/')[0]}</Text></Pressable> : null}
+          <Icon name="globe" size={22} color={C.primary} /><Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontSize: 13 }} numberOfLines={1}>{x.url.replace(/^https:\/\/(www\.)?/, '').split('/')[0]}</Text></Pressable> : null}
       <View style={{ padding: 12 }}>
         <M>{tr(IDEA_KINDS.find(k => k[0] === x.kind)?.[1] || 'Other')}</M>
-        {x.note ? <Text style={{ color: C.ink, fontSize: 13, marginTop: 2 }}>{x.note}</Text> : null}
-        <Pressable accessibilityRole="button" hitSlop={8} onPress={() => remove(`/ideas/${x.id}`, x.note || tr('this idea'), load)} style={{ marginTop: 8 }}><Text style={{ color: C.mute, fontSize: 13, textDecorationLine: 'underline' }}>{tr('Remove')}</Text></Pressable>
+        {x.note ? <Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 13, marginTop: 2 }}>{x.note}</Text> : null}
+        <Pressable accessibilityRole="button" hitSlop={8} onPress={() => remove(`/ideas/${x.id}`, x.note || tr('this idea'), load)} style={{ marginTop: 8 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.mute, fontSize: 13, textDecorationLine: 'underline' }}>{tr('Remove')}</Text></Pressable>
       </View>
     </View>)}</View>
   </ScrollView>;
@@ -362,11 +362,11 @@ export function ChooseVendor({ vendor }: { vendor: any }) {
   };
   return <Card style={{ marginTop: 12, marginBottom: 12 }}>
     {row?.status === 'chosen' ? <>
-      <View style={s.row}><Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{`${tr('Your')} ${label.toLowerCase()}`}</Text><Tag tone="ok" icon="check" label={tr('Booked')} /></View>
+      <View style={s.row}><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink, flex: 1 }}>{`${tr('Your')} ${label.toLowerCase()}`}</Text><Tag tone="ok" icon="check" label={tr('Booked')} /></View>
       <M style={{ marginTop: 4 }}>{row.amount_paise ? `${tr('Agreed price')} ${inr(row.amount_paise)} · ` : ''}{tr('It’s on your plan and checklist.')}</M>
       <Btn small kind="quiet" title={tr('Undo')} disabled={busy} onPress={() => set(false)} />
     </> : <>
-      <Text style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Booked them already?')}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 17, color: C.ink }}>{tr('Booked them already?')}</Text>
       <M style={{ marginTop: 4, marginBottom: 12 }}>{`${tr('Mark them as your')} ${label.toLowerCase()}. ${tr('We tick the task, add them to your plan and day contacts')}${vendor.category === 'venue' ? ` ${tr('and set the venue on your ceremonies')}` : ''}.`}</M>
       <Input label={tr('Agreed price (₹, optional)')} value={amount} onChangeText={setAmount} keyboardType="number-pad" />
       <Btn icon="check" title={busy ? tr('Saving…') : `${tr('Mark as our')} ${label.toLowerCase()}`} disabled={busy} onPress={() => set(true)} />

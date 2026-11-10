@@ -68,10 +68,10 @@ export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: 
       <View style={{ backgroundColor: C.primary, paddingTop: insets.top + 16, paddingHorizontal: 24, paddingBottom: 24, overflow: 'hidden' }}>
         <View pointerEvents="none" style={{ position: 'absolute', right: -32, bottom: -48, opacity: 0.3 }}><FloralArch size={150} color={C.goldSoft} /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          {onClose ? <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={{ minHeight: 36, justifyContent: 'center' }}><Text style={{ color: C.goldSoft, fontSize: 15 }}>{tr('Not now')}</Text></Pressable>
-            : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Logo size={44} radius={10} /><Text style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft }}>Shaadi OS</Text></View>}
+          {onClose ? <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10} style={{ minHeight: 36, justifyContent: 'center' }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.goldSoft, fontSize: 15 }}>{tr('Not now')}</Text></Pressable>
+            : <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Logo size={44} radius={10} /><Text maxFontSizeMultiplier={1.3} style={{ fontFamily: F.display, fontSize: 24, color: C.goldSoft }}>Shaadi OS</Text></View>}
         </View>
-        <Text style={{ color: '#F4DDE5', fontSize: 15, lineHeight: 22, marginTop: 16, maxWidth: 300 }}>{tr('Find vendors and plan your wedding with your family, in one app.')}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={{ color: '#F4DDE5', fontSize: 15, lineHeight: 22, marginTop: 16, maxWidth: 300 }}>{tr('Find vendors and plan your wedding with your family, in one app.')}</Text>
       </View>
 
       <View style={{ paddingHorizontal: 24, paddingTop: 24, width: '100%', maxWidth: 520, alignSelf: 'center', flexGrow: 1 }}>
@@ -81,8 +81,8 @@ export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: 
 
           {step === 0 ? <Input label={tr('Mobile number')} prefix="+91" value={phone} onChangeText={t => { setPhone(cleanPhone(t)); setError(''); }} keyboardType="number-pad" textContentType="telephoneNumber" autoComplete="tel" placeholder="98765 43210" returnKeyType="go" onSubmitEditing={() => go()} />
             : <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>{step === 2 ? <Tag tone="ok" icon="check" label={tr('Verified')} /> : null}<Text style={{ color: C.ink, fontSize: 15, fontVariant: ['tabular-nums'] }}>+91 {phone.slice(0, 5)} {phone.slice(5)}</Text></View>
-                <Pressable accessibilityRole="button" onPress={changeNumber} hitSlop={10} disabled={busy}><Text style={{ color: C.primary, fontSize: 15, fontWeight: '500' }}>{tr('Change')}</Text></Pressable>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>{step === 2 ? <Tag tone="ok" icon="check" label={tr('Verified')} /> : null}<Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontVariant: ['tabular-nums'] }}>+91 {phone.slice(0, 5)} {phone.slice(5)}</Text></View>
+                <Pressable accessibilityRole="button" onPress={changeNumber} hitSlop={10} disabled={busy}><Text maxFontSizeMultiplier={1.3} style={{ color: C.primary, fontSize: 15, fontWeight: '500' }}>{tr('Change')}</Text></Pressable>
               </View>}
 
           {step === 1 ? <>
@@ -92,17 +92,17 @@ export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: 
 
           {step === 2 ? <>
             <Input label={tr('Your name')} value={name} onChangeText={t => { setName(t); setError(''); }} placeholder={tr('e.g. Priya Sharma')} autoFocus autoCapitalize="words" textContentType="name" autoComplete="name" returnKeyType="done" maxLength={80} />
-            <Text style={{ fontSize: 13, fontWeight: '500', color: C.mute, marginBottom: 8 }}>{tr('How will you use Shaadi OS?')}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={{ fontSize: 13, fontWeight: '500', color: C.mute, marginBottom: 8 }}>{tr('How will you use Shaadi OS?')}</Text>
             {ROLE_OPTIONS.map(([key, icon, title, detail]) => { const on = role === key; return (
               <Pressable key={key} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => { setRole(key); setError(''); }}
                 style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, marginBottom: 12, borderRadius: 12, borderWidth: on ? 2 : 1, borderColor: on ? C.primary : C.line, backgroundColor: on ? C.tint : C.card, opacity: pressed ? 0.85 : 1 })}>
                 <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: on ? C.card : C.tint, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} size={22} color={C.primary} /></View>
-                <View style={{ flex: 1 }}><Text style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{tr(title)}</Text><M>{tr(detail)}</M></View>
+                <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.ink, fontSize: 15, fontWeight: '500' }}>{tr(title)}</Text><M>{tr(detail)}</M></View>
                 <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: on ? C.primary : C.faint, alignItems: 'center', justifyContent: 'center' }}>{on ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: C.primary }} /> : null}</View>
               </Pressable>); })}
           </> : null}
 
-          {!!error && <Text accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, lineHeight: 20, marginBottom: 8 }}>{error}</Text>}
+          {!!error && <Text maxFontSizeMultiplier={1.3} accessibilityRole="alert" style={{ color: C.warn, fontSize: 15, lineHeight: 20, marginBottom: 8 }}>{error}</Text>}
           <Btn title={busy ? tr('Please wait…') : step === 0 ? tr('Send code') : step === 1 ? tr('Verify') : tr('Create account')} onPress={() => go()} disabled={busy} />
           {step === 1 ? <Btn kind="quiet" title={wait > 0 ? `${tr('Resend code in')} ${wait}s` : tr('Resend code')} onPress={resend} disabled={busy || wait > 0} /> : null}
         </Rise>
@@ -110,7 +110,7 @@ export default function Login({ onDone, onClose, lang, setLang }: { onDone: (s: 
 
         <View style={{ flexGrow: 1 }} />
         <M style={{ marginTop: 32, fontSize: 12, textAlign: 'center' }}>{tr('Demo build: OTP and payments are simulated. Demo vendor: 9000000001.')}</M>
-        <Pressable accessibilityRole="button" onPress={() => setShowServer(!showServer)} style={{ alignSelf: 'center', minHeight: 40, justifyContent: 'center' }}><Text style={{ color: C.mute, fontSize: 12, textDecorationLine: 'underline' }}>{showServer ? tr('Hide server settings') : tr('Server settings')}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setShowServer(!showServer)} style={{ alignSelf: 'center', minHeight: 40, justifyContent: 'center' }}><Text maxFontSizeMultiplier={1.3} style={{ color: C.mute, fontSize: 12, textDecorationLine: 'underline' }}>{showServer ? tr('Hide server settings') : tr('Server settings')}</Text></Pressable>
         {showServer && <Input label={tr('Server address')} value={server} onChangeText={setServer} autoCapitalize="none" />}
       </View>
     </ScrollView>);

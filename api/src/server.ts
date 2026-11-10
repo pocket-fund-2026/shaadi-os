@@ -107,12 +107,12 @@ app.post('/api/wedding', auth, wrap((req: any, res: any) => {
 }));
 const W = (req: any) => { const w = myWedding(req.user.id); if (!w) throw fail(400, 'Create your wedding first'); return w; };
 app.get('/api/tasks', auth, wrap((req: any, res: any) => res.json(q('SELECT * FROM tasks WHERE wedding_id=? ORDER BY due', W(req).id))));
-app.post('/api/tasks', auth, wrap((req: any, res: any) => { const b = z.object({ title: z.string().trim().min(1).max(200), due: dateSchema.optional() }).parse(req.body); run('INSERT INTO tasks(wedding_id,title,due) VALUES(?,?,?)', W(req).id, b.title, b.due || null); res.json({ ok: true }); }));
+app.post('/api/tasks', auth, wrap((req: any, res: any) => { const b = z.object({ title: z.string().trim().min(1).max(200), due: dateSchema.optional(), owner: z.string().trim().max(80).default(''), notes: z.string().trim().max(1000).default(''), priority: z.enum(['normal', 'high']).default('normal') }).parse(req.body); run('INSERT INTO tasks(wedding_id,title,due,owner,notes,priority) VALUES(?,?,?,?,?,?)', W(req).id, b.title, b.due || null, b.owner, b.notes, b.priority); res.json({ ok: true }); }));
 app.patch('/api/tasks/:id', auth, wrap((req: any, res: any) => {
-  const b = z.object({ done: z.boolean().optional(), title: z.string().trim().min(1).max(200).optional(), due: dateSchema.nullable().optional() }).strict().refine(value => Object.keys(value).length > 0).parse(req.body);
+  const b = z.object({ done: z.boolean().optional(), title: z.string().trim().min(1).max(200).optional(), due: dateSchema.nullable().optional(), owner: z.string().trim().max(80).optional(), notes: z.string().trim().max(1000).optional(), priority: z.enum(['normal', 'high']).optional() }).strict().refine(value => Object.keys(value).length > 0).parse(req.body);
   const w = W(req); const task = one('SELECT * FROM tasks WHERE id=? AND wedding_id=?', req.params.id, w.id);
   if (!task) throw fail(404, 'Task not found');
-  run('UPDATE tasks SET done=?,title=?,due=? WHERE id=? AND wedding_id=?', b.done === undefined ? task.done : b.done ? 1 : 0, b.title ?? task.title, b.due === undefined ? task.due : b.due, task.id, w.id);
+  run('UPDATE tasks SET done=?,title=?,due=?,owner=?,notes=?,priority=? WHERE id=? AND wedding_id=?', b.done === undefined ? task.done : b.done ? 1 : 0, b.title ?? task.title, b.due === undefined ? task.due : b.due, b.owner ?? task.owner, b.notes ?? task.notes, b.priority ?? task.priority, task.id, w.id);
   res.json({ ok: true });
 }));
 app.get('/api/budget', auth, wrap((req: any, res: any) => {
